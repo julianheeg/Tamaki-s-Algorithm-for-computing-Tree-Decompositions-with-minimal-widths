@@ -247,7 +247,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         public int First()
         {
-            int first = -1;
+            int first = 32 * bytes.Length;
             // code taken from http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
             for (int i = 0; i < bytes.Length; i++)
             {
@@ -272,7 +272,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
 
             // TODO: remove if assertion never fails
-            int second = -1;
+            int second = 32 * bytes.Length;
             for (int i = 0; i < bytes.Length; i++)
             {
                 if (bytes[i] != 0)
@@ -438,6 +438,33 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// assigns a hash code to this bit set.
+        /// </summary>
+        /// <returns></returns>
+        public override int GetHashCode()
+        {
+            // TODO: cache hash code?
+            int hashCode = 0;
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                hashCode ^= bytes[i];
+            }
+            return hashCode;
+        }
+
+        /// <summary>
+        /// checks for equality (override from object class for hash set)
+        /// </summary>
+        /// <param name="obj">the other object</param>
+        /// <returns>true iff both objects contain the same items</returns>
+        public override bool Equals(object obj)
+        {
+            BitSet other = obj as BitSet;
+            Debug.Assert(other != null);
+            return this.Equals(other);
         }
     }
 }
