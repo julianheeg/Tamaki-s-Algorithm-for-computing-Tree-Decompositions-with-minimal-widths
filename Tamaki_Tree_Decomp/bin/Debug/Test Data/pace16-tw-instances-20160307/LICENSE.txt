@@ -1,0 +1,103 @@
+1)  Derived from the Contiki OS (http://www.contiki-os.org/)
+    BSD license: license-contiki.txt
+
+    contiki*.gr
+
+
+2)  Derived from FuzixOS (https://github.com/EtchedPixels/FUZIX)
+    Licensed under LPGL (license-lpgl.txt)
+
+    fuzix*.gr
+
+
+3)  Derived from glibc (https://www.gnu.org/software/libc/)
+    Licensed under LPGL (license-lpgl.txt)
+
+    stdlib*.gr
+
+
+4)  Derived from SAT Competition 2014 test instances
+    (http://satcompetition.org/edacc/sc14/experiment/19/instances)
+
+    6s10_gaifman.gr
+    6s12_gaifman.gr
+    AProVE07-03_gaifman.gr
+
+
+5)  Derived from DIMACS graph coloring instances
+    (http://mat.gsia.cmu.edu/COLOR/instances.html
+
+    dimacs*.gr
+
+
+6)  Named graphs:
+    CC0 - Public domain
+    (https://creativecommons.org/publicdomain/zero/1.0/)
+
+    BalancedTree_3,5.gr
+    BrinkmannGraph.gr
+    CameronGraph.gr
+    ClebschGraph.gr
+    DesarguesGraph.gr
+    DorogovtsevGoltsevMendesGraph.gr
+    DoubleStarSnark.gr
+    DyckGraph.gr
+    FlowerSnark.gr
+    FoldedCubeGraph_7.gr
+    FolkmanGraph.gr
+    FriendshipGraph_10.gr
+    GeneralizedPetersenGraph_10_4.gr
+    GoethalsSeidelGraph_2_3.gr
+    GoldnerHararyGraph.gr
+    GossetGraph.gr
+    GrayGraph.gr
+    GrotzschGraph.gr
+    HeawoodGraph.gr
+    HigmanSimsGraph.gr
+    HoffmanGraph.gr
+    HoffmanSingletonGraph.gr
+    HyperStarGraph_10_2.gr
+    IcosahedralGraph.gr
+    KittellGraph.gr
+    LjubljanaGraph.gr
+    MarkstroemGraph.gr
+    McGeeGraph.gr
+    MeredithGraph.gr
+    NauruGraph.gr
+    OrthogonalArrayBlockGraph_4_3.gr
+    PappusGraph.gr
+    PoussinGraph.gr
+    RingedTree_6.gr
+    StarGraph_100.gr
+    SylvesterGraph.gr
+    SymplecticDualPolarGraph_4_4.gr
+    SzekeresSnarkGraph.gr
+    TaylorTwographDescendantSRG_3.gr
+    Toroidal6RegularGrid2dGraph_4_6.gr
+    Tutte12Cage.gr
+
+
+7)  Random graphs:
+    CC0 - Public domain
+    (https://creativecommons.org/publicdomain/zero/1.0/)
+
+    GNP_20_10_1.gr
+    GNP_20_20_0.gr
+    GNP_20_30_0.gr
+    GNP_20_40_0.gr
+    RandomBarabasiAlbert_100_2.gr
+    RandomBipartite_25_50_1.gr
+    RandomBoundedToleranceGraph_60.gr
+    RandomGNM_100_100.gr
+    RandomGNM_250_1000.gr
+    RandomGNM_500_500.gr
+    RandomNewmanWattsStrogatz_100_5_3.gr
+    RandomTriangulation_800.gr
+    RKT_20_40_10_0.gr
+    RKT_20_40_10_1.gr
+    RKT_20_50_10_0.gr
+    RKT_20_50_10_1.gr
+    RKT_20_70_10_0.gr
+    RKT_20_80_10_1.gr
+    RKT_300_90_30_0.gr
+    RKT_500_80_30_0.gr

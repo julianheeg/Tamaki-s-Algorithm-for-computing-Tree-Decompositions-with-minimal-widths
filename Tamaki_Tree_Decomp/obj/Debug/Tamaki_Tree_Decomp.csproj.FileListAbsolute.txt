@@ -1,0 +1,7 @@
+D:\Dateien\Uni\Uni Mainz\Masterarbeit\Tamaki_Tree_Decomp\Tamaki_Tree_Decomp\bin\Debug\Tamaki_Tree_Decomp.exe.config
+D:\Dateien\Uni\Uni Mainz\Masterarbeit\Tamaki_Tree_Decomp\Tamaki_Tree_Decomp\bin\Debug\Tamaki_Tree_Decomp.exe
+D:\Dateien\Uni\Uni Mainz\Masterarbeit\Tamaki_Tree_Decomp\Tamaki_Tree_Decomp\bin\Debug\Tamaki_Tree_Decomp.pdb
+D:\Dateien\Uni\Uni Mainz\Masterarbeit\Tamaki_Tree_Decomp\Tamaki_Tree_Decomp\obj\Debug\Tamaki_Tree_Decomp.csprojAssemblyReference.cache
+D:\Dateien\Uni\Uni Mainz\Masterarbeit\Tamaki_Tree_Decomp\Tamaki_Tree_Decomp\obj\Debug\Tamaki_Tree_Decomp.csproj.CoreCompileInputs.cache
+D:\Dateien\Uni\Uni Mainz\Masterarbeit\Tamaki_Tree_Decomp\Tamaki_Tree_Decomp\obj\Debug\Tamaki_Tree_Decomp.exe
+D:\Dateien\Uni\Uni Mainz\Masterarbeit\Tamaki_Tree_Decomp\Tamaki_Tree_Decomp\obj\Debug\Tamaki_Tree_Decomp.pdb

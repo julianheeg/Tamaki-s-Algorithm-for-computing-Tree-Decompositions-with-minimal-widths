@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2000
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tamaki_Tree_Decomp", "Tamaki_Tree_Decomp\Tamaki_Tree_Decomp.csproj", "{E1A0A07B-D126-4344-89DD-2E61A6FC7451}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tamaki_Tree_Decomp.UnitTests", "Tamaki_Tree_Decomp.UnitTests\Tamaki_Tree_Decomp.UnitTests.csproj", "{6FFE32E2-4BFC-40BF-9A13-295363ACDDD8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E1A0A07B-D126-4344-89DD-2E61A6FC7451}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1A0A07B-D126-4344-89DD-2E61A6FC7451}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1A0A07B-D126-4344-89DD-2E61A6FC7451}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1A0A07B-D126-4344-89DD-2E61A6FC7451}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FFE32E2-4BFC-40BF-9A13-295363ACDDD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FFE32E2-4BFC-40BF-9A13-295363ACDDD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FFE32E2-4BFC-40BF-9A13-295363ACDDD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FFE32E2-4BFC-40BF-9A13-295363ACDDD8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EA170C38-56C6-419D-80B5-7F31A30E9F23}
+	EndGlobalSection
+EndGlobal
