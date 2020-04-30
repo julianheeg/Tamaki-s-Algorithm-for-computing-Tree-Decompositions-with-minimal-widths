@@ -133,12 +133,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns></returns>
         public bool HasTreeWidth(int k, out PTD treeDecomp)
         {
-            // TODO: CRITICAL: for each insertion, check first that there is no equivalent tree decomposition in the set already
+            // TODO P and U can be cached so that they're not destroyed and rebuilt when k is incremented. In that case, they need to be cleared at the end of the method ()
             // TODO: P can be Queue so that old entries are discarded and some memory is saved.
             List<PTD> P = new List<PTD>();
-            HashSet<BitSet> P_Inlets = new HashSet<BitSet>();
+            HashSet<BitSet> P_inlets = new HashSet<BitSet>();
             List<PTD> U = new List<PTD>();
-            HashSet<BitSet> U_Inlets = new HashSet<BitSet>();
+            HashSet<BitSet> U_inlets = new HashSet<BitSet>();
 
             // --------- lines 1 to 3 ----------
 
@@ -149,10 +149,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     PTD newOne = new PTD(neighborSetsWith[i], outlet);
                     //if (IsIncoming(newOne))
                     //{
-                    if (!P_Inlets.Contains(newOne.inlet))
+                    if (!P_inlets.Contains(newOne.inlet))
                     {
                         P.Add(newOne); // ptd mit Tasche N[v] als einzelnen Knoten
-                        P_Inlets.Add(newOne.inlet);
+                        P_inlets.Add(newOne.inlet);
                     }
                     //}
                 }
@@ -192,10 +192,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 //if (IsIncoming(Tau_wiggle))
                 //{
-                if (!U_Inlets.Contains(Tau_wiggle.inlet))
+                if (!U_inlets.Contains(Tau_wiggle.inlet))
                 {
                     U.Add(Tau_wiggle);
-                    U_Inlets.Add(Tau_wiggle.inlet);
+                    U_inlets.Add(Tau_wiggle.inlet);
                 }
                 //}
 
@@ -221,10 +221,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         {
                             //if (IsIncoming(Tau_wiggle))
                             //{
-                            if (!U_Inlets.Contains(Tau_wiggle.inlet))
+                            if (!U_inlets.Contains(Tau_wiggle.inlet))
                             {
                                 U.Add(Tau_wiggle);
-                                U_Inlets.Add(Tau_wiggle.inlet);
+                                U_inlets.Add(Tau_wiggle.inlet);
                             }
                             //}
                         }                        
@@ -241,14 +241,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     // --------- lines 12 and 13 ---------
                     if (IsPotMaxClique(Tau_wiggle.bag))
                     {
-                        if (IsIncoming(Tau_wiggle, Tau, Tau_prime, isChain))
+                        //if (IsIncoming(Tau_wiggle, Tau, Tau_prime, isChain))
+                        //{
+                        if (Tau_wiggle.IsIncoming_UniqueRoot())
                         {
-                            if (!P_Inlets.Contains(Tau_wiggle.inlet))
+                            if (!P_inlets.Contains(Tau_wiggle.inlet))
                             {
                                 P.Add(Tau_wiggle);
-                                P_Inlets.Add(Tau_wiggle.inlet);
+                                P_inlets.Add(Tau_wiggle.inlet);
                             }
                         }
+                        //}
                     }
 
                     // --------- lines 14 to 16 ---------
@@ -262,14 +265,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 #region assertion
                                 Debug.Assert(newOne.bag.Count() <= k + 1);
                                 #endregion
-                                if (IsIncoming(newOne, Tau, Tau_prime, isChain))
+                                //if (IsIncoming(newOne, Tau, Tau_prime, isChain))
+                                //{
+                                if (newOne.IsIncoming_UniqueRoot())
                                 {
-                                    if (!P_Inlets.Contains(newOne.inlet))
+                                    if (!P_inlets.Contains(newOne.inlet))
                                     {
                                         P.Add(newOne);
-                                        P_Inlets.Add(newOne.inlet);
+                                        P_inlets.Add(newOne.inlet);
                                     }
                                 }
+                                //}
                             }
                         }
                     }
@@ -287,14 +293,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             PTD newOne = PTD.Line19(Tau_wiggle, potMaxClique, this);
                             if (newOne.bag.Count() <= k + 1)
                             {
-                                if (IsIncoming(newOne, Tau, Tau_prime, isChain))
+                                //if (IsIncoming(newOne, Tau, Tau_prime, isChain))
+                                //{
+                                if (newOne.IsIncoming_UniqueRoot())
                                 {
-                                    if (!P_Inlets.Contains(newOne.inlet))
+                                    if (!P_inlets.Contains(newOne.inlet))
                                     {
                                         P.Add(newOne);
-                                        P_Inlets.Add(newOne.inlet);
+                                        P_inlets.Add(newOne.inlet);
                                     }
                                 }
+                                //}
                             }                            
                         }
                     }
@@ -731,6 +740,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             return true;
 
+            
             // 1
             if (isChain)
             {
@@ -750,6 +760,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 return true;
             }
             return false;
+            
 
             /*
             // usual dfs stuff

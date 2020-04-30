@@ -36,7 +36,7 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            Graph g = new Graph(test_t6);
+            Graph g = new Graph(test_a0);
 
 
             PTD output;

@@ -131,6 +131,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
+        /// <summary>
+        /// tests if this PTD is an incoming PTD
+        /// </summary>
+        /// <returns>true iff it is incoming</returns>
+        public bool IsIncoming_UniqueRoot()
+        {
+            BitSet restVertices = inlet.Complement();
+            restVertices.ExceptWith(outlet);
+            return inlet.First() < restVertices.First();
+        }
+
         #region import from file
 
         /// <summary>

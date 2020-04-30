@@ -313,6 +313,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
+        /// constructs a bit set that is the compliment of this one (bits after the maximum size are set)
+        /// </summary>
+        /// <returns>a complimentary bit set</returns>
+        public BitSet Complement()
+        {
+            BitSet complement = new BitSet(this);
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                complement.bytes[i] = ~complement.bytes[i];
+            }
+            return complement;
+        }
+
+        /// <summary>
         /// tests if the union of both bit sets contains all elements
         /// </summary>
         /// <param name="first">the first bit set</param>
