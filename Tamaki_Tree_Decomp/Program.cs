@@ -36,13 +36,27 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            Graph g = new Graph(test_a0);
+            string filepath = test_a1;
+            Graph g = new Graph(filepath);
+            Graph debug = new Graph(filepath);
 
+            GraphReduction red = new GraphReduction(g);
+            //red.SimplicialVertexRule();
+            //red.AlmostSimplicialVertexRule();
+            //red.BuddyRule();
+
+            while (red.SimplicialVertexRule() || red.AlmostSimplicialVertexRule() || red.BuddyRule())
+            {
+            }
+            
+
+            g = red.ToGraph();
 
             PTD output;
             g.TreeWidth(out output);
+            red.RebuildTreeDecomposition(output);
 
-            Debug.Assert(g.IsValidTreeDecomposition(output));
+            Debug.Assert(debug.IsValidTreeDecomposition(output));
             output.Print();
 
             bool testOwn = false;

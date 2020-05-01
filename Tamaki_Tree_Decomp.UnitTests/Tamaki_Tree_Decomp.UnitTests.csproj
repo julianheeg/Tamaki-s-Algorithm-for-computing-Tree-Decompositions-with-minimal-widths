@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitSet_UnitTest.cs" />
+    <Compile Include="GraphReduction_UnitTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Graph_UnitTest.cs" />
   </ItemGroup>

@@ -9,14 +9,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 {
     public class PTD
     {
-        public readonly BitSet bag;
+        public BitSet Bag { get; private set; }
         public readonly BitSet inlet;
         public readonly BitSet outlet;
         public readonly List<PTD> children;
 
         public PTD(BitSet bag, BitSet outlet, BitSet inlet, List<PTD> children)
         {
-            this.bag = bag;
+            Bag = bag;
             this.outlet = outlet;
             this.inlet = inlet;
             this.children = children;
@@ -30,11 +30,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="outlet">the outlet of this node</param>
         public PTD(BitSet bag, BitSet outlet)
         {
-            this.bag = bag;
+            Bag = bag;
             this.outlet = outlet;
             inlet = new BitSet(bag);
             inlet.ExceptWith(outlet);
             children = new List<PTD>();
+        }
+
+        /// <summary>
+        /// sets the bag of this node to a new set of vertices 
+        /// </summary>
+        /// <param name="newBag">the new bag</param>
+        public void SetBag(BitSet newBag)
+        {
+            Bag = newBag;
         }
         
         /// <summary>
@@ -55,7 +64,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         // line 9
         public static PTD Line9(PTD Tau_prime, PTD Tau, Graph graph)
         {
-            BitSet bag = new BitSet(Tau_prime.bag);
+            BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
             List<PTD> children = new List<PTD>(Tau_prime.children);
             children.Add(Tau);
@@ -86,7 +95,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public static PTD Line19(PTD Tau_wiggle, BitSet vNeighborsWithoutInlet, Graph graph)
         {
             BitSet bag = vNeighborsWithoutInlet;
-            bag.UnionWith(Tau_wiggle.bag);
+            bag.UnionWith(Tau_wiggle.Bag);
             BitSet outlet = new BitSet(Tau_wiggle.outlet);
             BitSet inlet = new BitSet(Tau_wiggle.inlet);
             List<PTD> children = new List<PTD>(Tau_wiggle.children);
@@ -113,7 +122,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true iff the PTD is possibly usable</returns>
         public bool IsPossiblyUsable(int k)
         {
-            if (bag.Count() > k + 1)
+            if (Bag.Count() > k + 1)
             {
                 return false;
             }
@@ -222,7 +231,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="bag">the bag of this ptd node</param>
         public PTD(BitSet bag)
         {
-            this.bag = bag;
+            this.Bag = bag;
             outlet = null;
             inlet = null;
             children = new List<PTD>();
@@ -259,7 +268,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 Console.Write("|- ");
                 indent += "| ";
             }
-            bag.Print_NoBrackets();
+            Bag.Print_NoBrackets();
 
             for (int i = 0; i < children.Count; i++)
                 children[i].Print_rec(indent, i == children.Count - 1);
@@ -267,7 +276,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         public override string ToString()
         {
-            return bag.ToString();
+            return Bag.ToString();
         }
 
         #endregion printing

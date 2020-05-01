@@ -10,14 +10,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 {
     public class Graph
     {
-        public static int staticVertexCount;    // TODO: clean this up
         public readonly int vertexCount = -1;
         public readonly int edgeCount;
 
         public readonly int[][] adjacencyList;
         public readonly BitSet[] neighborSetsWithout;   // contains N(v)
         public readonly BitSet[] neighborSetsWith;      // contains N[v]
-
 
         /// <summary>
         /// constructs a graph from a .gr file
@@ -46,10 +44,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             {
                                 vertexCount = Convert.ToInt32(tokens[2]);
                                 edgeCount = Convert.ToInt32(tokens[3]);
-                                staticVertexCount = vertexCount;
 
                                 tempAdjacencyList = new List<int>[vertexCount];
-                                neighborSetsWithout = new BitSet[vertexCount];
                                 for (int i = 0; i < vertexCount; i++)
                                 {
                                     tempAdjacencyList[i] = new List<int>();
@@ -72,6 +68,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 {
                     adjacencyList[i] = tempAdjacencyList[i].ToArray();
                 }
+                neighborSetsWithout = new BitSet[vertexCount];
                 neighborSetsWith = new BitSet[vertexCount];
                 // fill neighbor sets
                 for (int i = 0; i < vertexCount; i++)
@@ -86,6 +83,32 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 Console.WriteLine("The file could not be read:");
                 Console.WriteLine(e.Message);
+            }
+        }
+
+        /// <summary>
+        /// constructs a graph from an adjacency list
+        /// </summary>
+        /// <param name="adjacencyList">the adjacecy list for this graph</param>
+        public Graph(List<int>[] adjacencyList)
+        {
+            vertexCount = adjacencyList.Length;
+            this.adjacencyList = new int[vertexCount][];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                this.adjacencyList[i] = adjacencyList[i].ToArray();
+                edgeCount += this.adjacencyList[i].Length;
+            }
+            edgeCount /= 2;
+
+            // fill neighbor sets
+            neighborSetsWithout = new BitSet[vertexCount];
+            neighborSetsWith = new BitSet[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                neighborSetsWithout[i] = new BitSet(vertexCount, this.adjacencyList[i]);
+                neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
+                neighborSetsWith[i][i] = true;
             }
         }
 
@@ -176,7 +199,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 // --------- lines 5 and 6 ---------
                 PTD Tau_wiggle = PTD.Line5(Tau);
                 #region assertion
-                Debug.Assert(Tau_wiggle.bag.Count() <= k + 1);
+                Debug.Assert(Tau_wiggle.Bag.Count() <= k + 1);
 
                 // TODO: remove if this assertion never fails
                 BitSet outlet = new BitSet(Tau_wiggle.outlet);
@@ -239,7 +262,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
 
                     // --------- lines 12 and 13 ---------
-                    if (IsPotMaxClique(Tau_wiggle.bag))
+                    if (IsPotMaxClique(Tau_wiggle.Bag))
                     {
                         //if (IsIncoming(Tau_wiggle, Tau, Tau_prime, isChain))
                         //{
@@ -259,11 +282,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         if (!Tau_wiggle.outlet[v] && !Tau_wiggle.inlet[v])
                         {
-                            if (adjacencyList[v].Length <= k && neighborSetsWith[v].IsSuperset(Tau_wiggle.bag))
+                            if (adjacencyList[v].Length <= k && neighborSetsWith[v].IsSuperset(Tau_wiggle.Bag))
                             {
                                 PTD newOne = PTD.Line16(Tau_wiggle, neighborSetsWith[v], this);
                                 #region assertion
-                                Debug.Assert(newOne.bag.Count() <= k + 1);
+                                Debug.Assert(newOne.Bag.Count() <= k + 1);
                                 #endregion
                                 //if (IsIncoming(newOne, Tau, Tau_prime, isChain))
                                 //{
@@ -281,17 +304,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
 
                     // --------- lines 17 to 19 ---------
-                    List<int> X_r = Tau_wiggle.bag.Elements();
+                    List<int> X_r = Tau_wiggle.Bag.Elements();
                     for (int i = 0; i < X_r.Count; i++)
                     {
-                        BitSet potMaxClique = new BitSet(Tau_wiggle.bag);
+                        BitSet potMaxClique = new BitSet(Tau_wiggle.Bag);
                         potMaxClique.UnionWith(neighborSetsWith[X_r[i]]);
                         potMaxClique.ExceptWith(Tau_wiggle.inlet);
                         
                         if (IsPotMaxClique(potMaxClique, out _))
                         {
                             PTD newOne = PTD.Line19(Tau_wiggle, potMaxClique, this);
-                            if (newOne.bag.Count() <= k + 1)
+                            if (newOne.Bag.Count() <= k + 1)
                             {
                                 //if (IsIncoming(newOne, Tau, Tau_prime, isChain))
                                 //{
@@ -711,7 +734,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 inlet.UnionWith(ptd.children[i].inlet);
             }
 
-            List<int> X_r = ptd.bag.Elements();
+            List<int> X_r = ptd.Bag.Elements();
             for (int i = 0; i < X_r.Count; i++)
             {
                 int v = X_r[i];
@@ -721,7 +744,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 for (int j = 0; j < adjacencyList[v].Length; j++)
                 {
                     int neighbor = adjacencyList[v][j];
-                    if (!inlet[neighbor] && !ptd.bag[neighbor])
+                    if (!inlet[neighbor] && !ptd.Bag[neighbor])
                     {
                         isInOutlet = true;
                         outlet[v] = true;
@@ -738,6 +761,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         public bool IsIncoming(PTD Tau_wiggle, PTD Tau, PTD Tau_prime, bool isChain)
         {
+            // TODO: implement properly
             return true;
 
             
@@ -852,7 +876,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 PTD current = childrenStack.Pop();
                 int parent = parentStack.Pop();
 
-                bagsList.Add(current.bag);
+                bagsList.Add(current.Bag);
                 parentBags.Add(parent);
                 foreach(PTD child in current.children)
                 {
@@ -916,8 +940,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         int parentBag = parentBags[j];
                         while (parentBag != -1 && bagsList[parentBag][i])
                         {
-                            currentAncestor = parentBags[j];
+                            currentAncestor = parentBag;
                             parentBag = parentBags[currentAncestor];
+                            ;
                         }
                         ancestors.Add(currentAncestor);
                         if (ancestors.Count == 2)
@@ -927,28 +952,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
                 }
             }
-            return true;
-
-            // check consistency
-            childrenStack.Push(td);
-            while (childrenStack.Count > 0)
-            {
-                PTD current = childrenStack.Pop();
-                foreach (PTD child in current.children)
-                {
-                    childrenStack.Push(child);
-                    foreach(PTD grandchild in child.children)
-                    {
-                        BitSet intersectionWithGrandchildBag = new BitSet(current.bag);
-                        intersectionWithGrandchildBag.IntersectWith(grandchild.bag);
-                        if (!child.bag.IsSuperset(intersectionWithGrandchildBag))
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-
             return true;
         }
 
