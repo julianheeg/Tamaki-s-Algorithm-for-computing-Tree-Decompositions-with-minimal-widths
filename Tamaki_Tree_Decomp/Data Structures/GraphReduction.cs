@@ -7,6 +7,12 @@ using System.Threading.Tasks;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
+    /// <summary>
+    /// A class for simplifying a graph according to the rules in
+    ///     H. L. Bodlaender, A. M. C. A. Koster, F. van den Eijkhof, and L. C. van der Gaag. Preprocessing for triangulation of probabilistic networks.
+    ///     In J. Breese and D. Koller, editors, Proceedings of the 17th Conference on Uncertainty in Artificial Intelligence, pages 32–39,
+    ///     San Francisco, 2001. Morgan Kaufmann.
+    /// </summary>
     public class GraphReduction
     {
         readonly int vertexCount;
@@ -54,6 +60,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
+            int edgeCount = 0;
             // use that mapping to construct an adjacency list for this graph
             List<int>[] reducedAdjacencyList = new List<int>[ReductionMapping.Count];
             for (int i = 0; i < vertexCount; i++)
@@ -67,12 +74,27 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         currentVertexAdjacencies.Add(ReductionMapping[neighbor]);
                     }
                     reducedAdjacencyList[ReductionMapping[i]] = currentVertexAdjacencies;
+                    edgeCount += currentVertexAdjacencies.Count;
                 }
             }
 
             // TODO: can save a small bit of memory by deleting the old adjacency list and neighbor bit sets 
 
+            edgeCount /= 2;
+            Console.WriteLine("Graph reduced to {0} nodes and {1} edges", reducedAdjacencyList.Length, edgeCount);
             return new Graph(reducedAdjacencyList);
+        }
+
+        public bool Reduce(ref int out_low)
+        {
+            bool reduced = false;
+            while (SimplicialVertexRule() || AlmostSimplicialVertexRule() || BuddyRule() || CubeRule())
+            {
+                reduced = true;
+            }
+
+            out_low = low;
+            return reduced;
         }
 
         /// <summary>
@@ -417,7 +439,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return isReduced;
         }
 
-        public void RebuildTreeDecomposition(ref PTD ptd)
+        /// <summary>
+        /// turns a tree decomposition of the reduced graph into a tree decomposition of the original input graph
+        /// </summary>
+        /// <param name="td">the tree decomposition of the reduced graph</param>
+        public void RebuildTreeDecomposition(ref PTD td)
         {
             // return if there is no bag to append
             if (reconstructionBagsToAppend.Count == 0)
@@ -427,17 +453,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             Stack<PTD> nodeStack = new Stack<PTD>();
             List<PTD> reconstructedNodes = new List<PTD>();
-            if (ptd == null)
+            if (td == null)
             {
                 int lastIndex = reconstructionBagsToAppend.Count - 1;
-                ptd = new PTD(reconstructionBagsToAppend[lastIndex]);
-                reconstructedNodes.Add(ptd);
+                td = new PTD(reconstructionBagsToAppend[lastIndex]);
+                reconstructedNodes.Add(td);
                 reconstructionBagsToAppendTo.RemoveAt(lastIndex);
                 reconstructionBagsToAppend.RemoveAt(lastIndex);
             }
             else
             {
-                nodeStack.Push(ptd);
+                nodeStack.Push(td);
             }
 
             while (nodeStack.Count > 0)

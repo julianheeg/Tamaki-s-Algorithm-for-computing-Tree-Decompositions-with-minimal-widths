@@ -216,14 +216,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// counts the amount of items in this set
         /// </summary>
         /// <returns>the number of items in this set</returns>
-        public int Count()
+        public uint Count()
         {
             // code taken from http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
             // TODO: it probably doesn't make much sense here to check for equality to 0 since it's so fast anyways and would just introduce branches
-            int count = 0;
+            uint count = 0;
             for (int i = 0; i < bytes.Length; i++)
             {
-                int v = bytes[i];
+                uint v = (uint) bytes[i];
                 v = v - ((v >> 1) & 0x55555555);
                 v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
                 count += ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
@@ -253,7 +253,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 if (bytes[i] != 0)
                 {
-                    int v = bytes[i];
+                    uint v = (uint) bytes[i];
                     
                     /*
                     v |= v >> 1; // first round down to one less than a power of 2 
@@ -267,6 +267,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     */
 
                     first = i * 32 + Mod37BitPosition[(-v & v) % 37];
+                    break;
                 }
             }
 
@@ -279,14 +280,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 {
                     for (int j = 0; j < 32; j++)
                     {
-                        if (this[j])
+                        if (this[32 * i + j])
                         {
                             second = i * 32 + j;
                             break;
                         }
                     }
                 }
-                if (second != -1)
+                if (second != 32 * bytes.Length)
                 {
                     break;
                 }

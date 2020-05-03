@@ -35,29 +35,29 @@ namespace Tamaki_Tree_Decomp
         static readonly string test_s1 = "Test Data\\s1_fuzix_clock_settime_clock_settime.gr";
         static readonly string test_s3 = "Test Data\\s3_fuzix_clock_settime_clock_settime.gr";
 
+        static readonly string test_e0 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\easy\\fuzix_filesys_getinode.gr";
+        static readonly string test_e1 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\easy\\fuzix_devf_fd_transfer.gr";
+        static readonly string test_e2 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\easy\\BalancedTree_3,5.gr";
+        static readonly string test_e3 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\easy\\contiki_ifft_ifft.gr";
+        static readonly string test_e4 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\easy\\contiki_powertrace_powertrace_print.gr";
+
+        static readonly string test_m0 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\DesarguesGraph.gr";
+        static readonly string test_m1 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\FlowerSnark.gr";
+        static readonly string test_m2 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\GeneralizedPetersenGraph_10_4.gr";
+        static readonly string test_m3 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\HoffmanGraph.gr";
+        static readonly string test_m4 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\NauruGraph.gr";
+
         static void Main(string[] args)
         {
-            string filepath = test_a4;
+            string filepath = test_m4;
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
-            GraphReduction red = new GraphReduction(g);
-            //red.SimplicialVertexRule();
-            //red.AlmostSimplicialVertexRule();
-            //red.BuddyRule();
-
-            while (red.SimplicialVertexRule() || red.AlmostSimplicialVertexRule() || red.BuddyRule() || red.CubeRule())
-            {
-            }
-
-            g = red.ToGraph();
-
             PTD output;
-            g.TreeWidth(out output);
-            red.RebuildTreeDecomposition(ref output);
+            g.TreeWidth(0, out output);
 
-            Debug.Assert(debug.IsValidTreeDecomposition(output));
             output.Print();
+            Debug.Assert(debug.IsValidTreeDecomposition(output));
 
             bool testOwn = false;
             if (testOwn)

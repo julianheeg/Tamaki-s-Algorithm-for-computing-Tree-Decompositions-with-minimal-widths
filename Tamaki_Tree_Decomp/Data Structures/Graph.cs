@@ -148,6 +148,77 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return -1;
         }
 
+        public int TreeWidth(int minK, out PTD treeDecomp)
+        {
+            if (vertexCount == 0)
+            {
+                treeDecomp = null;
+                return minK;
+            }
+            else if (vertexCount == 1)
+            {
+                BitSet onlyBag = new BitSet(1);
+                onlyBag[0] = true;
+                treeDecomp = new PTD(onlyBag, null, null, new List<PTD>());
+                return minK;
+            }
+
+            // TODO: use previous reductions, not make an entirely new one each time
+            List<GraphReduction> reductions = new List<GraphReduction>();
+            Graph reducedGraph = this;
+            while (minK <= vertexCount)
+            {
+                // reduce graph
+                GraphReduction red = new GraphReduction(reducedGraph, minK);
+                bool reduced = red.Reduce(ref minK);
+                if (reduced)
+                {
+                    reducedGraph = red.ToGraph();
+                    reductions.Add(red);
+                }
+                if (reducedGraph.HasTreeWidth(minK, out treeDecomp))
+                {
+                    Console.WriteLine("graph has tree width " + minK);
+                    for (int i = reductions.Count - 1; i >= 0; i--)
+                    {
+                        reductions[i].RebuildTreeDecomposition(ref treeDecomp);
+                    }
+                    return minK;
+                }
+                Console.WriteLine("graph has tree width bigger than " + minK);
+                minK++;
+            }
+            treeDecomp = null;
+            return -1;
+
+            /*
+            GraphReduction red = new GraphReduction(this, minK);
+            bool reduced = red.Reduce(ref minK);
+            if (!reduced)
+            {
+                for (int k = minK; k <= vertexCount; k++)
+                {
+                    if (HasTreeWidth(k, out treeDecomp))
+                    {
+                        Console.WriteLine("graph has tree width " + k);
+                        return k;
+                    }
+                    Console.WriteLine("graph has tree width bigger than " + k);
+                }
+            }
+            else
+            {
+                Graph reducedGraph = red.ToGraph();
+                int treeWidth = reducedGraph.TreeWidth(minK, out PTD reducedTreeDecomp);
+                red.RebuildTreeDecomposition(ref reducedTreeDecomp);
+                treeDecomp = reducedTreeDecomp;
+                return treeWidth;
+            }
+            treeDecomp = null;
+            return -1;
+            */
+        }
+
         /// <summary>
         /// determines whether this graph has tree width k
         /// </summary>
@@ -156,6 +227,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns></returns>
         public bool HasTreeWidth(int k, out PTD treeDecomp)
         {
+            if (vertexCount == 0)
+            {
+                treeDecomp = null;
+                return true;
+            }
+
             // TODO P and U can be cached so that they're not destroyed and rebuilt when k is incremented. In that case, they need to be cleared at the end of the method ()
             // TODO: P can be Queue so that old entries are discarded and some memory is saved.
             List<PTD> P = new List<PTD>();
