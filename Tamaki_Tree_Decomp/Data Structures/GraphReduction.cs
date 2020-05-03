@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,13 +13,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         readonly List<int>[] adjacencyList;
         readonly BitSet[] neighborSetsWithout;
         readonly BitSet removedVertices;
-        int low = 0; // TODO: heuristic for setting low is given in the paper
+        int low; // TODO: heuristic for setting low is given in the paper
         readonly Dictionary<int, int> reconstructionMapping;    // mapping from reduced vertex id to original vertex id
         readonly List<BitSet> reconstructionBagsToAppendTo;     // a list of (subsets of) bags that the bags in the next list are appended to during reconstruction
         readonly List<BitSet> reconstructionBagsToAppend;       // bags to append to (subsets of) bags in the list above during reconstruction 
 
-        public GraphReduction(Graph graph)
+        public GraphReduction(Graph graph, int low = 0)
         {
+            this.low = low;
             vertexCount = graph.vertexCount;
             adjacencyList = new List<int>[vertexCount];
             neighborSetsWithout = new BitSet[vertexCount];
@@ -121,7 +123,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         // remember bag for reconstruction
                         BitSet bag = new BitSet(neighborSetsWithout[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppendTo.Add(neighborSetsWithout[i]);
+                        reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[i]));
                         reconstructionBagsToAppend.Add(bag);
                     }
                 }
@@ -208,7 +210,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         // remember bag for reconstruction
                         BitSet bag = new BitSet(neighborSetsWithout[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppendTo.Add(neighborSetsWithout[i]);
+                        reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[i]));
                         reconstructionBagsToAppend.Add(bag);
                     }
                 }
@@ -281,11 +283,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 // remember bags for reconstruction
                                 BitSet bag1 = new BitSet(neighborSetsWithout[i]);
                                 bag1[i] = true;
-                                reconstructionBagsToAppendTo.Add(neighborSetsWithout[i]);
+                                reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[i]));
                                 reconstructionBagsToAppend.Add(bag1);
                                 BitSet bag2 = new BitSet(neighborSetsWithout[buddy]);
                                 bag2[buddy] = true;
-                                reconstructionBagsToAppendTo.Add(neighborSetsWithout[buddy]);
+                                reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[buddy]));
                                 reconstructionBagsToAppend.Add(bag2);
                                 break;
                             }
@@ -300,7 +302,122 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return isReduced;
         }
 
-        public void RebuildTreeDecomposition(PTD ptd)
+        /// <summary>
+        /// tries to apply the buddy rule to the graph once
+        /// TODO: perhaps pass an additional vertex where to start and "wrap" the first loop around. Might be more efficient
+        /// </summary>
+        /// <returns>true iff a reduction could be performed</returns>
+        public bool CubeRule()
+        {
+            bool isReduced = false;
+
+            // for each vertex i ...
+            for (int i = 0; i < vertexCount && !isReduced; i++)
+            {
+                if (!removedVertices[i] && adjacencyList[i].Count == 3)
+                {
+                    List<int> neighbors = adjacencyList[i];
+                    if (adjacencyList[neighbors[0]].Count == 3 && adjacencyList[neighbors[1]].Count == 3 && adjacencyList[neighbors[2]].Count == 3)
+                    {
+                        /*
+                         *  idea: the conditions for the cube rule are fulfilled, iff the neighbors of the three neighbors are neighbors of
+                         *  exactly two of those three neighbors (except i which is a three times neighbor).
+                         *  So we use a dictionary to count for each u,v,w how many times it is the neighbor of a,b or c.
+                         *  If always two times, then the cube rule can be applied
+                         */
+                        Dictionary<int, int> neighborsNeighborsCount = new Dictionary<int, int>(3);
+                        for (int j = 0; j < 3; j++)
+                        {
+                            for (int k = 0; k < 3; k++)
+                            {
+                                int neighborsNeighbor = adjacencyList[neighbors[j]][k];
+                                if (neighborsNeighbor != i)
+                                {
+                                    if (neighborsNeighborsCount.ContainsKey(neighborsNeighbor))
+                                    {
+                                        neighborsNeighborsCount[neighborsNeighbor]++;
+                                    }
+                                    else
+                                    {
+                                        neighborsNeighborsCount.Add(neighborsNeighbor, 1);
+                                    }
+                                }
+                            }
+                        }
+                        bool isCube = true;
+                        List<int> uvw = new List<int>();
+                        foreach (KeyValuePair<int, int> keyvalue in neighborsNeighborsCount)
+                        {
+                            if (keyvalue.Value != 2)
+                            {
+                                isCube = false;
+                                break;
+                            }
+                            else
+                            {
+                                uvw.Add(keyvalue.Key);
+                            }
+                        }
+                        if (isCube)
+                        {
+                            Debug.Assert(uvw.Count == 3);
+                            isReduced = true;
+
+                            // update low
+                            if (low < 3)
+                            {
+                                low = 3;
+                            }
+
+                            // alter graph
+                            removedVertices[i] = true;
+                            removedVertices[neighbors[0]] = true;
+                            removedVertices[neighbors[1]] = true;
+                            removedVertices[neighbors[2]] = true;
+                            foreach (int node in uvw)
+                            {
+                                adjacencyList[node].Remove(neighbors[0]);
+                                adjacencyList[node].Remove(neighbors[1]);
+                                adjacencyList[node].Remove(neighbors[2]);
+                                neighborSetsWithout[node][neighbors[0]] = false;
+                                neighborSetsWithout[node][neighbors[1]] = false;
+                                neighborSetsWithout[node][neighbors[2]] = false;
+                                for (int j = 0; j < 3; j++)
+                                {
+                                    if (node != uvw[j] && !adjacencyList[node].Contains(uvw[j]))
+                                    {
+                                        adjacencyList[node].Add(uvw[j]);
+                                        neighborSetsWithout[node][j] = true;
+                                    }
+                                }
+                            }
+
+                            // remember bags for reconstruction
+                            BitSet appendTo = new BitSet(vertexCount);
+                            appendTo[uvw[0]] = true;
+                            appendTo[uvw[1]] = true;
+                            appendTo[uvw[2]] = true;
+                            BitSet append = new BitSet(appendTo);
+                            append[i] = true;
+                            reconstructionBagsToAppendTo.Add(appendTo);
+                            reconstructionBagsToAppend.Add(append);
+
+                            for (int j = 0; j < 3; j++)
+                            {
+                                reconstructionBagsToAppendTo.Add(append);
+                                appendTo = neighborSetsWithout[neighbors[j]];
+                                appendTo[neighbors[j]] = true;
+                                reconstructionBagsToAppend.Add(appendTo);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return isReduced;
+        }
+
+        public void RebuildTreeDecomposition(ref PTD ptd)
         {
             // return if there is no bag to append
             if (reconstructionBagsToAppend.Count == 0)
@@ -310,7 +427,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             Stack<PTD> nodeStack = new Stack<PTD>();
             List<PTD> reconstructedNodes = new List<PTD>();
-            nodeStack.Push(ptd);
+            if (ptd == null)
+            {
+                int lastIndex = reconstructionBagsToAppend.Count - 1;
+                ptd = new PTD(reconstructionBagsToAppend[lastIndex]);
+                reconstructedNodes.Add(ptd);
+                reconstructionBagsToAppendTo.RemoveAt(lastIndex);
+                reconstructionBagsToAppend.RemoveAt(lastIndex);
+            }
+            else
+            {
+                nodeStack.Push(ptd);
+            }
 
             while (nodeStack.Count > 0)
             {
@@ -366,6 +494,5 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
         }
-
     }
 }

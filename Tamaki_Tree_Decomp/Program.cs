@@ -28,6 +28,7 @@ namespace Tamaki_Tree_Decomp
         static readonly string td_o_a2 = "Test Data\\test decomps\\fuzix_devio_bfind.td";
 
         static readonly string test_a3 = "Test Data\\test2.gr";
+        static readonly string test_a4 = "Test Data\\test3.gr";
 
 
         static readonly string test_s0 = "Test Data\\s0_fuzix_clock_settime_clock_settime.gr";
@@ -36,7 +37,7 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            string filepath = test_a1;
+            string filepath = test_a4;
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
@@ -45,16 +46,15 @@ namespace Tamaki_Tree_Decomp
             //red.AlmostSimplicialVertexRule();
             //red.BuddyRule();
 
-            while (red.SimplicialVertexRule() || red.AlmostSimplicialVertexRule() || red.BuddyRule())
+            while (red.SimplicialVertexRule() || red.AlmostSimplicialVertexRule() || red.BuddyRule() || red.CubeRule())
             {
             }
-            
 
             g = red.ToGraph();
 
             PTD output;
             g.TreeWidth(out output);
-            red.RebuildTreeDecomposition(output);
+            red.RebuildTreeDecomposition(ref output);
 
             Debug.Assert(debug.IsValidTreeDecomposition(output));
             output.Print();
