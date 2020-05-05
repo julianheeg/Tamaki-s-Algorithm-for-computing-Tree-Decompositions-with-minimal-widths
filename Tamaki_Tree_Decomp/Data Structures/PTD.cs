@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -126,12 +127,41 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 return false;
             }
+
+            // old and wrong
+            /*
             for (int i = 0; i < children.Count; i++)
             {
+                // TODO: check correct?
+                Debug.Assert(children[i].inlet.IsDisjoint(outlet));
+
                 for (int j = i + 1; j < children.Count; j++)
                 {
-                    // TODO: comparison might be wrong due to false construction of 
                     if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    {
+                        return false;
+                    }
+                }
+            }
+            */
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                // TODO: check correct?
+                Debug.Assert(children[i].inlet.IsDisjoint(outlet));
+
+                for (int j = i + 1; j < children.Count; j++)
+                {
+                    BitSet i_nodes = new BitSet(children[i].inlet);
+                    i_nodes.UnionWith(children[i].outlet);
+                    BitSet j_nodes = new BitSet(children[j].inlet);
+                    j_nodes.UnionWith(children[j].outlet);
+                    i_nodes.IntersectWith(j_nodes);
+                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    {
+                        return false;
+                    }
+                    if (!children[i].Bag.IsSuperset(i_nodes) || !children[j].Bag.IsSuperset(i_nodes))
                     {
                         return false;
                     }

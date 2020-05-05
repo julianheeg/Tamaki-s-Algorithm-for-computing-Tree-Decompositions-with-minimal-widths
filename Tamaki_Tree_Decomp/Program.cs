@@ -53,11 +53,18 @@ namespace Tamaki_Tree_Decomp
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
-            PTD output;
-            g.TreeWidth(0, out output);
+            
+            g.TreeWidth(0, out PTD output);
 
             output.Print();
             Debug.Assert(debug.IsValidTreeDecomposition(output));
+            
+
+            /*
+            PTD tamaki = PTD.ImportPTD("Test Data\\test decomps\\Tamaki_NauruGraph.td");
+            Debug.Assert(debug.IsValidTreeDecomposition(tamaki));
+            tamaki.Print();
+            */
 
             bool testOwn = false;
             if (testOwn)

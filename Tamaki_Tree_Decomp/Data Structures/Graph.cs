@@ -273,6 +273,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 PTD Tau = P[PIndex];
                 PIndex++;
 
+                if (!IsConsistent(Tau))
+                {
+                    Console.WriteLine("Tau not consistent");
+                }
+
                 // --------- lines 5 and 6 ---------
                 PTD Tau_wiggle = PTD.Line5(Tau);
                 #region assertion
@@ -294,6 +299,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 //{
                 if (!U_inlets.Contains(Tau_wiggle.inlet))
                 {
+                    if (!IsConsistent(Tau_wiggle))
+                    {
+                        Console.WriteLine("Tau_wiggle not consistent");
+                    }
+
                     U.Add(Tau_wiggle);
                     U_inlets.Add(Tau_wiggle.inlet);
                 }
@@ -306,6 +316,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 {
                     PTD Tau_prime = U[UIndex];
                     UIndex++;
+
+                    if (!IsConsistent(Tau_prime))
+                    {
+                        Console.WriteLine("Tau_prime not consistent");
+                    }
 
                     //---------lines 8 to 11--------
                     bool isChain = false;
@@ -323,6 +338,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             //{
                             if (!U_inlets.Contains(Tau_wiggle.inlet))
                             {
+                                if (!IsConsistent(Tau_wiggle))
+                                {
+                                    Console.WriteLine("Tau_wiggle not consistent");
+                                }
                                 U.Add(Tau_wiggle);
                                 U_inlets.Add(Tau_wiggle.inlet);
                             }
@@ -347,6 +366,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         {
                             if (!P_inlets.Contains(Tau_wiggle.inlet))
                             {
+                                if (!IsConsistent(Tau_wiggle))
+                                {
+                                    Console.WriteLine("Tau_wiggle not consistent");
+                                }
                                 P.Add(Tau_wiggle);
                                 P_inlets.Add(Tau_wiggle.inlet);
                             }
@@ -371,6 +394,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 {
                                     if (!P_inlets.Contains(newOne.inlet))
                                     {
+                                        if (!IsConsistent(newOne))
+                                        {
+                                            Console.WriteLine("newOne not consistent");
+                                        }
                                         P.Add(newOne);
                                         P_inlets.Add(newOne.inlet);
                                     }
@@ -399,6 +426,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 {
                                     if (!P_inlets.Contains(newOne.inlet))
                                     {
+                                        if (!IsConsistent(newOne))
+                                        {
+                                            Console.WriteLine("newOne not consistent");
+                                        }
                                         P.Add(newOne);
                                         P_inlets.Add(newOne.inlet);
                                     }
@@ -919,6 +950,78 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return true;
             */
+        }
+
+        /// <summary>
+        /// tests whether a given ptd is consistent
+        /// </summary>
+        /// <param name="ptd">the ptd to test</param>
+        /// <returns>true iff the ptd doesn't violate the consistency property</returns>
+        private bool IsConsistent(PTD ptd)
+        {
+            // edge cases
+            if (ptd == null)
+            {
+                if (vertexCount == 0)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            // create a list of all bags
+            List<BitSet> bagsList = new List<BitSet>();
+            List<int> parentBags = new List<int>();
+            Stack<PTD> childrenStack = new Stack<PTD>();
+            Stack<int> parentStack = new Stack<int>();
+            childrenStack.Push(ptd);
+            parentStack.Push(-1);
+            while (childrenStack.Count > 0)
+            {
+                PTD current = childrenStack.Pop();
+                int parent = parentStack.Pop();
+
+                bagsList.Add(current.Bag);
+                parentBags.Add(parent);
+                foreach (PTD child in current.children)
+                {
+                    childrenStack.Push(child);
+                    parentStack.Push(bagsList.Count - 1);
+                }
+            }
+
+            // check consistency
+            for (int i = 0; i < vertexCount; i++)
+            {
+                /*
+                 *  key insight: all bags containing i form a subtree.
+                 *  Therefore, in order for the tree decomposition to be consistent, there must be only one root for all subtrees containing i 
+                 */
+                HashSet<int> ancestors = new HashSet<int>();
+                for (int j = 0; j < bagsList.Count; j++)
+                {
+                    if (bagsList[j][i] == true)
+                    {
+                        int currentAncestor = j;
+                        int parentBag = parentBags[j];
+                        while (parentBag != -1 && bagsList[parentBag][i])
+                        {
+                            currentAncestor = parentBag;
+                            parentBag = parentBags[currentAncestor];
+                            ;
+                        }
+                        ancestors.Add(currentAncestor);
+                        if (ancestors.Count == 2)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
         }
 
         /// <summary>
