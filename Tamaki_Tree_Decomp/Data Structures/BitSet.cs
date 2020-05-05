@@ -48,25 +48,26 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
-        /*
         /// <summary>
-        /// copies this set to another bit set of the same length
+        /// makes a bit set where all elements are set
         /// </summary>
-        /// <param name="other">the set to copy this set to</param>
-        public void CopyTo(BitSet other)
+        /// <param name="length">the length of the bit set</param>
+        /// <returns>a bit set that contains all elements</returns>
+        public static BitSet All(int length)
         {
-            for (int i = 0; i < bytes.Length; i++)
+            BitSet bitset = new BitSet(length);
+            for (int i = 0; i < length; i++)
             {
-                other.bytes[i] = bytes[i];
+                bitset[i] = true;
             }
+            return bitset;
         }
-        */
 
         /// <summary>
         /// accesses the bit at position key
         /// </summary>
         /// <param name="key">the position</param>
-        /// <returns>the bit at that position</returns>
+        /// <returns>true iff the bit at that position is set</returns>
         public bool this[int key]
         {
             // unsafe because no check for index out of range is being made
@@ -152,7 +153,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             for (int i = 0; i < bytes.Length; i++)
             {
-                if ((bytes[i]^other.bytes[i] )!= 0)
+                if ((bytes[i]) != (other.bytes[i]))
                 {
                     return false;
                 }
@@ -298,7 +299,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             for (int i = 0; i < bytes.Length; i++)
             {
-                if ((bytes[i] & other.bytes[i]) != 0)
+                if (((bytes[i]) & (other.bytes[i])) != 0)
                 {
                     return false;
                 }
@@ -320,6 +321,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return complement;
         }
 
+        /*
         /// <summary>
         /// tests if the union of both bit sets contains all elements
         /// </summary>
@@ -343,6 +345,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return true;
         }
+        */
 
         /*
         /// <summary>

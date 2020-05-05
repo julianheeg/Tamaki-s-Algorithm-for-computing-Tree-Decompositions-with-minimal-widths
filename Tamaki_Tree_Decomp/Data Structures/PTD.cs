@@ -11,13 +11,36 @@ namespace Tamaki_Tree_Decomp.Data_Structures
     public class PTD
     {
         public BitSet Bag { get; private set; }
+        public readonly BitSet vertices;
         public readonly BitSet inlet;
         public readonly BitSet outlet;
         public readonly List<PTD> children;
 
-        public PTD(BitSet bag, BitSet outlet, BitSet inlet, List<PTD> children)
+        /// <summary>
+        /// copy constructor
+        /// </summary>
+        /// <param name="ptd">the ptd to copy</param>
+        public PTD(PTD ptd)
+        {
+            Bag = new BitSet(ptd.Bag);
+            vertices = new BitSet(ptd.vertices);
+            inlet = new BitSet(ptd.inlet);
+            outlet = new BitSet(ptd.outlet);
+            children = new List<PTD>(ptd.children);
+        }
+
+        /// <summary>
+        /// constructor that explicitly sets all internal values
+        /// </summary>
+        /// <param name="bag"></param>
+        /// <param name="vertices"></param>
+        /// <param name="outlet"></param>
+        /// <param name="inlet"></param>
+        /// <param name="children"></param>
+        public PTD(BitSet bag, BitSet vertices, BitSet outlet, BitSet inlet, List<PTD> children)
         {
             Bag = bag;
+            this.vertices = vertices;
             this.outlet = outlet;
             this.inlet = inlet;
             this.children = children;
@@ -25,25 +48,29 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         /// <summary>
         /// constructor for one node of a PTD. variables are shared
-        /// used in line 3
+        /// used in line 4
         /// </summary>
         /// <param name="bag">the set of vertices that this node contains</param>
         /// <param name="outlet">the outlet of this node</param>
         public PTD(BitSet bag, BitSet outlet)
         {
-            Bag = bag;
-            this.outlet = outlet;
+            Bag = new BitSet(bag);              // TODO: can be shared
+            vertices = new BitSet(bag);         // TODO: can be shared
+            this.outlet = new BitSet(outlet);   // TODO: can be shared
             inlet = new BitSet(bag);
             inlet.ExceptWith(outlet);
             children = new List<PTD>();
+
+            AssertVerticesCorrect();
         }
 
         /// <summary>
-        /// sets the bag of this node to a new set of vertices 
+        /// sets the bag of this node to a new set of vertices. Only for reconstruction purposes
         /// </summary>
         /// <param name="newBag">the new bag</param>
         public void SetBag(BitSet newBag)
         {
+            // TODO: possibly CRITICAL: update inlet, outlet, vertices, etc.
             Bag = newBag;
         }
         
@@ -51,19 +78,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// creates a new root with the given node as a child and the child's outlet as bag
         /// </summary>
         /// <param name="Tau">the child of this node</param>
-        public static PTD Line5(PTD Tau)
+        public static PTD Line9(PTD Tau)
         {
             BitSet bag = new BitSet(Tau.outlet);    // TODO: not copy? would be probably wrong since the child's outlet is used in line 9 and the bag of this root can change
-            BitSet outlet = bag;                    // TODO: not copy? the outlet doesn't really change, does it?
-            BitSet inlet = Tau.inlet;               // TODO: not copy? same here...
+            BitSet outlet = new BitSet(Tau.outlet); // TODO: not copy? the outlet doesn't really change, does it?
+            BitSet inlet = new BitSet(Tau.inlet);   // TODO: not copy? same here...
+            BitSet vertices = new BitSet(Tau.vertices); // TODO: not copy
 
             List<PTD> children = new List<PTD>();
             children.Add(Tau);
-            return new PTD(bag, outlet, inlet, children);
+            PTD result = new PTD(bag, vertices, outlet, inlet, children);
+            result.AssertVerticesCorrect();
+            return result;
         }
 
-        // line 9
-        public static PTD Line9(PTD Tau_prime, PTD Tau, Graph graph)
+        // line 13
+        public static PTD Line13(PTD Tau_prime, PTD Tau, Graph graph)
         {
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
@@ -71,14 +101,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             children.Add(Tau);
 
             BitSet inlet = new BitSet(Tau_prime.inlet);
-            BitSet outlet = new BitSet(bag);
-            PTD result = new PTD(bag, outlet, inlet, children);
+            inlet.UnionWith(Tau.inlet);
+            BitSet outlet = new BitSet(Tau_prime.outlet);
+            BitSet vertices = new BitSet(Tau_prime.vertices);
+            vertices.UnionWith(Tau.vertices);
+            PTD result = new PTD(bag, vertices, outlet, inlet, children);
             graph.RecalculateInletAndOutlet(result);
+            result.AssertVerticesCorrect();
             return result;
         }
 
-        // line 16
-        public static PTD Line16(PTD Tau_wiggle, BitSet vNeighbors, Graph graph)
+        // line 23
+        public static PTD Line23(PTD Tau_wiggle, BitSet vNeighbors, Graph graph)
         {
             BitSet bag = new BitSet(vNeighbors);
             List<PTD> children = new List<PTD>(Tau_wiggle.children);
@@ -86,23 +120,31 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // TODO: correct calculation of inlet and outlet? perhaps not
             BitSet inlet = new BitSet(Tau_wiggle.inlet);
             BitSet outlet = new BitSet(bag);
+            BitSet vertices = new BitSet(Tau_wiggle.vertices);
+            vertices.UnionWith(vNeighbors);
 
-            PTD result = new PTD(bag, outlet, inlet, children);
+            PTD result = new PTD(bag, vertices, outlet, inlet, children);
             graph.RecalculateInletAndOutlet(result);
+            result.AssertVerticesCorrect();
             return result;
         }
 
-        // line 19
-        public static PTD Line19(PTD Tau_wiggle, BitSet vNeighborsWithoutInlet, Graph graph)
+        // line 29
+        public static PTD Line29(PTD Tau_wiggle, BitSet newRoot, Graph graph)
         {
-            BitSet bag = vNeighborsWithoutInlet;
+            Debug.Assert(newRoot.IsSuperset(Tau_wiggle.Bag));
+            BitSet bag = newRoot;
             bag.UnionWith(Tau_wiggle.Bag);
+          
             BitSet outlet = new BitSet(Tau_wiggle.outlet);
             BitSet inlet = new BitSet(Tau_wiggle.inlet);
+            BitSet vertices = new BitSet(Tau_wiggle.vertices);
+            vertices.UnionWith(newRoot);
             List<PTD> children = new List<PTD>(Tau_wiggle.children);
 
-            PTD result = new PTD(bag, outlet, inlet, children);
+            PTD result = new PTD(bag, vertices, outlet, inlet, children);
             graph.RecalculateInletAndOutlet(result);
+            result.AssertVerticesCorrect();
             return result;
         }
 
@@ -123,11 +165,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true iff the PTD is possibly usable</returns>
         public bool IsPossiblyUsable(int k)
         {
-            if (Bag.Count() > k + 1)
-            {
-                return false;
-            }
-
             // old and wrong
             /*
             for (int i = 0; i < children.Count; i++)
@@ -152,19 +189,29 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 for (int j = i + 1; j < children.Count; j++)
                 {
+                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    {
+                        return false;
+                    }
+                    
+                    BitSet verticesIntersection = new BitSet(children[i].vertices);
+                    verticesIntersection.IntersectWith(children[j].vertices);
+                    if (!children[i].outlet.IsSuperset(verticesIntersection) || !children[j].outlet.IsSuperset(verticesIntersection))
+                    {
+                        return false;
+                    }
+
+                    /*
                     BitSet i_nodes = new BitSet(children[i].inlet);
                     i_nodes.UnionWith(children[i].outlet);
                     BitSet j_nodes = new BitSet(children[j].inlet);
                     j_nodes.UnionWith(children[j].outlet);
                     i_nodes.IntersectWith(j_nodes);
-                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
-                    {
-                        return false;
-                    }
                     if (!children[i].Bag.IsSuperset(i_nodes) || !children[j].Bag.IsSuperset(i_nodes))
                     {
                         return false;
                     }
+                    */
                 }
             }
             return true;
@@ -174,11 +221,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// tests if this PTD is an incoming PTD
         /// </summary>
         /// <returns>true iff it is incoming</returns>
-        public bool IsIncoming_UniqueRoot()
+        public bool IsIncoming()
         {
-            BitSet restVertices = inlet.Complement();
-            restVertices.ExceptWith(outlet);
-            return inlet.First() < restVertices.First();
+            BitSet restVertices = vertices.Complement();
+            Debug.Assert(restVertices.IsDisjoint(inlet));
+            bool result = inlet.First() < restVertices.First();
+            return result;
+        }
+
+
+        private void AssertVerticesCorrect()
+        {
+            Debug.Assert(inlet.IsDisjoint(outlet));
+
+            BitSet union = new BitSet(inlet);
+            union.UnionWith(outlet);
+            Debug.Assert(vertices.Equals(union));
         }
 
         #region import from file
@@ -262,6 +320,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public PTD(BitSet bag)
         {
             this.Bag = bag;
+            vertices = null;
             outlet = null;
             inlet = null;
             children = new List<PTD>();

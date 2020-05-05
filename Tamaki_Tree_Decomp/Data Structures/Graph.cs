@@ -16,6 +16,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly int[][] adjacencyList;
         public readonly BitSet[] neighborSetsWithout;   // contains N(v)
         public readonly BitSet[] neighborSetsWith;      // contains N[v]
+        public readonly BitSet allVertices;
 
         /// <summary>
         /// constructs a graph from a .gr file
@@ -77,6 +78,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
                     neighborSetsWith[i][i] = true;
                 }
+                allVertices = BitSet.All(vertexCount);
                 Console.WriteLine("Graph has been imported.");
             }
             catch (IOException e)
@@ -110,6 +112,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
                 neighborSetsWith[i][i] = true;
             }
+            allVertices = BitSet.All(vertexCount);
         }
 
         /// <summary>
@@ -131,7 +134,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 BitSet onlyBag = new BitSet(1);
                 onlyBag[0] = true;
-                treeDecomp = new PTD(onlyBag, null, null, new List<PTD>());
+                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
                 return 0;
             }
 
@@ -159,14 +162,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 BitSet onlyBag = new BitSet(1);
                 onlyBag[0] = true;
-                treeDecomp = new PTD(onlyBag, null, null, new List<PTD>());
+                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
                 return minK;
             }
 
             // TODO: use previous reductions, not make an entirely new one each time
             List<GraphReduction> reductions = new List<GraphReduction>();
             Graph reducedGraph = this;
-            while (minK <= vertexCount)
+            while (minK < vertexCount - 1)
             {
                 // reduce graph
                 GraphReduction red = new GraphReduction(reducedGraph, minK);
@@ -183,13 +186,15 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         reductions[i].RebuildTreeDecomposition(ref treeDecomp);
                     }
+                    // TODO: CRITICAL: possibly recalculate vertices, inlets, outlets in the tree decomposition
                     return minK;
                 }
                 Console.WriteLine("graph has tree width bigger than " + minK);
                 minK++;
             }
-            treeDecomp = null;
-            return -1;
+            // TODO: correct? also loop condition above
+            treeDecomp = new PTD(allVertices);
+            return vertexCount - 1;
 
             /*
             GraphReduction red = new GraphReduction(this, minK);
@@ -223,8 +228,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// determines whether this graph has tree width k
         /// </summary>
         /// <param name="k">the desired tree width</param>
-        /// <param name="treeDecomp">the normalized canonical tree decomposition if there is one, else null</param>
-        /// <returns></returns>
+        /// <param name="treeDecomp">a normalized canonical tree decomposition if there is one, else null</param>
+        /// <returns>true, iff this graph has tree width k</returns>
         public bool HasTreeWidth(int k, out PTD treeDecomp)
         {
             if (vertexCount == 0)
@@ -240,217 +245,193 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             List<PTD> U = new List<PTD>();
             HashSet<BitSet> U_inlets = new HashSet<BitSet>();
 
-            // --------- lines 1 to 3 ----------
+            // ---------line 1 is in the method that calls this one----------
 
-            for (int i = 0; i < vertexCount; i++)
+            // --------- lines 2 to 6 ---------- (5 is skipped and tested in the method that calls this one)
+
+
+            for (int v = 0; v < vertexCount; v++)
             {
-                if (adjacencyList[i].Length <= k && IsPotMaxClique(neighborSetsWith[i], out BitSet outlet))
+                if (adjacencyList[v].Length <= k && IsPotMaxClique(neighborSetsWith[v], out BitSet outlet))
                 {
-                    PTD newOne = new PTD(neighborSetsWith[i], outlet);
-                    //if (IsIncoming(newOne))
-                    //{
-                    if (!P_inlets.Contains(newOne.inlet))
+                    PTD p0 = new PTD(neighborSetsWith[v], outlet);
+                    if (!P_inlets.Contains(p0.inlet))
                     {
-                        P.Add(newOne); // ptd mit Tasche N[v] als einzelnen Knoten
-                        P_inlets.Add(newOne.inlet);
+                        P.Add(p0); // ptd mit Tasche N[v] als einzelnen Knoten
+                        P_inlets.Add(p0.inlet);
                     }
-                    //}
                 }
             }
 
-            // --------- lines 4 to 21 ---------
+            // --------- lines 7 to 32 ----------
 
-            int PIndex = 0;
-            while (PIndex < P.Count)
+            for (int i = 0; i < P.Count; i++)
             {
-                if (PIndex > 10000)
+                PTD Tau = P[i];
+
+                // TODO: remove debug stuff
+                if (i > 5000)
                 {
-                    Console.WriteLine("PIndex > 10000. Stopping");
+                    Console.WriteLine("P.Count > 5000. Stopping...");
                     throw new Exception();
                 }
 
+                // --------- TODO: line 8 ----------
 
-                PTD Tau = P[PIndex];
-                PIndex++;
+                // --------- line 9 ----------
 
-                if (!IsConsistent(Tau))
-                {
-                    Console.WriteLine("Tau not consistent");
-                }
+                PTD Tau_wiggle = PTD.Line9(Tau);
 
-                // --------- lines 5 and 6 ---------
-                PTD Tau_wiggle = PTD.Line5(Tau);
-                #region assertion
-                Debug.Assert(Tau_wiggle.Bag.Count() <= k + 1);
+                // --------- lines 10 ----------
 
-                // TODO: remove if this assertion never fails
-                BitSet outlet = new BitSet(Tau_wiggle.outlet);
-                BitSet inlet = new BitSet(Tau_wiggle.inlet);
-                RecalculateInletAndOutlet(Tau_wiggle);
-                if (!outlet.Equals(Tau_wiggle.outlet))
-                {
-                    Console.WriteLine("hello");
-                }
-                Debug.Assert(outlet.Equals(Tau_wiggle.outlet));
-                Debug.Assert(inlet.Equals(Tau_wiggle.inlet));
-                #endregion
-
-                //if (IsIncoming(Tau_wiggle))
-                //{
                 if (!U_inlets.Contains(Tau_wiggle.inlet))
                 {
-                    if (!IsConsistent(Tau_wiggle))
-                    {
-                        Console.WriteLine("Tau_wiggle not consistent");
-                    }
-
+                    Debug.Assert(IsConsistent(Tau_wiggle));
                     U.Add(Tau_wiggle);
                     U_inlets.Add(Tau_wiggle.inlet);
                 }
-                //}
 
-                // --------- lines 7 to 19 ---------
+                // --------- lines 11 to 32 ----------
 
-                int UIndex = 0;
-                while (UIndex < U.Count)
+                for (int j = 0; j < U.Count; j++)
                 {
-                    PTD Tau_prime = U[UIndex];
-                    UIndex++;
+                    PTD Tau_prime = U[j];
 
-                    if (!IsConsistent(Tau_prime))
+                    // --------- lines 12 to 15 ----------
+
+                    if (!Tau_wiggle.Equivalent(Tau_prime))
                     {
-                        Console.WriteLine("Tau_prime not consistent");
-                    }
 
-                    //---------lines 8 to 11--------
-                    bool isChain = false;
+                        // --------- line 13 ----------
 
-                    if (!Tau_wiggle.Equals(Tau_prime))
-                    {
-                        // --------- line 9 ---------
+                        Tau_wiggle = PTD.Line13(Tau_prime, Tau, this);
 
-                        Tau_wiggle = PTD.Line9(Tau_prime, Tau, this);
+                        // --------- line 14 ----------
 
-                        // --------- lines 10 and 11 ---------
-                        if (Tau_wiggle.IsPossiblyUsable(k))
+                        if (Tau_wiggle.Bag.Count() <= k+1 && Tau_wiggle.IsPossiblyUsable(k) && IsCliquish(Tau_wiggle.Bag))
                         {
-                            //if (IsIncoming(Tau_wiggle))
-                            //{
                             if (!U_inlets.Contains(Tau_wiggle.inlet))
                             {
-                                if (!IsConsistent(Tau_wiggle))
-                                {
-                                    Console.WriteLine("Tau_wiggle not consistent");
-                                }
+                                Debug.Assert(IsConsistent(Tau_wiggle));
                                 U.Add(Tau_wiggle);
                                 U_inlets.Add(Tau_wiggle.inlet);
                             }
-                            //}
-                        }                        
+                            // TODO: else continue?
+
+                        }
+                        // --------- line 15 ----------
                         else
                         {
                             continue;
                         }
                     }
-                    else
-                    {
-                        isChain = true;
-                    }
 
-                    // --------- lines 12 and 13 ---------
-                    if (IsPotMaxClique(Tau_wiggle.Bag))
+                    // --------- lines 16 to 20 ----------
+
+                    if (Tau_wiggle.Bag.Count() <= k+1 && IsPotMaxClique(Tau_wiggle.Bag))
                     {
-                        //if (IsIncoming(Tau_wiggle, Tau, Tau_prime, isChain))
-                        //{
-                        if (Tau_wiggle.IsIncoming_UniqueRoot())
+                        // TODO: perhaps no need to copy
+                        PTD p1 = new PTD(Tau_wiggle);
+
+                        // TODO: check for normalized-ness
+                        if (p1.IsIncoming() && true)
                         {
-                            if (!P_inlets.Contains(Tau_wiggle.inlet))
+                            if (p1.vertices.Equals(allVertices))
                             {
-                                if (!IsConsistent(Tau_wiggle))
-                                {
-                                    Console.WriteLine("Tau_wiggle not consistent");
-                                }
-                                P.Add(Tau_wiggle);
-                                P_inlets.Add(Tau_wiggle.inlet);
+                                treeDecomp = p1;
+                                return true;
+                            }
+
+                            // TODO: check for line 8
+                            if (!P_inlets.Contains(p1.inlet))
+                            {
+                                Debug.Assert(IsConsistent(p1));
+                                P.Add(p1);
+                                P_inlets.Add(p1.inlet);
                             }
                         }
-                        //}
                     }
 
-                    // --------- lines 14 to 16 ---------
+                    // --------- lines 21 to 26 ----------
+
                     for (int v = 0; v < vertexCount; v++)
                     {
-                        if (!Tau_wiggle.outlet[v] && !Tau_wiggle.inlet[v])
+                        if (!Tau_wiggle.vertices[v])
                         {
-                            if (adjacencyList[v].Length <= k && neighborSetsWith[v].IsSuperset(Tau_wiggle.Bag))
+                            // --------- lines 22 to 26 ----------
+
+                            if (adjacencyList[v].Length <= k && neighborSetsWith[v].IsSuperset(Tau_wiggle.Bag) && IsPotMaxClique(neighborSetsWith[v]))
                             {
-                                PTD newOne = PTD.Line16(Tau_wiggle, neighborSetsWith[v], this);
-                                #region assertion
-                                Debug.Assert(newOne.Bag.Count() <= k + 1);
-                                #endregion
-                                //if (IsIncoming(newOne, Tau, Tau_prime, isChain))
-                                //{
-                                if (newOne.IsIncoming_UniqueRoot())
+                                // --------- line 23 ----------
+                                PTD p2 = PTD.Line23(Tau_wiggle, neighborSetsWith[v], this);
+
+
+                                // --------- line 24 ----------
+                                // TODO: check for normalized-ness
+                                if (p2.IsIncoming() && true)
                                 {
-                                    if (!P_inlets.Contains(newOne.inlet))
+                                    if (p2.vertices.Equals(allVertices))
                                     {
-                                        if (!IsConsistent(newOne))
-                                        {
-                                            Console.WriteLine("newOne not consistent");
-                                        }
-                                        P.Add(newOne);
-                                        P_inlets.Add(newOne.inlet);
+                                        treeDecomp = p2;
+                                        return true;
+                                    }
+
+                                    // TODO: check for line 8
+
+                                    // --------- line 26 ----------
+                                    if (!P_inlets.Contains(p2.inlet))
+                                    {
+                                        Debug.Assert(IsConsistent(p2));
+                                        P.Add(p2);
+                                        P_inlets.Add(p2.inlet);
                                     }
                                 }
-                                //}
+
                             }
                         }
                     }
 
-                    // --------- lines 17 to 19 ---------
+                    // --------- lines 27 to 32 ----------
+
                     List<int> X_r = Tau_wiggle.Bag.Elements();
-                    for (int i = 0; i < X_r.Count; i++)
+                    for (int l = 0; l < X_r.Count; l++)
                     {
-                        BitSet potMaxClique = new BitSet(Tau_wiggle.Bag);
-                        potMaxClique.UnionWith(neighborSetsWith[X_r[i]]);
-                        potMaxClique.ExceptWith(Tau_wiggle.inlet);
-                        
-                        if (IsPotMaxClique(potMaxClique, out _))
+                        int v = X_r[l];
+
+                        // --------- line 28 ----------
+                        BitSet potNewRootBag = new BitSet(neighborSetsWithout[v]);
+                        potNewRootBag.ExceptWith(Tau_wiggle.inlet);
+                        potNewRootBag.UnionWith(Tau_wiggle.Bag);
+
+                        if (potNewRootBag.Count() <= k + 1 && IsPotMaxClique(potNewRootBag))
                         {
-                            PTD newOne = PTD.Line19(Tau_wiggle, potMaxClique, this);
-                            if (newOne.Bag.Count() <= k + 1)
+                            // --------- line 29 ----------
+                            PTD p3 = PTD.Line29(Tau_wiggle, potNewRootBag, this);
+
+                            // --------- line 30 ----------
+                            // TODO: check for normalized-ness
+                            if (p3.IsIncoming() && true)
                             {
-                                //if (IsIncoming(newOne, Tau, Tau_prime, isChain))
-                                //{
-                                if (newOne.IsIncoming_UniqueRoot())
+                                if (p3.vertices.Equals(allVertices))
                                 {
-                                    if (!P_inlets.Contains(newOne.inlet))
-                                    {
-                                        if (!IsConsistent(newOne))
-                                        {
-                                            Console.WriteLine("newOne not consistent");
-                                        }
-                                        P.Add(newOne);
-                                        P_inlets.Add(newOne.inlet);
-                                    }
+                                    treeDecomp = p3;
+                                    return true;
                                 }
-                                //}
-                            }                            
+
+                                // TODO: check for line 8
+
+                                // --------- line 32 ----------
+                                if (!P_inlets.Contains(p3.inlet))
+                                {
+                                    Debug.Assert(IsConsistent(p3));
+                                    P.Add(p3);
+                                    P_inlets.Add(p3.inlet);
+                                }
+                            }
                         }
                     }
                 }
-
-
-                // --------- lines 20 and 21 (moved here for earlier exit if a tree decomposition is found) ---------
-
-                if (BitSet.UnionContainsAll(Tau.inlet, Tau.outlet, vertexCount))
-                {
-                    treeDecomp = Tau;
-                    return true;
-                }
             }
-
-            // --------- lines 22 to 23 ---------
 
             treeDecomp = null;
             return false;
@@ -458,73 +439,42 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         #region IsPotMaxClique implementations
 
-        /// <summary>
-        /// checks if K is a potential maximal clique
-        /// </summary>
-        /// <param name="K">the vertex set to test</param>
-        /// <returns>true iff K is a potential maximal clique</returns>
-        // TODO: erst mal HashSet, vielleicht noch ändern
-        // Falls möglich, List oder sogar Array oder Bitset
-        // TODO: cache lists, stack, sets, etc.
-        public bool IsPotMaxClique(HashSet<int> K)
+        public bool IsCliquish(BitSet K)
         {
-            /*
-             *  This method operates by the following principle:
-             *  K is potential maximal clique <=>
-             *      1. G\K has no full-components associated with K
-             *      and
-             *      2. K is cliquish
-             * 
-             *  For 1. we need to separate G into components C associated with K and check if N(C) is a proper subset of K,
-             *      or in this case equivalently, if N(C) != K
-             *  
-             *  For 2. we need to check for each pair of vertices u,v in K if either of these conditions hold:
-             *      a.) u,v are neighbors
-             *      or
-             *      b.) there exists C such that u,v are in N(C)
-             * 
-             *  During 1., while we determine the components, we save N(C) for each component so that we can use it in 2. later
-             * 
-             */
-
             // ------ 1.------
 
-            // TODO: could be BitSet if need be, but would perhaps be slower (?)
-            bool[] visited = new bool[vertexCount];
-            foreach (int KVertex in K)
-            {
-                visited[KVertex] = true;
-            }
+            BitSet visited = new BitSet(K);
             Stack<int> dfsStack = new Stack<int>();
 
             // for each component C there is an entry in this list that contains N(C)
-            // TODO: could be bitset, might be faster
-            List<HashSet<int>> componentNeighborsInK = new List<HashSet<int>>();
+            List<BitSet> componentNeighborsInK = new List<BitSet>();
+            List<int> KBits = K.Elements();
 
             // loop over all vertices in K
-            foreach (int KVertex in K)
+            for (int i = 0; i < KBits.Count; i++)
             {
+                int KVertex = KBits[i];
                 // loop over all neighbors of that K-vertex
-                for (int i = 0; i < adjacencyList[KVertex].Length; i++)
+                for (int j = 0; j < adjacencyList[KVertex].Length; j++)
                 {
-                    int KNeighbor = adjacencyList[KVertex][i];
+                    int KNeighbor = adjacencyList[KVertex][j];
 
                     // if that vertex hasn't been visited, it's part of a new component. Perform a depth first search
                     if (!visited[KNeighbor])
                     {
                         dfsStack.Push(KNeighbor);
-                        HashSet<int> N_C = new HashSet<int>();    // cache N(C) for this component
+                        BitSet N_C = new BitSet(vertexCount);    // cache N(C) for this component
 
                         while (dfsStack.Count > 0)
                         {
                             int vertex = dfsStack.Pop();
                             visited[vertex] = true;
-                            for (int j = 0; j < adjacencyList[vertex].Length; j++)
+                            for (int k = 0; k < adjacencyList[vertex].Length; k++)
                             {
-                                int vNeighbor = adjacencyList[vertex][j];
-                                if (K.Contains(vNeighbor))
+                                int vNeighbor = adjacencyList[vertex][k];
+                                if (K[vNeighbor])
                                 {
-                                    N_C.Add(vNeighbor);
+                                    N_C[vNeighbor] = true;
                                 }
                                 else if (!visited[vNeighbor])
                                 {
@@ -533,11 +483,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             }
                         }
 
-                        // check if that component is non-full, else return false
-                        if (N_C.SetEquals(K))
-                        {
-                            return false;
-                        }
                         componentNeighborsInK.Add(N_C);
                     }
                 }
@@ -545,33 +490,35 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             // ------ 2.------
             // check if K is cliquish
-            foreach (int u in K)
-            {
-                foreach (int v in K)
-                {
-                    if (u < v)  // exclude the case where u==v and also avoid checking twice when the roles of u and v are reversed 
-                    {
-                        // if a.) doesn't hold ...
-                        if (!adjacencyList[u].Contains(v))
-                        {
-                            bool b_satisfied = false;
 
-                            // ... check if there is a component such that b.) doesn't hold ...
-                            for (int i = 0; i < componentNeighborsInK.Count; i++)
+            for (int i = 0; i < KBits.Count; i++)
+            {
+                int u = KBits[i];
+                for (int j = i + 1; j < KBits.Count; j++)   // check only u and v with u < v
+                {
+                    int v = KBits[j];
+
+                    // if a.) doesn't hold ...
+                    if (!neighborSetsWithout[u][v])
+                    {
+                        bool b_satisfied = false;
+
+                        // ... check if there is a component such that b.) doesn't hold ...
+                        for (int k = 0; k < componentNeighborsInK.Count; k++)
+                        {
+                            if (componentNeighborsInK[k][u] && componentNeighborsInK[k][v])
                             {
-                                if (componentNeighborsInK[i].Contains(u) && componentNeighborsInK[i].Contains(v))
-                                {
-                                    b_satisfied = true;
-                                    break;
-                                }
-                            }
-                            // ... if neither a.) nor b.) hold, K is not a potential maximal clique
-                            if (!b_satisfied)
-                            {
-                                return false;
+                                b_satisfied = true;
+                                break;
                             }
                         }
+                        // ... if neither a.) nor b.) hold, K is not a potential maximal clique
+                        if (!b_satisfied)
+                        {
+                            return false;
+                        }
                     }
+
                 }
             }
 
@@ -607,7 +554,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             // ------ 1.------
 
-            // TODO: could be BitSet if need be, but would perhaps be slower (?)
             BitSet visited = new BitSet(K);
             Stack<int> dfsStack = new Stack<int>();
 
@@ -852,7 +798,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 for (int j = 0; j < adjacencyList[v].Length; j++)
                 {
                     int neighbor = adjacencyList[v][j];
-                    if (!inlet[neighbor] && !ptd.Bag[neighbor])
+                    if (!ptd.vertices[neighbor])
                     {
                         isInOutlet = true;
                         outlet[v] = true;
@@ -863,6 +809,38 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 {
                     inlet[v] = true;
                     outlet[v] = false;
+                }
+            }
+
+            // TODO: remove the rest here. It's just for assertion
+            Debug.Assert(inlet.IsDisjoint(outlet));
+
+            List<int> vertices = ptd.vertices.Elements();
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                int u = vertices[i];
+                if (inlet[u])
+                {
+                    for(int j = 0; j < adjacencyList[u].Length; j++)
+                    {
+                        int v = adjacencyList[u][j];
+                        Debug.Assert(ptd.vertices[v]);
+                    }
+                }
+                else
+                {
+                    Debug.Assert(outlet[u]);
+                    bool isInOutlet = false;
+                    for (int j = 0; j < adjacencyList[u].Length; j++)
+                    {
+                        int v = adjacencyList[u][j];
+                        if (!ptd.vertices[v])
+                        {
+                            isInOutlet = true;
+                            break;
+                        }
+                    }
+                    Debug.Assert(isInOutlet);
                 }
             }
         }

@@ -10,6 +10,7 @@ namespace Tamaki_Tree_Decomp
 {
     class Program
     {
+#pragma warning disable CS0414
         static readonly string test_t0 = "Test Data\\tamaki test instances\\empty.gr";                 //
         static readonly string test_t1 = "Test Data\\tamaki test instances\\single-vertex.gr";         // 1
         static readonly string test_t2 = "Test Data\\tamaki test instances\\two-vertices.gr";          // 1 2
@@ -46,6 +47,7 @@ namespace Tamaki_Tree_Decomp
         static readonly string test_m2 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\GeneralizedPetersenGraph_10_4.gr";
         static readonly string test_m3 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\HoffmanGraph.gr";
         static readonly string test_m4 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\NauruGraph.gr";
+#pragma warning restore CS0414
 
         static void Main(string[] args)
         {
