@@ -280,15 +280,15 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 // --------- line 9 ----------
 
-                PTD Tau_wiggle = PTD.Line9(Tau);
+                PTD Tau_wiggle_original = PTD.Line9(Tau);
 
                 // --------- lines 10 ----------
 
-                if (!U_inlets.Contains(Tau_wiggle.inlet))
+                if (!U_inlets.Contains(Tau_wiggle_original.inlet))
                 {
-                    Debug.Assert(IsConsistent(Tau_wiggle));
-                    U.Add(Tau_wiggle);
-                    U_inlets.Add(Tau_wiggle.inlet);
+                    Debug.Assert(IsConsistent(Tau_wiggle_original));
+                    U.Add(Tau_wiggle_original);
+                    U_inlets.Add(Tau_wiggle_original.inlet);
                 }
 
                 // --------- lines 11 to 32 ----------
@@ -296,11 +296,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 for (int j = 0; j < U.Count; j++)
                 {
                     PTD Tau_prime = U[j];
-
+                    PTD Tau_wiggle;
+                    bool tau_tauprime_combined;
+                    
                     // --------- lines 12 to 15 ----------
-
-                    if (!Tau_wiggle.Equivalent(Tau_prime))
+                    
+                    if (!Tau_wiggle_original.Equivalent(Tau_prime))
                     {
+                        tau_tauprime_combined = true;
 
                         // --------- line 13 ----------
 
@@ -308,13 +311,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                         // --------- line 14 ----------
 
-                        if (Tau_wiggle.Bag.Count() <= k+1 && Tau_wiggle.IsPossiblyUsable(k) && IsCliquish(Tau_wiggle.Bag))
+                        if (Tau_wiggle.Bag.Count() <= k+1 && Tau_wiggle.IsPossiblyUsable() && IsCliquish(Tau_wiggle.Bag))
                         {
                             if (!U_inlets.Contains(Tau_wiggle.inlet))
                             {
                                 Debug.Assert(IsConsistent(Tau_wiggle));
                                 U.Add(Tau_wiggle);
                                 U_inlets.Add(Tau_wiggle.inlet);
+                            }
+                            else
+                            {
+                                continue;
                             }
                             // TODO: else continue?
 
@@ -325,16 +332,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             continue;
                         }
                     }
+                    else
+                    {
+                        tau_tauprime_combined = false;
+                        Tau_wiggle = Tau_wiggle_original;
+                    }
+                    
 
                     // --------- lines 16 to 20 ----------
 
                     if (Tau_wiggle.Bag.Count() <= k+1 && IsPotMaxClique(Tau_wiggle.Bag))
                     {
                         // TODO: perhaps no need to copy
+                        // TODO: can at least copy after tests are done
                         PTD p1 = new PTD(Tau_wiggle);
 
                         // TODO: check for normalized-ness
-                        if (p1.IsIncoming() && true)
+                        if (!tau_tauprime_combined || (p1.IsIncoming(this) && true))
                         {
                             if (p1.vertices.Equals(allVertices))
                             {
@@ -368,7 +382,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                                 // --------- line 24 ----------
                                 // TODO: check for normalized-ness
-                                if (p2.IsIncoming() && true)
+                                if (!tau_tauprime_combined || (p2.IsIncoming(this) && true))
                                 {
                                     if (p2.vertices.Equals(allVertices))
                                     {
@@ -388,6 +402,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 }
 
                             }
+                            // Daniela: continue, wenn adjacecyList[v].Length > k
                         }
                     }
 
@@ -410,7 +425,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                             // --------- line 30 ----------
                             // TODO: check for normalized-ness
-                            if (p3.IsIncoming() && true)
+                            if (!tau_tauprime_combined || (p3.IsIncoming(this) && true))
                             {
                                 if (p3.vertices.Equals(allVertices))
                                 {
@@ -438,6 +453,55 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         #region IsPotMaxClique implementations
+
+        public IEnumerable<Tuple<BitSet, BitSet>> ComponentsAndNeighbors(BitSet separator)
+        {
+            BitSet visited = new BitSet(separator);
+            Stack<int> dfsStack = new Stack<int>();
+
+            List<int> separatorBits = separator.Elements();
+
+            // loop over all vertices in the separator
+            for (int i = 0; i < separatorBits.Count; i++)
+            {
+                int separatorVertex = separatorBits[i];
+                // loop over all neighbors of that separator-vertex
+                for (int j = 0; j < adjacencyList[separatorVertex].Length; j++)
+                {
+                    int separatorNeighbor = adjacencyList[separatorVertex][j];
+
+                    // if that vertex hasn't been visited, it's part of a new component. Perform a depth first search
+                    if (!visited[separatorNeighbor])
+                    {
+                        dfsStack.Push(separatorNeighbor);
+                        BitSet component = new BitSet(vertexCount);
+                        BitSet N_C = new BitSet(vertexCount);    // cache N(C) for this component
+
+                        while (dfsStack.Count > 0)
+                        {
+                            int vertex = dfsStack.Pop();
+                            visited[vertex] = true;
+                            component[vertex] = true;
+                            for (int k = 0; k < adjacencyList[vertex].Length; k++)
+                            {
+                                int vNeighbor = adjacencyList[vertex][k];
+                                if (separator[vNeighbor])
+                                {
+                                    N_C[vNeighbor] = true;
+                                }
+                                else if (!visited[vNeighbor])
+                                {
+                                    dfsStack.Push(vNeighbor);
+                                }
+                            }
+                        }
+
+                        yield return new Tuple<BitSet, BitSet>(component, N_C);
+                    }
+                }
+            }
+        }
+
 
         public bool IsCliquish(BitSet K)
         {
@@ -524,6 +588,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             return true;
         }
+
+
 
         /// <summary>
         /// checks if K is a potential maximal clique

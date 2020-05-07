@@ -80,21 +80,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="Tau">the child of this node</param>
         public static PTD Line9(PTD Tau)
         {
-            BitSet bag = new BitSet(Tau.outlet);    // TODO: not copy? would be probably wrong since the child's outlet is used in line 9 and the bag of this root can change
-            BitSet outlet = new BitSet(Tau.outlet); // TODO: not copy? the outlet doesn't really change, does it?
-            BitSet inlet = new BitSet(Tau.inlet);   // TODO: not copy? same here...
+            BitSet bag = new BitSet(Tau.outlet);        // TODO: not copy? would be probably wrong since the child's outlet is used in line 9 and the bag of this root can change
+            BitSet outlet = new BitSet(Tau.outlet);     // TODO: not copy? the outlet doesn't really change, does it?
+            BitSet inlet = new BitSet(Tau.inlet);       // TODO: not copy? same here...
             BitSet vertices = new BitSet(Tau.vertices); // TODO: not copy
 
             List<PTD> children = new List<PTD>();
             children.Add(Tau);
             PTD result = new PTD(bag, vertices, outlet, inlet, children);
             result.AssertVerticesCorrect();
+
             return result;
         }
 
         // line 13
         public static PTD Line13(PTD Tau_prime, PTD Tau, Graph graph)
         {
+            Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
             List<PTD> children = new List<PTD>(Tau_prime.children);
@@ -134,7 +136,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             Debug.Assert(newRoot.IsSuperset(Tau_wiggle.Bag));
             BitSet bag = newRoot;
-            bag.UnionWith(Tau_wiggle.Bag);
           
             BitSet outlet = new BitSet(Tau_wiggle.outlet);
             BitSet inlet = new BitSet(Tau_wiggle.inlet);
@@ -159,29 +160,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// tests whether this PTD is possibly usable in a tree decomposition with width k
+        /// tests whether this PTD is possibly usable
         /// </summary>
-        /// <param name="k">the maximum width of the tree decomposition</param>
         /// <returns>true iff the PTD is possibly usable</returns>
-        public bool IsPossiblyUsable(int k)
+        public bool IsPossiblyUsable()
         {
-            // old and wrong
-            /*
-            for (int i = 0; i < children.Count; i++)
-            {
-                // TODO: check correct?
-                Debug.Assert(children[i].inlet.IsDisjoint(outlet));
-
-                for (int j = i + 1; j < children.Count; j++)
-                {
-                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
-                    {
-                        return false;
-                    }
-                }
-            }
-            */
-
             for (int i = 0; i < children.Count; i++)
             {
                 // TODO: check correct?
@@ -200,18 +183,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         return false;
                     }
-
-                    /*
-                    BitSet i_nodes = new BitSet(children[i].inlet);
-                    i_nodes.UnionWith(children[i].outlet);
-                    BitSet j_nodes = new BitSet(children[j].inlet);
-                    j_nodes.UnionWith(children[j].outlet);
-                    i_nodes.IntersectWith(j_nodes);
-                    if (!children[i].Bag.IsSuperset(i_nodes) || !children[j].Bag.IsSuperset(i_nodes))
-                    {
-                        return false;
-                    }
-                    */
                 }
             }
             return true;
@@ -220,13 +191,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <summary>
         /// tests if this PTD is an incoming PTD
         /// </summary>
-        /// <returns>true iff it is incoming</returns>
-        public bool IsIncoming()
+        /// <returns>true iff the PTD is incoming</returns>
+        public bool IsIncoming(Graph graph)
         {
+            foreach(Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(Bag))
+            {
+                if (outlet.IsSuperset(C_NC.Item2) && !C_NC.Item2.Equals(outlet) && C_NC.Item2.First() < inlet.First())
+                {
+                    return false;
+                }
+            }
+            return true;
+            /*
             BitSet restVertices = vertices.Complement();
             Debug.Assert(restVertices.IsDisjoint(inlet));
             bool result = inlet.First() < restVertices.First();
             return result;
+            */
         }
 
 

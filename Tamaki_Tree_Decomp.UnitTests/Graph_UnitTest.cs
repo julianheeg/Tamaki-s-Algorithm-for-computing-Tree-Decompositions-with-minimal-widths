@@ -89,5 +89,33 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.AreEqual(0, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
+
+        [TestMethod]
+        public void TreeWidth_MediumGraphs_ReturnTrue()
+        {
+            Graph g = new Graph("Test Data\\medium\\NauruGraph.gr");
+            Assert.AreEqual(6, g.TreeWidth(out PTD output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\medium\\FlowerSnark.gr");
+            output = null;
+            Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\medium\\DesarguesGraph.gr");
+            output = null;
+            Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\medium\\GeneralizedPetersenGraph_10_4.gr");
+            output = null;
+            Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\medium\\HoffmanGraph.gr");
+            output = null;
+            Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+        }
     }
 }
