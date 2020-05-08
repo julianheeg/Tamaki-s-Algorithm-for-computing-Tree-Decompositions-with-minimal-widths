@@ -195,33 +195,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // TODO: correct? also loop condition above
             treeDecomp = new PTD(allVertices);
             return vertexCount - 1;
-
-            /*
-            GraphReduction red = new GraphReduction(this, minK);
-            bool reduced = red.Reduce(ref minK);
-            if (!reduced)
-            {
-                for (int k = minK; k <= vertexCount; k++)
-                {
-                    if (HasTreeWidth(k, out treeDecomp))
-                    {
-                        Console.WriteLine("graph has tree width " + k);
-                        return k;
-                    }
-                    Console.WriteLine("graph has tree width bigger than " + k);
-                }
-            }
-            else
-            {
-                Graph reducedGraph = red.ToGraph();
-                int treeWidth = reducedGraph.TreeWidth(minK, out PTD reducedTreeDecomp);
-                red.RebuildTreeDecomposition(ref reducedTreeDecomp);
-                treeDecomp = reducedTreeDecomp;
-                return treeWidth;
-            }
-            treeDecomp = null;
-            return -1;
-            */
         }
 
         /// <summary>
@@ -257,8 +230,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     PTD p0 = new PTD(neighborSetsWith[v], outlet);
                     if (!P_inlets.Contains(p0.inlet))
                     {
-                        P.Add(p0); // ptd mit Tasche N[v] als einzelnen Knoten
-                        P_inlets.Add(p0.inlet);
+                        if (IsMinimalSeparator(outlet))
+                        {
+                            P.Add(p0); // ptd mit Tasche N[v] als einzelnen Knoten
+                            P_inlets.Add(p0.inlet);
+                        }
                     }
                 }
             }
@@ -277,6 +253,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
 
                 // --------- TODO: line 8 ----------
+
+                Debug.Assert(IsMinimalSeparator(Tau.outlet));
 
                 // --------- line 9 ----------
 
@@ -348,7 +326,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         PTD p1 = new PTD(Tau_wiggle);
 
                         // TODO: check for normalized-ness
-                        if (!tau_tauprime_combined || (p1.IsIncoming(this) && true))
+                        if (!tau_tauprime_combined || p1.IsIncoming(this))
                         {
                             if (p1.vertices.Equals(allVertices))
                             {
@@ -359,9 +337,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             // TODO: check for line 8
                             if (!P_inlets.Contains(p1.inlet))
                             {
-                                Debug.Assert(IsConsistent(p1));
-                                P.Add(p1);
-                                P_inlets.Add(p1.inlet);
+                                if (IsMinimalSeparator(p1.outlet))
+                                {
+                                    Debug.Assert(IsConsistent(p1));
+                                    P.Add(p1);
+                                    P_inlets.Add(p1.inlet);
+                                }
                             }
                         }
                     }
@@ -382,7 +363,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                                 // --------- line 24 ----------
                                 // TODO: check for normalized-ness
-                                if (!tau_tauprime_combined || (p2.IsIncoming(this) && true))
+                                if (!tau_tauprime_combined || p2.IsIncoming(this))
                                 {
                                     if (p2.vertices.Equals(allVertices))
                                     {
@@ -395,9 +376,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                     // --------- line 26 ----------
                                     if (!P_inlets.Contains(p2.inlet))
                                     {
-                                        Debug.Assert(IsConsistent(p2));
-                                        P.Add(p2);
-                                        P_inlets.Add(p2.inlet);
+                                        if (IsMinimalSeparator(p2.outlet))
+                                        {
+                                            Debug.Assert(IsConsistent(p2));
+                                            P.Add(p2);
+                                            P_inlets.Add(p2.inlet);
+                                        }
                                     }
                                 }
 
@@ -425,7 +409,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                             // --------- line 30 ----------
                             // TODO: check for normalized-ness
-                            if (!tau_tauprime_combined || (p3.IsIncoming(this) && true))
+                            if (!tau_tauprime_combined || p3.IsIncoming(this))
                             {
                                 if (p3.vertices.Equals(allVertices))
                                 {
@@ -438,9 +422,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 // --------- line 32 ----------
                                 if (!P_inlets.Contains(p3.inlet))
                                 {
-                                    Debug.Assert(IsConsistent(p3));
-                                    P.Add(p3);
-                                    P_inlets.Add(p3.inlet);
+                                    if (IsMinimalSeparator(p3.outlet))
+                                    {
+                                        Debug.Assert(IsConsistent(p3));
+                                        P.Add(p3);
+                                        P_inlets.Add(p3.inlet);
+                                    }
                                 }
                             }
                         }
@@ -502,55 +489,39 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
+        /// <summary>
+        /// tests if the separator is a minimal separator
+        /// </summary>
+        /// <param name="separator">the separator</param>
+        /// <returns>true iff the separator is minimal</returns>
+        public bool IsMinimalSeparator(BitSet separator)
+        {
+            int fullComponents = 0;
+            foreach (Tuple<BitSet, BitSet> C_NC in ComponentsAndNeighbors(separator))
+            {
+                if (C_NC.Item2.Equals(separator))
+                {
+                    fullComponents++;
+                    if (fullComponents == 2)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
 
         public bool IsCliquish(BitSet K)
         {
             // ------ 1.------
 
-            BitSet visited = new BitSet(K);
-            Stack<int> dfsStack = new Stack<int>();
-
-            // for each component C there is an entry in this list that contains N(C)
             List<BitSet> componentNeighborsInK = new List<BitSet>();
-            List<int> KBits = K.Elements();
-
-            // loop over all vertices in K
-            for (int i = 0; i < KBits.Count; i++)
+            foreach (Tuple<BitSet, BitSet> C_NC in ComponentsAndNeighbors(K))
             {
-                int KVertex = KBits[i];
-                // loop over all neighbors of that K-vertex
-                for (int j = 0; j < adjacencyList[KVertex].Length; j++)
-                {
-                    int KNeighbor = adjacencyList[KVertex][j];
-
-                    // if that vertex hasn't been visited, it's part of a new component. Perform a depth first search
-                    if (!visited[KNeighbor])
-                    {
-                        dfsStack.Push(KNeighbor);
-                        BitSet N_C = new BitSet(vertexCount);    // cache N(C) for this component
-
-                        while (dfsStack.Count > 0)
-                        {
-                            int vertex = dfsStack.Pop();
-                            visited[vertex] = true;
-                            for (int k = 0; k < adjacencyList[vertex].Length; k++)
-                            {
-                                int vNeighbor = adjacencyList[vertex][k];
-                                if (K[vNeighbor])
-                                {
-                                    N_C[vNeighbor] = true;
-                                }
-                                else if (!visited[vNeighbor])
-                                {
-                                    dfsStack.Push(vNeighbor);
-                                }
-                            }
-                        }
-
-                        componentNeighborsInK.Add(N_C);
-                    }
-                }
+                BitSet N_C = C_NC.Item2;
+                componentNeighborsInK.Add(C_NC.Item2);
             }
+            List<int> KBits = K.Elements();
 
             // ------ 2.------
             // check if K is cliquish
@@ -620,55 +591,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             // ------ 1.------
 
-            BitSet visited = new BitSet(K);
-            Stack<int> dfsStack = new Stack<int>();
-
-            // for each component C there is an entry in this list that contains N(C)
             List<BitSet> componentNeighborsInK = new List<BitSet>();
-            List<int> KBits = K.Elements();
-
-            // loop over all vertices in K
-            for (int i = 0; i < KBits.Count; i++)
+            foreach(Tuple<BitSet, BitSet> C_NC in ComponentsAndNeighbors(K))
             {
-                int KVertex = KBits[i];
-                // loop over all neighbors of that K-vertex
-                for (int j = 0; j < adjacencyList[KVertex].Length; j++)
+                BitSet N_C = C_NC.Item2;
+                if (N_C.Equals(K))
                 {
-                    int KNeighbor = adjacencyList[KVertex][j];
-
-                    // if that vertex hasn't been visited, it's part of a new component. Perform a depth first search
-                    if (!visited[KNeighbor])
-                    {
-                        dfsStack.Push(KNeighbor);
-                        BitSet N_C = new BitSet(vertexCount);    // cache N(C) for this component
-
-                        while (dfsStack.Count > 0)
-                        {
-                            int vertex = dfsStack.Pop();
-                            visited[vertex] = true;
-                            for (int k = 0; k < adjacencyList[vertex].Length; k++)
-                            {
-                                int vNeighbor = adjacencyList[vertex][k];
-                                if (K[vNeighbor])
-                                {
-                                    N_C[vNeighbor] = true;
-                                }
-                                else if (!visited[vNeighbor])
-                                {
-                                    dfsStack.Push(vNeighbor);
-                                }
-                            }
-                        }
-
-                        // check if that component is non-full, else return false
-                        if (N_C.Equals(K))
-                        {
-                            return false;
-                        }
-                        componentNeighborsInK.Add(N_C);
-                    }
+                    return false;
                 }
+                componentNeighborsInK.Add(C_NC.Item2);
             }
+            List<int> KBits = K.Elements();
 
             // ------ 2.------
             // check if K is cliquish
@@ -735,61 +668,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
              *  During 1., while we determine the components, we save N(C) for each component so that we can use it in 2. later
              * 
              */
-            
+
 
             // ------ 1.------
-            
-            // usual dfs stuff
-            BitSet visited = new BitSet(K);
-            Stack<int> dfsStack = new Stack<int>();
 
-            // for each component C there is an entry in this list that contains N(C)
             List<BitSet> componentNeighborsInK = new List<BitSet>();
-            List<int> KBits = K.Elements();
-
-            // loop over all vertices in K
-            for (int i = 0; i < KBits.Count; i++)
+            foreach (Tuple<BitSet, BitSet> C_NC in ComponentsAndNeighbors(K))
             {
-                int KVertex = KBits[i];
-                // loop over all neighbors of that K-vertex
-                for (int j = 0; j < adjacencyList[KVertex].Length; j++)
+                BitSet N_C = C_NC.Item2;
+                if (N_C.Equals(K))
                 {
-                    int KNeighbor = adjacencyList[KVertex][j];
-
-                    // if that vertex hasn't been visited, it's part of a new component. Perform a depth first search
-                    if (!visited[KNeighbor])
-                    {
-                        dfsStack.Push(KNeighbor);
-                        BitSet N_C = new BitSet(vertexCount);    // cache N(C) for this component
-
-                        while (dfsStack.Count > 0)
-                        {
-                            int vertex = dfsStack.Pop();
-                            visited[vertex] = true;
-                            for (int k = 0; k < adjacencyList[vertex].Length; k++)
-                            {
-                                int vNeighbor = adjacencyList[vertex][k];
-                                if (K[vNeighbor])
-                                {
-                                    N_C[vNeighbor] = true;
-                                }
-                                else if (!visited[vNeighbor])
-                                {
-                                    dfsStack.Push(vNeighbor);
-                                }
-                            }
-                        }
-
-                        // check if that component is non-full, else return false
-                        if (N_C.Equals(K))
-                        {
-                            boundary = null;
-                            return false;
-                        }
-                        componentNeighborsInK.Add(N_C);
-                    }
+                    boundary = null;
+                    return false;
                 }
+                componentNeighborsInK.Add(C_NC.Item2);
             }
+            List<int> KBits = K.Elements();
 
             // ------ 2.------
             // check if K is cliquish
@@ -825,7 +719,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 }
             }
-            
+
             boundary = new BitSet(vertexCount);
             for (int i = 0; i < componentNeighborsInK.Count; i++)
             {
@@ -909,91 +803,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     Debug.Assert(isInOutlet);
                 }
             }
-        }
-
-        public bool IsIncoming(PTD Tau_wiggle, PTD Tau, PTD Tau_prime, bool isChain)
-        {
-            // TODO: implement properly
-            return true;
-
-            
-            // 1
-            if (isChain)
-            {
-                return true;
-            }
-
-            // 2a
-            if (Tau_wiggle.outlet.IsSuperset(Tau.outlet))
-            {
-                return false;
-            }
-
-            // 2b
-            int f = Tau_prime.inlet.First();
-            if (f < Tau.inlet.First() && f < Tau.outlet.First())
-            {
-                return true;
-            }
-            return false;
-            
-
-            /*
-            // usual dfs stuff
-            BitSet visited = new BitSet(ptd.inlet);
-            visited.UnionWith(ptd.outlet);
-            Stack<int> dfsStack = new Stack<int>();
-
-            List<int> separatorVertices = ptd.outlet.Elements();
-
-            for (int i = 0; i < separatorVertices.Count; i++)
-            {
-                int sVertex = separatorVertices[i];
-
-                // loop over all neighbors of that s-vertex
-                for (int j = 0; j < adjacencyList[sVertex].Length; j++)
-                {
-                    int sNeighbor = adjacencyList[sVertex][j];
-
-                    // if that vertex hasn't been visited, it's part of a new component. Perform a depth first search
-                    if (!visited[sNeighbor])
-                    {
-                        dfsStack.Push(sNeighbor);
-                        BitSet N_C = new BitSet(vertexCount);    // cache N(C) for this component
-                        int componentSmallest = vertexCount + 1;
-
-                        while (dfsStack.Count > 0)
-                        {
-                            int vertex = dfsStack.Pop();
-                            visited[vertex] = true;
-                            if (vertex < componentSmallest)
-                            {
-                                componentSmallest = vertex;
-                            }
-                            for (int k = 0; k < adjacencyList[vertex].Length; k++)
-                            {
-                                int vNeighbor = adjacencyList[vertex][k];
-                                if (ptd.outlet[vNeighbor])
-                                {
-                                    N_C[vNeighbor] = true;
-                                }
-                                else if (!visited[vNeighbor])
-                                {
-                                    dfsStack.Push(vNeighbor);
-                                }
-                            }
-                        }
-
-                        // check if that component is non-full, else return false
-                        if (componentSmallest < inletSmallest && !ptd.outlet.IsSuperset(N_C))
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            return true;
-            */
         }
 
         /// <summary>

@@ -202,12 +202,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
             return true;
-            /*
-            BitSet restVertices = vertices.Complement();
-            Debug.Assert(restVertices.IsDisjoint(inlet));
-            bool result = inlet.First() < restVertices.First();
-            return result;
-            */
         }
 
 
