@@ -4,8 +4,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Tamaki_Tree_Decomp.Data_Structures;
 
-namespace Tamaki_Tree_Decomp.Data_Structures
+namespace Tamaki_Tree_Decomp
 {
     /// <summary>
     /// A class for simplifying a graph according to the rules in
@@ -48,13 +49,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public Graph ToGraph()
         {
             // build a mapping from old graph vertices to new graph vertices and vice versa
-            Dictionary<int, int> ReductionMapping = new Dictionary<int, int>();
+            Dictionary<int, int> reductionMapping = new Dictionary<int, int>();
             int counter = 0;
             for (int i = 0; i < vertexCount; i++)
             {
                 if (!removedVertices[i])
                 {
-                    ReductionMapping.Add(i, counter);
+                    reductionMapping.Add(i, counter);
                     reconstructionMapping.Add(counter, i);
                     counter++;
                 }
@@ -62,7 +63,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             int edgeCount = 0;
             // use that mapping to construct an adjacency list for this graph
-            List<int>[] reducedAdjacencyList = new List<int>[ReductionMapping.Count];
+            List<int>[] reducedAdjacencyList = new List<int>[reductionMapping.Count];
             for (int i = 0; i < vertexCount; i++)
             {
                 if (!removedVertices[i])
@@ -71,9 +72,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     for (int j = 0; j < adjacencyList[i].Count; j++)
                     {
                         int neighbor = adjacencyList[i][j];
-                        currentVertexAdjacencies.Add(ReductionMapping[neighbor]);
+                        currentVertexAdjacencies.Add(reductionMapping[neighbor]);
                     }
-                    reducedAdjacencyList[ReductionMapping[i]] = currentVertexAdjacencies;
+                    reducedAdjacencyList[reductionMapping[i]] = currentVertexAdjacencies;
                     edgeCount += currentVertexAdjacencies.Count;
                 }
             }
@@ -99,7 +100,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         /// <summary>
         /// tries to apply the simplicial vertex rule to the graph once
-        /// TODO: perhaps pass an additional vertex where to start and "wrap" the first loop around. Might be more efficient
+        /// TODO: perhaps pass an additional vertex parameter where to start and "wrap" the first loop around. Might be more efficient
         /// </summary>
         /// <returns>true iff a reduction could be performed</returns>
         public bool SimplicialVertexRule()
@@ -155,7 +156,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         /// <summary>
         /// tries to apply the almost simplicial vertex rule to the graph once
-        /// TODO: perhaps pass an additional vertex where to start and "wrap" the first loop around. Might be more efficient
+        /// TODO: perhaps pass an additional vertex parameter where to start and "wrap" the first loop around. Might be more efficient
         /// </summary>
         /// <returns>true iff a reduction could be performed</returns>
         public bool AlmostSimplicialVertexRule()
@@ -243,7 +244,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         /// <summary>
         /// tries to apply the buddy rule to the graph once
-        /// TODO: perhaps pass an additional vertex where to start and "wrap" the first loop around. Might be more efficient
+        /// TODO: perhaps pass an additional vertex parameter where to start and "wrap" the first loop around. Might be more efficient
         /// </summary>
         /// <returns>true iff a reduction could be performed</returns>
         public bool BuddyRule()
@@ -326,7 +327,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         /// <summary>
         /// tries to apply the buddy rule to the graph once
-        /// TODO: perhaps pass an additional vertex where to start and "wrap" the first loop around. Might be more efficient
+        /// TODO: perhaps pass an additional vertex parameter where to start and "wrap" the first loop around. Might be more efficient
         /// </summary>
         /// <returns>true iff a reduction could be performed</returns>
         public bool CubeRule()

@@ -44,10 +44,11 @@
   <ItemGroup>
     <Compile Include="Data Structures\BitSet.cs" />
     <Compile Include="Data Structures\Graph.cs" />
-    <Compile Include="Data Structures\GraphReduction.cs" />
+    <Compile Include="GraphReduction.cs" />
     <Compile Include="Data Structures\PTD.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SafeSeparator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

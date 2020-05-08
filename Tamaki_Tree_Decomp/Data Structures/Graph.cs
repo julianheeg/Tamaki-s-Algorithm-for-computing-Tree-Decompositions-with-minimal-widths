@@ -241,6 +241,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             // --------- lines 7 to 32 ----------
 
+            // TODO: parallel for loop?
             for (int i = 0; i < P.Count; i++)
             {
                 PTD Tau = P[i];
@@ -441,6 +442,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         #region IsPotMaxClique implementations
 
+        /// <summary>
+        /// determines the components associated with a separator and also which of the vertices in the separator
+        /// are neighbors of vertices in those components (which are a subset of the separator)
+        /// </summary>
+        /// <param name="separator">the separator</param>
+        /// <returns>an enumerable consisting of tuples of i) component C and ii) neighbors N(C)</returns>
         public IEnumerable<Tuple<BitSet, BitSet>> ComponentsAndNeighbors(BitSet separator)
         {
             BitSet visited = new BitSet(separator);
@@ -490,10 +497,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// tests if the separator is a minimal separator
+        /// tests if a set of vertices is a minimal separator
         /// </summary>
-        /// <param name="separator">the separator</param>
-        /// <returns>true iff the separator is minimal</returns>
+        /// <param name="separator">the set of vertices to test</param>
+        /// <returns>true iff separator is a minimal separator</returns>
         public bool IsMinimalSeparator(BitSet separator)
         {
             int fullComponents = 0;
@@ -509,6 +516,34 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// tests whether a set of vertices is a minimal separator and if so, computes the components associated with it
+        /// </summary>
+        /// <param name="separator">the set of vertices</param>
+        /// <param name="components">a list of the components associated with the set of vertices</param>
+        /// <returns>true iff separator is a minimal separator</returns>
+        public bool IsMinimalSeparator_ReturnComponents(BitSet separator, out List<BitSet> components)
+        {
+            components = new List<BitSet>();
+            int fullComponents = 0;
+            foreach (Tuple<BitSet, BitSet> C_NC in ComponentsAndNeighbors(separator))
+            {
+                components.Add(C_NC.Item1);
+                if (C_NC.Item2.Equals(separator))
+                {
+                    fullComponents++;
+                }
+            }
+            if (fullComponents >= 2)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public bool IsCliquish(BitSet K)

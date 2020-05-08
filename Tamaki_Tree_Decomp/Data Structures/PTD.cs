@@ -16,6 +16,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly BitSet outlet;
         public readonly List<PTD> children;
 
+        //TODO: perhaps maintain the sets of components associated with the outel
+
         /// <summary>
         /// copy constructor
         /// </summary>
