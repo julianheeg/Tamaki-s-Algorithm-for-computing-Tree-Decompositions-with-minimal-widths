@@ -16,7 +16,7 @@ namespace Tamaki_Tree_Decomp
 
         BitSet separator;
         readonly List<Graph> subGraphs;
-        int low;
+        int separatorSize;
 
 
         readonly List<int[]> reconstructionMappings;            // mapping from reduced vertex id to original vertex id, by component
@@ -46,9 +46,28 @@ namespace Tamaki_Tree_Decomp
             */
         }
 
+        /// <summary>
+        /// tries to separate the graph using safe separators. If successful the minK parameter is set to the maximum of minK and the separator size
+        /// </summary>
+        /// <param name="separatedGraphs">a list of the separated graphs, if a separator exists, else null</param>
+        /// <param name="minK">the minimum tree width parameter. If a separator is found that is greater than minK, it is set to the separator size</param>
+        /// <returns>true iff a separation has been performed</returns>
         public bool Separate(out List<Graph> separatedGraphs, ref int minK)
         {
-            throw new NotImplementedException();
+            bool result = Size2Separate();
+            if (result)
+            {
+                separatedGraphs = subGraphs;
+                if (minK < separatorSize)
+                {
+                    minK = separatorSize;
+                }
+            }
+            else
+            {
+                separatedGraphs = null;
+            }
+            return result;
         }
 
         /// <summary>
@@ -57,7 +76,7 @@ namespace Tamaki_Tree_Decomp
         /// TODO: Improve. This is a naive (n^3) implementation.
         /// </summary>
         /// <returns>true iff a size 2 separator exists</returns>
-        private bool Size2Separate()
+        public bool Size2Separate()
         {
             BitSet separator = new BitSet(vertexCount);
 
@@ -73,7 +92,7 @@ namespace Tamaki_Tree_Decomp
                     if (graph.IsMinimalSeparator_ReturnComponents(separator, out List<BitSet> components))
                     {
                         this.separator = separator;
-                        low = 2;
+                        separatorSize = 2;
 
                         // complete the separator into a clique
                         if (!neighborSetsWithout[u][v])
@@ -88,19 +107,25 @@ namespace Tamaki_Tree_Decomp
                         foreach (BitSet component in components)
                         {
                             List<int> vertices = component.Elements();
+                            component.UnionWith(separator);
 
                             // map vertices from this graph to the new subgraph and vice versa
-                            Dictionary<int, int> reductionMapping = new Dictionary<int, int>();
-                            int[] reconstructionMapping = new int[vertices.Count];
+                            Dictionary<int, int> reductionMapping = new Dictionary<int, int>(vertices.Count + 2);
+                            int[] reconstructionMapping = new int[vertices.Count + 2];
                             reconstructionMappings.Add(reconstructionMapping);
                             for (int i = 0; i < vertices.Count; i++)
                             {
                                 reductionMapping[vertices[i]] = i;
                                 reconstructionMapping[i] = vertices[i];
                             }
+                            // don't forget the separator
+                            reductionMapping[u] = vertices.Count;
+                            reconstructionMapping[vertices.Count] = u;
+                            reductionMapping[v] = vertices.Count + 1;
+                            reconstructionMapping[vertices.Count + 1] = v;
 
                             // create new adjacency list
-                            List<int>[] subAdjacencyList = new List<int>[vertices.Count];
+                            List<int>[] subAdjacencyList = new List<int>[vertices.Count + 2];
                             for (int i = 0; i < vertices.Count; i++)
                             {
                                 int oldVertex = vertices[i];
@@ -110,6 +135,26 @@ namespace Tamaki_Tree_Decomp
                                 {
                                     int newNeighbor = reductionMapping[oldNeighbor];
                                     subAdjacencyList[newVertex].Add(newNeighbor);
+                                }
+                            }
+                            // also for u ...
+                            subAdjacencyList[vertices.Count] = new List<int>();
+                            foreach(int oldNeighbor in adjacencyList[u])
+                            {
+                                if (component[oldNeighbor])
+                                {
+                                    int newNeighbor = reductionMapping[oldNeighbor];
+                                    subAdjacencyList[vertices.Count].Add(newNeighbor);
+                                }
+                            }
+                            // ... and for v
+                            subAdjacencyList[vertices.Count + 1] = new List<int>();
+                            foreach (int oldNeighbor in adjacencyList[v])
+                            {
+                                if (component[oldNeighbor])
+                                {
+                                    int newNeighbor = reductionMapping[oldNeighbor];
+                                    subAdjacencyList[vertices.Count + 1].Add(newNeighbor);
                                 }
                             }
 
@@ -130,9 +175,55 @@ namespace Tamaki_Tree_Decomp
             return false;
         }
 
-        public PTD CombineTreeDecompositions(PTD[] ptds)
+        /// <summary>
+        /// recombines tree decompositions for the subgraphs into a tree decomposition for the original graph
+        /// </summary>
+        /// <param name="ptds">the tree decompositions for each of the subgraphs</param>
+        /// <returns>a tree decomposition for the original graph</returns>
+        public PTD RecombineTreeDecompositions(PTD[] ptds)
         {
-            throw new NotImplementedException();
+            PTD separatorNode = null;
+            Stack<PTD> childrenStack = new Stack<PTD>();
+
+            // reindex the tree decompositions
+            for (int i = 0; i < ptds.Length; i++)
+            {
+                int[] reconstructionMapping = reconstructionMappings[i];
+                childrenStack.Push(ptds[i]);
+
+                while (childrenStack.Count > 0)
+                {
+                    PTD currentNode = childrenStack.Pop();
+
+                    // reindex bag
+                    BitSet reconstructedBag = new BitSet(vertexCount);
+                    foreach (int j in currentNode.Bag.Elements())
+                    {
+                        reconstructedBag[reconstructionMapping[j]] = true;
+                    }
+                    currentNode.SetBag(reconstructedBag);
+
+                    // find separator node in the first tree decomposition
+                    if (i == 0 && currentNode.Bag.IsSuperset(separator))
+                    {
+                        separatorNode = currentNode;
+                    }
+
+                    // push children onto the stack
+                    foreach (PTD childNode in currentNode.children)
+                    {
+                        childrenStack.Push(childNode);
+                    }
+                }
+            }
+
+            // reroot the other tree decompositions and append them to the first one
+            for (int i = 1; i < ptds.Length; i++)
+            {
+                separatorNode.children.Add(ptds[i].Reroot(separator));
+            }
+
+            return ptds[0];
         }
     }
 }

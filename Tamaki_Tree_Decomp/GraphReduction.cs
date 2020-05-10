@@ -472,7 +472,7 @@ namespace Tamaki_Tree_Decomp
                 PTD currentNode = nodeStack.Pop();
                 BitSet reducedBag = currentNode.Bag;
 
-                // reconstruct bag
+                // reindex bag
                 BitSet reconstructedBag = new BitSet(vertexCount);
                 foreach (int i in reducedBag.Elements())
                 {

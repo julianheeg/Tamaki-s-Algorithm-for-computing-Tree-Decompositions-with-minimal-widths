@@ -302,7 +302,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             {
                                 continue;
                             }
-                            // TODO: else continue?
 
                         }
                         // --------- line 15 ----------

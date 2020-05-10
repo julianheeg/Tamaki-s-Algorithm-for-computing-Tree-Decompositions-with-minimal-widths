@@ -30,6 +30,11 @@ namespace Tamaki_Tree_Decomp
 
         static readonly string test_a3 = "Test Data\\test2.gr";
         static readonly string test_a4 = "Test Data\\test3.gr";
+        static readonly string test_a5 = "Test Data\\small_cycle.gr";
+        static readonly string test_a6 = "Test Data\\double_cycle.gr";
+        static readonly string test_a7 = "Test Data\\double_cycle_bridge.gr";
+        static readonly string test_a8 = "Test Data\\cycle_cycle.gr";
+        static readonly string test_a9 = "Test Data\\cycle_line.gr";
 
 
         static readonly string test_s0 = "Test Data\\s0_fuzix_clock_settime_clock_settime.gr";
@@ -51,9 +56,24 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            string filepath = test_m4;
+            string filepath = test_a7;
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
+
+            SafeSeparator sep = new SafeSeparator(g);
+            int min = 0;
+            if (sep.Separate(out List<Graph> separatedGraphs, ref min))
+            {
+                PTD[] ptds = new PTD[separatedGraphs.Count];
+                for (int i = 0; i < separatedGraphs.Count; i++)
+                {
+                    separatedGraphs[i].TreeWidth(min, out ptds[i]);
+                }
+                PTD recombined = sep.RecombineTreeDecompositions(ptds);
+                recombined.Print();
+                Debug.Assert(debug.IsValidTreeDecomposition(recombined));
+                ;
+            }
 
             
             g.TreeWidth(0, out PTD output);

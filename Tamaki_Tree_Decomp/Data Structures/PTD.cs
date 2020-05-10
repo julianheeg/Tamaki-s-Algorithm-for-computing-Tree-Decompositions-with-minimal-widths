@@ -206,7 +206,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
-
         private void AssertVerticesCorrect()
         {
             Debug.Assert(inlet.IsDisjoint(outlet));
@@ -214,6 +213,76 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet union = new BitSet(inlet);
             union.UnionWith(outlet);
             Debug.Assert(vertices.Equals(union));
+        }
+
+        /// <summary>
+        /// Constructs a tree decomposition with a different root. The root will be a superset of the rootSet parameter.
+        /// If rootSet is a safe separator between the graph underlying this tree decomposition and another graph, this
+        /// method is helpful to reconstruct a tree decomposition of the original graph.
+        /// </summary>
+        /// <param name="rootSet">a subset of the future root</param>
+        /// <returns>a rerooted version of this tree decomposition where rootSet is a subset of the new root</returns>
+        public PTD Reroot(BitSet rootSet)
+        {
+            if (Bag.IsSuperset(rootSet))
+            {
+                return this;
+            }
+
+            // ---- 1 ----
+            // build undirected tree as an adjacency list
+            Dictionary<BitSet, List<BitSet>> adjacencyList = new Dictionary<BitSet, List<BitSet>>();
+            Stack<PTD> childrenStack = new Stack<PTD>();
+            adjacencyList[Bag] = new List<BitSet>();
+            childrenStack.Push(this);
+            // while we're at it, might as well already create the visited array
+            Dictionary<BitSet, bool> visited = new Dictionary<BitSet, bool> { [Bag] = false };
+            bool rootFound = false;
+
+            while (childrenStack.Count > 0)
+            {
+                PTD currentNode = childrenStack.Pop();
+                visited[currentNode.Bag] = false;
+
+                // find a bag that can act as a root
+                if (!rootFound && currentNode.Bag.IsSuperset(rootSet))
+                {
+                    rootFound = true;
+                    rootSet = currentNode.Bag;
+                }
+                
+                // add children to the adjacency list
+                foreach (PTD child in currentNode.children)
+                {
+                    adjacencyList[child.Bag] = new List<BitSet>();
+                    adjacencyList[child.Bag].Add(currentNode.Bag);
+                    adjacencyList[currentNode.Bag].Add(child.Bag);
+                    childrenStack.Push(child);
+                }
+            }
+
+            // ---- 2 ----
+            // rebuild tree with different root
+            PTD rootNode = new PTD(rootSet);
+            childrenStack.Push(rootNode);
+
+            do
+            {
+                PTD currentNode = childrenStack.Pop();
+                visited[currentNode.Bag] = true;
+                foreach (BitSet adjacentNode in adjacencyList[currentNode.Bag])
+                {
+                    if (!visited[adjacentNode])
+                    {
+                        PTD childNode = new PTD(adjacentNode);
+                        currentNode.children.Add(childNode);
+                        childrenStack.Push(childNode);
+                    }
+                }
+            }
+            while (childrenStack.Count > 0);
+
+            return rootNode;
         }
 
         #region import from file
