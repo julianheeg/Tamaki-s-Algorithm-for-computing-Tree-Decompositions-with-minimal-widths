@@ -72,7 +72,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="newBag">the new bag</param>
         public void SetBag(BitSet newBag)
         {
-            // TODO: possibly CRITICAL: update inlet, outlet, vertices, etc.
             Bag = newBag;
         }
         
@@ -196,6 +195,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true iff the PTD is incoming</returns>
         public bool IsIncoming(Graph graph)
         {
+            foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(vertices))
+            {
+                if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
+                {
+                    if (C_NC.Item1.First() > inlet.First())
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+            
+            /*
+            // old definition
             foreach(Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(Bag))
             {
                 if (outlet.IsSuperset(C_NC.Item2) && !C_NC.Item2.Equals(outlet) && C_NC.Item2.First() < inlet.First())
@@ -204,8 +217,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
             return true;
+            */
         }
 
+        [Conditional("DEBUG")]
         private void AssertVerticesCorrect()
         {
             Debug.Assert(inlet.IsDisjoint(outlet));

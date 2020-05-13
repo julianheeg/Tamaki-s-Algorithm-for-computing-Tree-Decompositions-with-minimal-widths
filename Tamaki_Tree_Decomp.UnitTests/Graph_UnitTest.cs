@@ -14,8 +14,6 @@ namespace Tamaki_Tree_Decomp.UnitTests
             string testFile1 = "Test Data\\test1.gr";
             Graph graph = new Graph(testFile1);
 
-
-            // hash set
             BitSet a = new BitSet(6, new int[] { 0, 1, 2 });
             BitSet b = new BitSet(6, new int[] { 1, 2, 3, 4 });
             BitSet c = new BitSet(6, new int[] { 4, 5 });
@@ -115,6 +113,34 @@ namespace Tamaki_Tree_Decomp.UnitTests
             g = new Graph("Test Data\\medium\\HoffmanGraph.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+        }
+
+        [TestMethod]
+        public void TreeWidth_HardGraphs_ReturnTrue()
+        {
+            Graph g = new Graph("Test Data\\hard\\ClebschGraph.gr");
+            Assert.AreEqual(8, g.TreeWidth(out PTD output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\hard\\contiki_dhcpc_handle_dhcp.gr");
+            output = null;
+            Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\hard\\DoubleStarSnark.gr");
+            output = null;
+            Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\hard\\fuzix_vfscanf_vfscanf.gr");
+            output = null;
+            Assert.AreEqual(6, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\hard\\McGeeGraph.gr");
+            output = null;
+            Assert.AreEqual(7, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
     }

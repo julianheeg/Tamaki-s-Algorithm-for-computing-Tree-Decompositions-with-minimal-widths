@@ -122,33 +122,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>the tree width</returns>
         public int TreeWidth(out PTD treeDecomp)
         {
-            // edge cases
-            // TODO: this isn't exhaustive
-            
-            if (vertexCount == 0)
-            {
-                treeDecomp = null;
-                return 0;
-            }
-            else if (vertexCount == 1)
-            {
-                BitSet onlyBag = new BitSet(1);
-                onlyBag[0] = true;
-                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
-                return 0;
-            }
-
-            for (int k = 1; k <= vertexCount; k++)
-            {
-                if (HasTreeWidth(k, out treeDecomp))
-                {
-                    Console.WriteLine("graph has tree width " + k);
-                    return k;
-                }
-                Console.WriteLine("graph has tree width bigger than " + k);
-            }
-            treeDecomp = null;
-            return -1;
+            return TreeWidth(0, out treeDecomp);
         }
 
         public int TreeWidth(int minK, out PTD treeDecomp)
@@ -178,6 +152,26 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 {
                     reducedGraph = red.ToGraph();
                     reductions.Add(red);
+                }
+                SafeSeparator safeSep = new SafeSeparator(reducedGraph);
+                if (safeSep.Separate(out List<Graph> separatedGraphs, ref minK))
+                {
+                    PTD[] subTreeDecompositions = new PTD[separatedGraphs.Count];
+                    for (int i = 0; i < subTreeDecompositions.Length; i++)
+                    {
+                        int subTreeWidth = separatedGraphs[i].TreeWidth(minK, out subTreeDecompositions[i]);
+                        Debug.Assert(separatedGraphs[i].IsValidTreeDecomposition(subTreeDecompositions[i]));
+                        if (subTreeWidth > minK)
+                        {
+                            minK = subTreeWidth;
+                        }
+                    }
+                    treeDecomp = safeSep.RecombineTreeDecompositions(subTreeDecompositions);
+                    for (int i = reductions.Count - 1; i >= 0; i--)
+                    {
+                        reductions[i].RebuildTreeDecomposition(ref treeDecomp);
+                    }
+                    return minK;
                 }
                 if (reducedGraph.HasTreeWidth(minK, out treeDecomp))
                 {
@@ -246,12 +240,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 PTD Tau = P[i];
 
+                /*
                 // TODO: remove debug stuff
                 if (i > 5000)
                 {
                     Console.WriteLine("P.Count > 5000. Stopping...");
                     throw new Exception();
                 }
+                */
 
                 // --------- TODO: line 8 ----------
 
@@ -333,8 +329,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 treeDecomp = p1;
                                 return true;
                             }
-
-                            // TODO: check for line 8
+                            
                             if (!P_inlets.Contains(p1.inlet))
                             {
                                 if (IsMinimalSeparator(p1.outlet))
@@ -370,9 +365,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                         treeDecomp = p2;
                                         return true;
                                     }
-
-                                    // TODO: check for line 8
-
+                                    
                                     // --------- line 26 ----------
                                     if (!P_inlets.Contains(p2.inlet))
                                     {
@@ -417,8 +410,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                     return true;
                                 }
 
-                                // TODO: check for line 8
-
                                 // --------- line 32 ----------
                                 if (!P_inlets.Contains(p3.inlet))
                                 {
@@ -435,11 +426,36 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
+            Console.WriteLine("considered {0} partial tree decompositions", P.Count);
             treeDecomp = null;
             return false;
         }
 
         #region IsPotMaxClique implementations
+
+        /*
+         * TODO: depth first search can be done using bit operations and it may be faster that way
+         * 
+         *  for every vertex v that is not in the separator{
+         *      BitSet component = new BitSet(neighborSetsWith[v]);
+         *      component.ExceptWith(separator);
+         *      
+         *      BitSet tempNeighbors = new BitSet(neighborSetsWithout[v]);
+         *      tempNeighbors.ExceptWith(separator);
+         *      while (tempNeighbors != 0){
+         *          List nnnnnnn = tempNeighbors.Elements()
+         *          tempNeighbors = empty;
+         *          for every vertex u in nnnnnnn {
+         *              tempNeighbors.unionWith(neighborSetsWithout[u];
+         *              component.UnionWith(u); // or neighborSetsWith[u];
+         *          }
+         *          component.exceptWith(separator);
+         *          tempNeighbors.exceptWith(separator);
+         *      }
+         *  }
+         *  
+         * */
+
 
         /// <summary>
         /// determines the components associated with a separator and also which of the vertices in the separator
@@ -514,6 +530,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
                 }
             }
+            //Console.WriteLine("kein minimaler Separator");
             return false;
         }
 
@@ -764,6 +781,34 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         #endregion
 
+        /// <summary>
+        /// computes the outlet of the union of a ptd with a component
+        /// </summary>
+        /// <param name="ptd">the ptd</param>
+        /// <param name="component">the component</param>
+        /// <returns>the vertices in the outlet of ptd that are adjacent to vertices that are neither contained in the ptd nor in the component</returns>
+        public BitSet UnionOutlet(PTD ptd, BitSet component)
+        {
+            BitSet unionOutlet = new BitSet(vertexCount);
+            BitSet unionVertices = new BitSet(ptd.vertices);
+            unionVertices.UnionWith(component);
+
+            List<int> outletVertices = ptd.outlet.Elements();
+            for (int i = 0; i < outletVertices.Count; i++)
+            {
+                int u = outletVertices[i];
+                for (int j = 0; j < adjacencyList[u].Length; j++)
+                {
+                    int v = adjacencyList[u][j];
+                    if (!unionVertices[v])
+                    {
+                        unionOutlet[u] = true;
+                        break;
+                    }
+                }
+            }
+            return unionOutlet;
+        }
 
         /// <summary>
         /// possibly very naive way of recalculating the inlet and outlet of a PTD

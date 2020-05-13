@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -40,10 +41,6 @@ namespace Tamaki_Tree_Decomp
             subGraphs = new List<Graph>();
 
             reconstructionMappings = new List<int[]>();
-            /*
-            reconstructionBagsToAppendTo = new List<BitSet>();
-            reconstructionBagsToAppend = new List<BitSet>();
-            */
         }
 
         /// <summary>
@@ -54,6 +51,7 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true iff a separation has been performed</returns>
         public bool Separate(out List<Graph> separatedGraphs, ref int minK)
         {
+
             bool result = Size2Separate();
             if (result)
             {
@@ -162,6 +160,20 @@ namespace Tamaki_Tree_Decomp
                             subGraphs.Add(new Graph(subAdjacencyList));
                         }
 
+                        int maxVertices = 0;
+                        int maxEdges = 0;
+                        foreach (Graph subgraph in subGraphs)
+                        {
+                            if (subgraph.vertexCount > maxVertices)
+                            {
+                                maxVertices = subgraph.vertexCount;
+                            }
+                            if (subgraph.edgeCount > maxEdges)
+                            {
+                                maxEdges = subgraph.edgeCount;
+                            }
+                        }
+                        Console.WriteLine("splitted graph with {0} vertices and {1} edges into {2} smaller graphs with at most {3} vertices and {4} edges", graph.vertexCount, graph.edgeCount, subGraphs.Count, maxVertices, maxEdges);
                         return true;
                     }
 
@@ -174,6 +186,111 @@ namespace Tamaki_Tree_Decomp
             }
             return false;
         }
+
+        public IEnumerable<BitSet> CandidateSeparators()
+        {
+            
+            foreach (BitSet candidate in HeuristicDecomposition(Heuristic.min_fill))
+            {
+                yield return candidate;
+            }
+            /*
+            foreach (BitSet candidate in HeuristicDecomposition(Heuristic.min_degree))
+            {
+                yield return candidate;
+            }
+            */
+        }
+
+        enum Heuristic
+        {
+            min_fill,
+            min_degree
+        }
+
+        private IEnumerable<BitSet> HeuristicDecomposition(Heuristic mode)
+        {
+            // copy fields so that we can change them locally
+            List<int>[] adjacencyList = new List<int>[vertexCount];
+            BitSet[] neighborSetsWithout = new BitSet[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                adjacencyList[i] = new List<int>(this.adjacencyList[i]);
+                neighborSetsWithout[i] = new BitSet(this.neighborSetsWithout[i]);
+            }
+
+            BitSet remaining = BitSet.All(vertexCount);
+
+
+            for (int i = 0; i < vertexCount; i++)
+            {
+                int min = FindMinCostVertex(remaining, adjacencyList, neighborSetsWithout, mode);
+                yield return neighborSetsWithout[min];
+                remaining[min] = false;
+                for (int j = 0; j < adjacencyList[min].Count; j++)
+                {
+                    int u = adjacencyList[min][j];
+                    
+                    // remove min from the neighbors' adjacency lists
+                    neighborSetsWithout[u][min] = false;
+                    adjacencyList[u].Remove(min);
+
+                    // make neighbors into a clique
+                    for (int k = j + 1; k < adjacencyList[min].Count; k++)
+                    {
+                        int v = adjacencyList[min][k];
+                        if (!neighborSetsWithout[u][v])
+                        {
+                            neighborSetsWithout[u][v] = true;
+                            neighborSetsWithout[v][u] = true;
+                            adjacencyList[u].Add(v);
+                            adjacencyList[v].Add(u);
+                        }
+                    }
+                }
+            }
+        }
+
+        private int FindMinCostVertex(BitSet remaining, List<int>[] adjacencyList, BitSet[] neighborSetsWithout, Heuristic mode)
+        {
+            List<int> remainingVertices = remaining.Elements();
+            int min = int.MaxValue;
+            int vmin = -1;
+            switch (mode)
+            {
+                case Heuristic.min_fill:
+                    foreach (int v in remainingVertices)
+                    {
+                        int fillEdges = 0;
+                        BitSet neighbors = new BitSet(neighborSetsWithout[v]);
+
+                        // because we maintain the graph this should be the same
+                        BitSet debug = new BitSet(neighbors);
+                        debug.IntersectWith(remaining);
+                        Debug.Assert(neighbors.Equals(debug));
+
+                        foreach (int neighbor in neighbors.Elements())
+                        {
+                            BitSet newEdges = new BitSet(neighbors);
+                            newEdges.ExceptWith(neighborSetsWithout[neighbor]);
+                            fillEdges += (int)newEdges.Count() - 1;
+                        }
+
+                        if (fillEdges < min)
+                        {
+                            min = fillEdges;
+                            vmin = v;
+                        }
+                    }
+                    return vmin;
+
+                case Heuristic.min_degree:
+                    throw new NotImplementedException();
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
 
         /// <summary>
         /// recombines tree decompositions for the subgraphs into a tree decomposition for the original graph

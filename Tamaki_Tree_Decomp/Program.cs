@@ -35,6 +35,7 @@ namespace Tamaki_Tree_Decomp
         static readonly string test_a7 = "Test Data\\double_cycle_bridge.gr";
         static readonly string test_a8 = "Test Data\\cycle_cycle.gr";
         static readonly string test_a9 = "Test Data\\cycle_line.gr";
+        static readonly string test_tr0 = "Test Data\\tree.gr";
 
 
         static readonly string test_s0 = "Test Data\\s0_fuzix_clock_settime_clock_settime.gr";
@@ -52,34 +53,58 @@ namespace Tamaki_Tree_Decomp
         static readonly string test_m2 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\GeneralizedPetersenGraph_10_4.gr";
         static readonly string test_m3 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\HoffmanGraph.gr";
         static readonly string test_m4 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\medium\\NauruGraph.gr";
+
+        static readonly string test_h0 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\ClebschGraph.gr";
+        static readonly string test_h1 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\contiki_dhcpc_handle_dhcp.gr";
+        static readonly string test_h2 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\DoubleStarSnark.gr";
+        static readonly string test_h3 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\fuzix_vfscanf_vfscanf.gr";
+        static readonly string test_h4 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\McGeeGraph.gr";
+
+        static readonly string test_r0 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\GNP_20_10_1.gr";
+        static readonly string test_r1 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\GNP_20_20_0.gr";
+        static readonly string test_r2 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\GNP_20_30_0.gr";
+        static readonly string test_r3 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\GNP_20_40_0.gr";
+        static readonly string test_r4 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_40_10_0.gr";
+        static readonly string test_r5 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_40_10_1.gr";
+        static readonly string test_r6 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_50_10_0.gr";
+        static readonly string test_r7 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_50_10_1.gr";
+        static readonly string test_r8 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_70_10_0.gr";
+        static readonly string test_r9 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_80_10_1.gr";
+
+        static readonly string pace17_001 = "Test Data\\ex-instances-PACE2017-public\\ex001.gr";
 #pragma warning restore CS0414
 
         static void Main(string[] args)
         {
-            string filepath = test_a7;
+            
+            string filepath = pace17_001;
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
-            SafeSeparator sep = new SafeSeparator(g);
-            int min = 0;
-            if (sep.Separate(out List<Graph> separatedGraphs, ref min))
-            {
-                PTD[] ptds = new PTD[separatedGraphs.Count];
-                for (int i = 0; i < separatedGraphs.Count; i++)
-                {
-                    separatedGraphs[i].TreeWidth(min, out ptds[i]);
-                }
-                PTD recombined = sep.RecombineTreeDecompositions(ptds);
-                recombined.Print();
-                Debug.Assert(debug.IsValidTreeDecomposition(recombined));
-                ;
-            }
+            /*
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
 
-            
             g.TreeWidth(0, out PTD output);
+
+            stopwatch.Stop();
+            Console.WriteLine("Time elapsed: {0}s", stopwatch.Elapsed);
 
             output.Print();
             Debug.Assert(debug.IsValidTreeDecomposition(output));
+            
+            if (!debug.IsValidTreeDecomposition(output))
+            {
+                Console.WriteLine("######################## tree decomposition is invalid #######################");
+            }
+            */
+
+            
+            SafeSeparator ss = new SafeSeparator(g);
+            foreach(BitSet candidate in ss.CandidateSeparators())
+            {
+                Console.WriteLine(candidate.ToString());
+            }
             
 
             /*
@@ -88,6 +113,7 @@ namespace Tamaki_Tree_Decomp
             tamaki.Print();
             */
 
+            /*
             bool testOwn = false;
             if (testOwn)
             {
@@ -96,6 +122,7 @@ namespace Tamaki_Tree_Decomp
                 Debug.Assert(g.IsValidTreeDecomposition(own));
                 own.Print();
             }
+            */
 
             Console.Read();
         }
