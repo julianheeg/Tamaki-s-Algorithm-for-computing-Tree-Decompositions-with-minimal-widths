@@ -118,15 +118,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <summary>
         /// determines the tree width of this graph
         /// </summary>
-        /// <param name="treeDecomp">the normalized canonical tree decomposition</param>
-        /// <returns>the tree width</returns>
+        /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph</param>
+        /// <returns>the graph's tree width</returns>
         public int TreeWidth(out PTD treeDecomp)
         {
             return TreeWidth(0, out treeDecomp);
         }
 
+        /// <summary>
+        /// determines the tree width of this graph while taking a known lower bound into account
+        /// </summary>
+        /// <param name="minK">the lower bound. Pass 0 if none is known.</param>
+        /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph</param>
+        /// <returns>the graph's tree width</returns>
         public int TreeWidth(int minK, out PTD treeDecomp)
         {
+            // TODO: return root with empty bag instead
             if (vertexCount == 0)
             {
                 treeDecomp = null;
@@ -239,15 +246,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             for (int i = 0; i < P.Count; i++)
             {
                 PTD Tau = P[i];
-
-                /*
-                // TODO: remove debug stuff
-                if (i > 5000)
-                {
-                    Console.WriteLine("P.Count > 5000. Stopping...");
-                    throw new Exception();
-                }
-                */
 
                 // --------- TODO: line 8 ----------
 

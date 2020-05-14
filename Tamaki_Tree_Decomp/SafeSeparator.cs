@@ -187,28 +187,127 @@ namespace Tamaki_Tree_Decomp
             return false;
         }
 
-        public IEnumerable<BitSet> CandidateSeparators()
+        #region heuristic safe separator search
+
+        /// <summary>
+        /// Tries to find a safe separator using heuristics. If so, the graph is split and the resulting
+        /// subgraphs and the reconstruction mappings are saved in the corresponding member variables.
+        /// </summary>
+        /// <returns>true iff a safe separator has been found</returns>
+        public bool HeuristicDecomposition()
         {
-            
-            foreach (BitSet candidate in HeuristicDecomposition(Heuristic.min_fill))
+            // consider all candidate separators
+            foreach (BitSet candidateSeparator in CandidateSeparators())
             {
-                yield return candidate;
+                if (IsSafeSeparator(candidateSeparator))
+                {
+                    throw new NotImplementedException();
+                }
             }
-            /*
-            foreach (BitSet candidate in HeuristicDecomposition(Heuristic.min_degree))
-            {
-                yield return candidate;
-            }
-            */
+            throw new NotImplementedException();
         }
 
+        private bool IsSafeSeparator(BitSet candidateSeparator)
+        {
+            bool isFirstComponent = true;
+
+            // try to find a contraction of each component where the candidate separator is a labelled minor
+            foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(candidateSeparator))
+            {
+                BitSet component = C_NC.Item1;
+
+                // test if only one component exists. In that case we don't have a safe separator
+                // the test ist done by testing if the union of the candidate and the component is equal to the entire vertex set
+                // needs to be tested only for the first component, obviously.
+                if (isFirstComponent)
+                {
+                    isFirstComponent = false;
+                    BitSet allTest = new BitSet(candidateSeparator);
+                    allTest.UnionWith(component);
+
+                    if (allTest.Equals(graph.allVertices))
+                    {
+                        return false;
+                    }
+                }
+
+                int restGraphSize = vertexCount - (int) component.Count();
+                List<int>[] adjacencyList = new List<int>[restGraphSize];
+                BitSet[] neighborSets = new BitSet[restGraphSize];
+
+                // map vertices from this graph to the graph without the component and vice versa
+                Dictionary<int, int> reductionMapping = new Dictionary<int, int>(restGraphSize);
+                int[] reconstructionMapping = new int[restGraphSize];
+                int counter = 0;
+                for (int u = 0; u < vertexCount; u++)
+                {
+                    if (!component[u])
+                    {
+                        reductionMapping[u] = counter;
+                        reconstructionMapping[counter] = u;
+                        counter++;
+                    }
+                }
+
+                // create new adjacency list for that graph
+                for (int u = 0; u < vertexCount; u++)
+                {
+                    if (!component[u])
+                    {
+                        int newVertex = reductionMapping[u];
+                        adjacencyList[newVertex] = new List<int>(this.adjacencyList[u].Count);
+                        foreach (int oldNeighbor in this.adjacencyList[u])
+                        {
+                            if (!component[oldNeighbor])
+                            {
+                                int newNeighbor = reductionMapping[oldNeighbor];
+                                adjacencyList[newVertex].Add(newNeighbor);
+                            }
+                        }
+
+                    }
+                }
+
+                // TODO: vorherige umwandlung einfach nur als Dictionary<int, List<int>> ??
+
+
+                throw new NotImplementedException();
+            }
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// finds candidate safe separators using every implemented heuristic
+        /// </summary>
+        /// <returns>an enumerable that lists candidate safe separators</returns>
+        public IEnumerable<BitSet> CandidateSeparators()
+        {
+            // loop over heuristics
+            foreach (Heuristic heuristic in Enum.GetValues(typeof(Heuristic)))
+            {
+                // return candidates one by one
+                foreach (BitSet candidate in CandidateSeparators(heuristic))
+                {
+                    yield return candidate;
+                }
+            }
+        }
+
+        /// <summary>
+        /// an enumeration of implemented heuristics for finding small tree decompositions
+        /// </summary>
         enum Heuristic
         {
             min_fill,
             min_degree
         }
 
-        private IEnumerable<BitSet> HeuristicDecomposition(Heuristic mode)
+        /// <summary>
+        /// finds candidate safe separators using a heuristic
+        /// </summary>
+        /// <param name="mode">the decomposition heuristic</param>
+        /// <returns>an enumerable that lists candidate safe separators</returns>
+        private IEnumerable<BitSet> CandidateSeparators(Heuristic mode)
         {
             // copy fields so that we can change them locally
             List<int>[] adjacencyList = new List<int>[vertexCount];
@@ -251,11 +350,20 @@ namespace Tamaki_Tree_Decomp
             }
         }
 
+        /// <summary>
+        /// finds the vertex with the lowest cost to remove from a graph with respect to a heuristic
+        /// </summary>
+        /// <param name="remaining">the vertices that aren't yet removed (as opposed to ones that have been removed in a previous iteration)</param>
+        /// <param name="adjacencyList">the adjacency list for the graph</param>
+        /// <param name="neighborSetsWithout">the open neighborhood sets for the graph</param>
+        /// <param name="mode">the decomposition heuristic</param>
+        /// <returns>the vertex with the lowest cost to remove from the graph with respect to the chosen decomposition heuristic</returns>
         private int FindMinCostVertex(BitSet remaining, List<int>[] adjacencyList, BitSet[] neighborSetsWithout, Heuristic mode)
         {
             List<int> remainingVertices = remaining.Elements();
             int min = int.MaxValue;
             int vmin = -1;
+
             switch (mode)
             {
                 case Heuristic.min_fill:
@@ -263,12 +371,7 @@ namespace Tamaki_Tree_Decomp
                     {
                         int fillEdges = 0;
                         BitSet neighbors = new BitSet(neighborSetsWithout[v]);
-
-                        // because we maintain the graph this should be the same
-                        BitSet debug = new BitSet(neighbors);
-                        debug.IntersectWith(remaining);
-                        Debug.Assert(neighbors.Equals(debug));
-
+                        
                         foreach (int neighbor in neighbors.Elements())
                         {
                             BitSet newEdges = new BitSet(neighbors);
@@ -285,12 +388,22 @@ namespace Tamaki_Tree_Decomp
                     return vmin;
 
                 case Heuristic.min_degree:
-                    throw new NotImplementedException();
+                    foreach (int v in remainingVertices)
+                    {
+                        if (adjacencyList[v].Count < min)
+                        {
+                            min = adjacencyList[v].Count;
+                            vmin = v;
+                        }
+                    }
+                    return vmin;
+
                 default:
                     throw new NotImplementedException();
             }
         }
 
+        #endregion
 
         /// <summary>
         /// recombines tree decompositions for the subgraphs into a tree decomposition for the original graph
