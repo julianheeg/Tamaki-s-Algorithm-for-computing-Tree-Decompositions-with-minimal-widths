@@ -510,6 +510,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
+        /// determines the neighbor set of a set of vertices
+        /// </summary>
+        /// <param name="vertexSet">the set of vertices</param>
+        /// <returns>the neighbor set of that set of vertices</returns>
+        public BitSet Neighbors(BitSet vertexSet)
+        {
+            BitSet result = new BitSet(vertexCount);
+            List<int> vertices = vertexSet.Elements();
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                result.UnionWith(neighborSetsWithout[vertices[i]]);
+            }
+            result.ExceptWith(vertexSet);
+            return result;
+        }
+
+        /// <summary>
         /// tests if a set of vertices is a minimal separator
         /// </summary>
         /// <param name="separator">the set of vertices to test</param>

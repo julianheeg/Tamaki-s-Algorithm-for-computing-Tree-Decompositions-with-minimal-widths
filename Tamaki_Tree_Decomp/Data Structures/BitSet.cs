@@ -197,7 +197,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
-        /*
         /// <summary>
         /// tests if this set is empty
         /// </summary>
@@ -211,7 +210,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return result;
         }
-        */
 
         /// <summary>
         /// counts the amount of items in this set
@@ -265,7 +263,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
-
+#if DEBUG
             // TODO: remove if assertion never fails
             int second = 32 * bytes.Length;
             for (int i = 0; i < bytes.Length; i++)
@@ -286,6 +284,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     break;
                 }
             }
+#endif
             Debug.Assert(first == second);
             return first;
         }

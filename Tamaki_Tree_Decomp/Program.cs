@@ -77,7 +77,7 @@ namespace Tamaki_Tree_Decomp
         static void Main(string[] args)
         {
             
-            string filepath = pace17_001;
+            string filepath = test_m3;
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
@@ -103,8 +103,13 @@ namespace Tamaki_Tree_Decomp
             SafeSeparator ss = new SafeSeparator(g);
             foreach(BitSet candidate in ss.CandidateSeparators())
             {
-                Console.WriteLine(candidate.ToString());
+                if (ss.IsSafeSeparator(candidate))
+                {
+                    Console.WriteLine("{0} is a safe separator", candidate);
+                    Console.Read();
+                }
             }
+            Console.WriteLine("test for safe separators concluded");
             
 
             /*
