@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
-    public class BitSet
+    public class BitSet : IEquatable<BitSet>
     {
         public readonly int[] bytes;
 
@@ -78,23 +78,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // unsafe because no check for index out of range is being made
             set
             {
-                // All of these options are adapted from https://stackoverflow.com/a/47990, but the first one seems to be slightly faster than the other two
-
-                // 1
+                // adapted from https://stackoverflow.com/a/47990
                 bytes[key / 32] ^= (-(value ? 1 : 0) ^ bytes[key / 32]) & (1 << (key % 32));
-
-                // 2                
-                // if (value)
-                // {
-                //     bits[key / 32] |= 1 << (key % 32);
-                // }
-                // else
-                // {
-                //     bits[key / 32] &= ~(1 << (key % 32));
-                // }
-                
-                // 3
-                // bits[key/32] = bits[key/32] & ~(1 << (key%32)) | ((value ? 1 : 0) << (key%32));
             }
         }
 
@@ -284,8 +269,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     break;
                 }
             }
-#endif
             Debug.Assert(first == second);
+#endif
             return first;
         }
 
@@ -318,6 +303,16 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 complement.bytes[i] = ~complement.bytes[i];
             }
             return complement;
+        }
+
+        /// <summary>
+        /// tests if this set intersects the other set, i.e. there are bits in this set that are also set in the other set
+        /// </summary>
+        /// <param name="vs2">the other set</param>
+        /// <returns>true, iff an element exists that is in both sets</returns>
+        public bool Intersects(BitSet vs2)
+        {
+            return IsDisjoint(vs2) && !IsEmpty() && !vs2.IsEmpty();
         }
 
         /*

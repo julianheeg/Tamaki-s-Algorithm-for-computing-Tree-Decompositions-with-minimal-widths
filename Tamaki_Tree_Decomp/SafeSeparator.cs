@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Tamaki_Tree_Decomp.Data_Structures;
 
 namespace Tamaki_Tree_Decomp
@@ -39,22 +40,34 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true iff a separation has been performed</returns>
         public bool Separate(out List<Graph> separatedGraphs, ref int minK)
         {
-
-            bool result = Size2Separate();
-            if (result)
+            
+            if (Size2Separate() || HeuristicDecomposition())
+            {
+                PrintSeparation();
+                separatedGraphs = subGraphs;
+                if (minK < separatorSize)
+                {
+                    minK = separatorSize;
+                }
+                return true;
+            }
+            /*
+            else if (HeuristicDecomposition())
             {
                 separatedGraphs = subGraphs;
                 if (minK < separatorSize)
                 {
                     minK = separatorSize;
                 }
+                return true;
             }
-            else
-            {
-                separatedGraphs = null;
-            }
-            return result;
+            */
+
+            separatedGraphs = null;
+            return false;
         }
+
+        #region exact safe separator search
 
         /// <summary>
         /// Tests if the graph can be separated with a separator of size 2. If so, the graph is split and the
@@ -80,96 +93,16 @@ namespace Tamaki_Tree_Decomp
                         this.separator = separator;
                         separatorSize = 2;
 
-                        List<int>[] adjacencyList = new List<int>[vertexCount];
-                        BitSet[] neighborSetsWithout = new BitSet[vertexCount];
-                        for (int i = 0; i < vertexCount; i++)
-                        {
-                            adjacencyList[i] = new List<int>(graph.adjacencyList[i]);
-                            neighborSetsWithout[i] = new BitSet(graph.neighborSetsWithout[i]);
-                        }
+                        CopyGraph(out List<int>[] adjacencyList, out BitSet[] neighborSetsWithout);
 
-                        // complete the separator into a clique
-                        if (!neighborSetsWithout[u][v])
-                        {
-                            neighborSetsWithout[u][v] = true;
-                            neighborSetsWithout[v][u] = true;
-                            adjacencyList[u].Add(v);
-                            adjacencyList[v].Add(u);
-                        }
+                        MakeSeparatorIntoClique(new List<int> { u, v }, adjacencyList, neighborSetsWithout);
 
                         // divide the graph into subgraphs for each component
                         foreach (BitSet component in components)
                         {
-                            List<int> vertices = component.Elements();
-                            component.UnionWith(separator);
-
-                            // map vertices from this graph to the new subgraph and vice versa
-                            Dictionary<int, int> reductionMapping = new Dictionary<int, int>(vertices.Count + 2);
-                            int[] reconstructionMapping = new int[vertices.Count + 2];
-                            reconstructionMappings.Add(reconstructionMapping);
-                            for (int i = 0; i < vertices.Count; i++)
-                            {
-                                reductionMapping[vertices[i]] = i;
-                                reconstructionMapping[i] = vertices[i];
-                            }
-                            // don't forget the separator
-                            reductionMapping[u] = vertices.Count;
-                            reconstructionMapping[vertices.Count] = u;
-                            reductionMapping[v] = vertices.Count + 1;
-                            reconstructionMapping[vertices.Count + 1] = v;
-
-                            // create new adjacency list
-                            List<int>[] subAdjacencyList = new List<int>[vertices.Count + 2];
-                            for (int i = 0; i < vertices.Count; i++)
-                            {
-                                int oldVertex = vertices[i];
-                                int newVertex = reductionMapping[oldVertex];
-                                subAdjacencyList[newVertex] = new List<int>(adjacencyList[oldVertex].Count);
-                                foreach (int oldNeighbor in adjacencyList[oldVertex])
-                                {
-                                    int newNeighbor = reductionMapping[oldNeighbor];
-                                    subAdjacencyList[newVertex].Add(newNeighbor);
-                                }
-                            }
-                            // also for u ...
-                            subAdjacencyList[vertices.Count] = new List<int>();
-                            foreach(int oldNeighbor in adjacencyList[u])
-                            {
-                                if (component[oldNeighbor])
-                                {
-                                    int newNeighbor = reductionMapping[oldNeighbor];
-                                    subAdjacencyList[vertices.Count].Add(newNeighbor);
-                                }
-                            }
-                            // ... and for v
-                            subAdjacencyList[vertices.Count + 1] = new List<int>();
-                            foreach (int oldNeighbor in adjacencyList[v])
-                            {
-                                if (component[oldNeighbor])
-                                {
-                                    int newNeighbor = reductionMapping[oldNeighbor];
-                                    subAdjacencyList[vertices.Count + 1].Add(newNeighbor);
-                                }
-                            }
-
-                            // create graph
-                            subGraphs.Add(new Graph(subAdjacencyList));
+                            BuildSubgraph(new List<int> { u, v }, adjacencyList, component);
                         }
 
-                        int maxVertices = 0;
-                        int maxEdges = 0;
-                        foreach (Graph subgraph in subGraphs)
-                        {
-                            if (subgraph.vertexCount > maxVertices)
-                            {
-                                maxVertices = subgraph.vertexCount;
-                            }
-                            if (subgraph.edgeCount > maxEdges)
-                            {
-                                maxEdges = subgraph.edgeCount;
-                            }
-                        }
-                        Console.WriteLine("splitted graph with {0} vertices and {1} edges into {2} smaller graphs with at most {3} vertices and {4} edges", graph.vertexCount, graph.edgeCount, subGraphs.Count, maxVertices, maxEdges);
                         return true;
                     }
 
@@ -183,6 +116,8 @@ namespace Tamaki_Tree_Decomp
             return false;
         }
 
+        #endregion
+
         #region heuristic safe separator search
 
         /// <summary>
@@ -192,24 +127,30 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true iff a safe separator has been found</returns>
         public bool HeuristicDecomposition()
         {
-            HashSet<BitSet> testedCandidates = new HashSet<BitSet>();
-
             // consider all candidate separators
             foreach (BitSet candidateSeparator in CandidateSeparators())
             {
-                if (!testedCandidates.Contains(candidateSeparator))
+                if (IsSafeSeparator(candidateSeparator))
                 {
-                    if (IsSafeSeparator(candidateSeparator))
+                    separator = candidateSeparator;
+                    List<int> separatorVertices = separator.Elements();
+                    separatorSize = separatorVertices.Count;
+
+                    CopyGraph(out List<int>[] adjacencyList, out BitSet[] neighborSetsWithout);
+
+                    MakeSeparatorIntoClique(separatorVertices, adjacencyList, neighborSetsWithout);
+
+                    foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(separator))
                     {
-                        throw new NotImplementedException();
+                        BitSet component = C_NC.Item1;
+                        BuildSubgraph(separatorVertices, adjacencyList, component);
                     }
-                    else
-                    {
-                        testedCandidates.Add(candidateSeparator);
-                    }
+
+                    return true;
                 }
+
             }
-            throw new NotImplementedException();
+            return false;
         }
 
         private static readonly int MAX_MISSINGS = 100;
@@ -270,50 +211,7 @@ namespace Tamaki_Tree_Decomp
                 if (!FindCliqueMinor(sep, rest))
                 {
                     return false;
-                }
-                
-
-                /*                
-                // TODO: vorherige umwandlung einfach nur als Dictionary<int, List<int>> ??
-
-                int restGraphSize = vertexCount - (int) component.Count();
-                List<int>[] adjacencyList = new List<int>[restGraphSize];
-                BitSet[] neighborSets = new BitSet[restGraphSize];
-
-                // map vertices from this graph to the graph without the component and vice versa
-                Dictionary<int, int> reductionMapping = new Dictionary<int, int>(restGraphSize);
-                int[] reconstructionMapping = new int[restGraphSize];
-                int counter = 0;
-                for (int u = 0; u < vertexCount; u++)
-                {
-                    if (!component[u])
-                    {
-                        reductionMapping[u] = counter;
-                        reconstructionMapping[counter] = u;
-                        counter++;
-                    }
-                }
-
-                // create new adjacency list for that graph
-                for (int u = 0; u < vertexCount; u++)
-                {
-                    if (!component[u])
-                    {
-                        int newVertex = reductionMapping[u];
-                        adjacencyList[newVertex] = new List<int>(this.adjacencyList[u].Count);
-                        foreach (int oldNeighbor in this.adjacencyList[u])
-                        {
-                            if (!component[oldNeighbor])
-                            {
-                                int newNeighbor = reductionMapping[oldNeighbor];
-                                adjacencyList[newVertex].Add(newNeighbor);
-                            }
-                        }
-
-                    }
-                }
-                */
-                
+                }                
             }
 
             return true;
@@ -360,7 +258,7 @@ namespace Tamaki_Tree_Decomp
                                 while (true)
                                 {
                                     BitSet ns = graph.Neighbors(vs);
-                                    if (!ns.IsDisjoint(vs2))
+                                    if (ns.Intersects(vs2))
                                     {
                                         coveringPair = (right1, right2);
                                         return true;
@@ -368,7 +266,7 @@ namespace Tamaki_Tree_Decomp
                                     ns.IntersectWith(available);
                                     if (ns.IsEmpty())
                                     {
-                                        continue;
+                                        break;
                                     }
                                     vs.UnionWith(ns);
                                 }
@@ -390,6 +288,11 @@ namespace Tamaki_Tree_Decomp
                     }
                 }
                 return false;
+            }
+
+            public override string ToString()
+            {
+                return String.Format("({0},{1}), unaugmentable = {2}", left1 + 1, left2 + 1, unAugmentable);
             }
         }
 
@@ -420,6 +323,11 @@ namespace Tamaki_Tree_Decomp
             internal bool FinallyCovers(Edge edge)
             {
                 return assignedTo == edge.left1 && neighborSet[edge.left2] || assignedTo == edge.left2 && neighborSet[edge.left1];
+            }
+
+            public override string ToString()
+            {
+                return String.Format("vertices: {{{0}}}, neighbors: {{{1}}}, assigned to: {2}", vertexSet.ToString(), neighborSet.ToString(), assignedTo + 1);
             }
         }
 
@@ -469,11 +377,11 @@ namespace Tamaki_Tree_Decomp
 
             for (int i = 0; i < neighbors.Count; i++)
             {
-                if (graph.adjacencyList[neighbors[i]].Length == 1)
+                int v = neighbors[i];
+                if (graph.adjacencyList[v].Length == 1)
                 {
                     continue;
                 }
-                int v = neighbors[i];
                 bool useless = true;
                 for (int j = 0; j < missingEdges.Count; j++)
                 {
@@ -505,6 +413,10 @@ namespace Tamaki_Tree_Decomp
                 if (zeroCoveredEdge.FindCoveringPair(rightNodes, available, graph, out (RightNode, RightNode) coveringPair))
                 {
                     MergeRightNodes(coveringPair, rightNodes, available, graph);
+                }
+                else
+                {
+                    return false;
                 }
 
                 steps++;
@@ -699,10 +611,18 @@ namespace Tamaki_Tree_Decomp
             List<BitSet> layerList = new List<BitSet>();
 
             BitSet vs = new BitSet(vs1);
+            int counter = 0;
             while (true)
             {
+                // TODO: remove debug stuff
+                counter++;
+                if (counter > 50)
+                {
+                    throw new Exception("Possibly infinite loop in MergeRightNodes detected.");
+                }
+
                 BitSet ns = graph.Neighbors(vs);
-                if (!ns.IsDisjoint(vs2))
+                if (ns.Intersects(vs2))
                 {
                     break;
                 }
@@ -760,6 +680,124 @@ namespace Tamaki_Tree_Decomp
             return false;
         }
 
+        /// <summary>
+        /// finds candidate safe separators using a heuristic. This is Tamaki's code.
+        /// </summary>
+        /// <param name="mode"></param>
+        /// <returns></returns>
+        private List<BitSet> Tamaki_CandidateSeparators(Heuristic mode)
+        {
+            // code adapted from https://github.com/TCS-Meiji/PACE2017-TrackA/blob/master/tw/exact/GreedyDecomposer.java
+
+            List<BitSet> separators = new List<BitSet>();
+
+            // ----- lines 62 to 64 -----
+
+            // copy fields so that we can change them locally
+            List<int>[] adjacencyList = new List<int>[vertexCount];
+            BitSet[] neighborSetsWithout = new BitSet[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                adjacencyList[i] = new List<int>(graph.adjacencyList[i]);
+                neighborSetsWithout[i] = new BitSet(graph.neighborSetsWithout[i]);
+            }
+
+            List<BitSet> frontier = new List<BitSet>();
+            BitSet remaining = BitSet.All(vertexCount);
+
+            // ----- lines 66 to 80 -----
+
+            while (!remaining.IsEmpty())
+            {
+                // ----- lines 67 to 80 -----
+
+                int vmin = FindMinCostVertex(remaining, adjacencyList, neighborSetsWithout, mode);
+
+                // ----- line 82 -----
+
+                List<BitSet> joined = new List<BitSet>();
+
+                // lines 84 and 85 -----
+
+                BitSet toBeAclique = new BitSet(vertexCount);
+                toBeAclique[vmin] = true;
+
+                // ----- lines 87 to 93 -----
+
+                foreach (BitSet s in frontier)
+                {
+                    if (s[vmin])
+                    {
+                        joined.Add(s);
+                        toBeAclique.UnionWith(s);
+                    }
+                }
+
+                // ----- lines 97 to 119 -----
+
+                if (joined.Count == 0)
+                {
+                    toBeAclique[vmin] = true;
+                }
+                else if (joined.Count == 1)
+                {
+                    BitSet uniqueSeparator = joined[0];
+                    BitSet test = new BitSet(neighborSetsWithout[vmin]);
+                    test.IntersectWith(remaining);
+                    if (uniqueSeparator.IsSuperset(test))
+                    {
+                        uniqueSeparator[vmin] = false;
+                        if (uniqueSeparator.IsEmpty())
+                        {
+                            separators.Remove(uniqueSeparator);     // TODO: is it correct that BitSet implements the IEquatable<T> interface, causing
+                                                                    // the equals() method to be called? equals() is not overridden in Tamaki's code, so this may be wrong?
+
+                            frontier.Remove(uniqueSeparator);
+                        }
+                        remaining[vmin] = false;
+                        continue;
+                    }
+                }
+
+                // ----- line 121 -----
+
+                BitSet temp = new BitSet(neighborSetsWithout[vmin]);
+                temp.IntersectWith(remaining);
+                toBeAclique.UnionWith(temp);
+
+                // ----- line 129 -----
+
+                MakeSeparatorIntoClique(toBeAclique.Elements(), adjacencyList, neighborSetsWithout);
+
+                // ----- lines 131 and 132 -----
+                BitSet sep = new BitSet(toBeAclique);
+                sep[vmin] = false;
+
+                // ----- lines 134 to 147 -----
+
+                if (!sep.IsEmpty())
+                {
+                    BitSet separator = new BitSet(sep);
+                    separators.Add(separator);
+                    
+                    frontier.Add(separator);
+                }
+
+                // ----- lines 153 to 161 -----
+                foreach (BitSet s in joined)
+                {
+                    Debug.Assert(!s.IsEmpty());
+                    
+                    frontier.Remove(s);
+                }
+                remaining[vmin] = false;
+            }
+
+            // TODO: CRITICAL???? set width  ###########################################################################################################################################
+
+            return separators;
+        }
+
         #endregion
 
         /// <summary>
@@ -768,16 +806,19 @@ namespace Tamaki_Tree_Decomp
         /// <returns>an enumerable that lists candidate safe separators</returns>
         public IEnumerable<BitSet> CandidateSeparators()
         {
-            // TODO: test if a candidate has been produced by another heuristic before
-            // TODO: perhaps interleave heuristics
+            HashSet<BitSet> tested = new HashSet<BitSet>();
 
             // loop over heuristics
             foreach (Heuristic heuristic in Enum.GetValues(typeof(Heuristic)))
             {
                 // return candidates one by one
-                foreach (BitSet candidate in CandidateSeparators(heuristic))
+                foreach (BitSet candidate in Tamaki_CandidateSeparators(heuristic))
                 {
-                    yield return candidate;
+                    if (!tested.Contains(candidate))
+                    {
+                        yield return candidate;
+                        tested.Add(candidate);
+                    }
                 }
             }
         }
@@ -809,15 +850,24 @@ namespace Tamaki_Tree_Decomp
 
             BitSet remaining = BitSet.All(vertexCount);
 
-
-            for (int i = 0; i < vertexCount; i++)
+            // only to vertexCount - 1 because the empty set is trivially a safe separator
+            for (int i = 0; i < vertexCount - 1; i++)
             {
                 int min = FindMinCostVertex(remaining, adjacencyList, neighborSetsWithout, mode);
 
                 // TODO: separator might be wrong #################################################################################################################
                 // TODO: add minK parameter and stop once a separator is too big (perhaps low can be used for that, but it is usually used a bit differently)
+
+                //BitSet result = new BitSet(neighborSetsWithout[min]);
+
+                
+                // weird outlet computation, but it should work
                 BitSet result = new BitSet(neighborSetsWithout[min]);
                 result[min] = true;
+                result = graph.Neighbors(result);
+                result = graph.Neighbors(result);
+                result.IntersectWith(neighborSetsWithout[min]);
+                
                 yield return result;
                 // ################################################################################################################################################
 
@@ -901,6 +951,8 @@ namespace Tamaki_Tree_Decomp
 
         #endregion
 
+        #region recombination
+
         /// <summary>
         /// recombines tree decompositions for the subgraphs into a tree decomposition for the original graph
         /// </summary>
@@ -951,5 +1003,141 @@ namespace Tamaki_Tree_Decomp
 
             return ptds[0];
         }
+
+        #endregion
+
+        #region utility
+
+        /// <summary>
+        /// makes a copy of the graph's adjacency list and open neighborhood list
+        /// </summary>
+        /// <param name="adjacencyList">the adjacency list</param>
+        /// <param name="neighborSetsWithout">the open neighborhoods for each vertex</param>
+        private void CopyGraph(out List<int>[] adjacencyList, out BitSet[] neighborSetsWithout)
+        {
+            adjacencyList = new List<int>[vertexCount];
+            neighborSetsWithout = new BitSet[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                adjacencyList[i] = new List<int>(graph.adjacencyList[i]);
+                neighborSetsWithout[i] = new BitSet(graph.neighborSetsWithout[i]);
+            }
+        }
+
+        /// <summary>
+        /// adds edges such that a separator becomes a clique in the graph given as an adjacency list
+        /// </summary>
+        /// <param name="separatorVertices">a list of vertices in the separator</param>
+        /// <param name="adjacencyList">the graph given as an adjacency list</param>
+        /// <param name="neighborSetsWithout">the open neighborhoods of that graph</param>
+        private static void MakeSeparatorIntoClique(List<int> separatorVertices, List<int>[] adjacencyList, BitSet[] neighborSetsWithout)
+        {
+            for (int i = 0; i < separatorVertices.Count; i++)
+            {
+                int u = separatorVertices[i];
+                for (int j = i + 1; j < separatorVertices.Count; j++)
+                {
+                    int v = separatorVertices[j];
+
+                    if (!neighborSetsWithout[u][v])
+                    {
+                        neighborSetsWithout[u][v] = true;
+                        neighborSetsWithout[v][u] = true;
+                        adjacencyList[u].Add(v);
+                        adjacencyList[v].Add(u);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// builds the induced subgraph consisting of the vertices in the component and the separator vertices using the given adjacency list. It is then appended to the subgraphs list.
+        /// </summary>
+        /// <param name="separatorVertices">a list of the vertices in the separator</param>
+        /// <param name="adjacencyList">the adjacency list</param>
+        /// <param name="component">the component</param>
+        private void BuildSubgraph(List<int> separatorVertices, List<int>[] adjacencyList, BitSet component)
+        {
+            List<int> vertices = component.Elements();
+            component.UnionWith(separator);
+
+            // map vertices from this graph to the new subgraph and vice versa
+            Dictionary<int, int> reductionMapping = new Dictionary<int, int>(vertices.Count + separatorSize);
+            int[] reconstructionMapping = new int[vertices.Count + separatorSize];
+            reconstructionMappings.Add(reconstructionMapping);
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                reductionMapping[vertices[i]] = i;
+                reconstructionMapping[i] = vertices[i];
+            }
+
+            // don't forget the separator
+            for (int i = 0; i < separatorSize; i++)
+            {
+                int u = separatorVertices[i];
+                reductionMapping[u] = vertices.Count + i;
+                reconstructionMapping[vertices.Count + i] = u;
+            }
+
+            // create new adjacency list
+            List<int>[] subAdjacencyList = new List<int>[vertices.Count + separatorSize];
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                int oldVertex = vertices[i];
+                int newVertex = reductionMapping[oldVertex];
+                subAdjacencyList[newVertex] = new List<int>(adjacencyList[oldVertex].Count);
+                foreach (int oldNeighbor in adjacencyList[oldVertex])
+                {
+                    int newNeighbor = reductionMapping[oldNeighbor];
+                    subAdjacencyList[newVertex].Add(newNeighbor);
+                }
+            }
+
+            // also for the separator
+            for (int i = 0; i < separatorSize; i++)
+            {
+                int u = separatorVertices[i];
+                subAdjacencyList[vertices.Count + i] = new List<int>();
+                foreach (int oldNeighbor in adjacencyList[u])
+                {
+                    if (component[oldNeighbor])
+                    {
+                        int newNeighbor = reductionMapping[oldNeighbor];
+                        subAdjacencyList[vertices.Count + i].Add(newNeighbor);
+                    }
+                }
+            }
+
+            // create graph
+            subGraphs.Add(new Graph(subAdjacencyList));
+        }
+
+        #endregion
+
+        #region debug
+
+        /// <summary>
+        /// prints into how many subgraphs the graph has been separated. The vertex and edge counts of the graph and of the largest subgraph are also printed.
+        /// </summary>
+        [Conditional("DEBUG")]
+        private void PrintSeparation()
+        {
+            int maxVertices = 0;
+            int maxEdges = 0;
+            foreach (Graph subgraph in subGraphs)
+            {
+                if (subgraph.vertexCount > maxVertices)
+                {
+                    maxVertices = subgraph.vertexCount;
+                }
+                if (subgraph.edgeCount > maxEdges)
+                {
+                    maxEdges = subgraph.edgeCount;
+                }
+            }
+            Console.WriteLine("splitted graph with {0} vertices and {1} edges into {2} smaller graphs with at most {3} vertices and {4} edges", graph.vertexCount, graph.edgeCount, subGraphs.Count, maxVertices, maxEdges);
+        }
+
+        #endregion
     }
 }

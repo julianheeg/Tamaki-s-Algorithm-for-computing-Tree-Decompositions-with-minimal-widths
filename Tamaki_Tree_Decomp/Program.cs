@@ -37,6 +37,8 @@ namespace Tamaki_Tree_Decomp
         static readonly string test_a9 = "Test Data\\cycle_line.gr";
         static readonly string test_tr0 = "Test Data\\tree.gr";
 
+        static readonly string test_ss0 = "Test Data\\cliques_4_3_4.gr";
+
 
         static readonly string test_s0 = "Test Data\\s0_fuzix_clock_settime_clock_settime.gr";
         static readonly string test_s1 = "Test Data\\s1_fuzix_clock_settime_clock_settime.gr";
@@ -77,11 +79,11 @@ namespace Tamaki_Tree_Decomp
         static void Main(string[] args)
         {
             
-            string filepath = test_m3;
+            string filepath = pace17_001;
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
-            /*
+            
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
@@ -97,20 +99,21 @@ namespace Tamaki_Tree_Decomp
             {
                 Console.WriteLine("######################## tree decomposition is invalid #######################");
             }
-            */
+                        
 
-            
+            /*
             SafeSeparator ss = new SafeSeparator(g);
             foreach(BitSet candidate in ss.CandidateSeparators())
             {
+                Console.WriteLine("currently testing {0}", candidate);
                 if (ss.IsSafeSeparator(candidate))
                 {
                     Console.WriteLine("{0} is a safe separator", candidate);
-                    Console.Read();
+                    //Console.Read();
                 }
             }
             Console.WriteLine("test for safe separators concluded");
-            
+            */
 
             /*
             PTD tamaki = PTD.ImportPTD("Test Data\\test decomps\\Tamaki_NauruGraph.td");
