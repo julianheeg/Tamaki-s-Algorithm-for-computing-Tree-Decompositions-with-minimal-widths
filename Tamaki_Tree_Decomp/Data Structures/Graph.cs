@@ -148,6 +148,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
 
             // TODO: use previous reductions, not make an entirely new one each time
+            // TODO: when finding all clique/almost-clique separators, only do that once
             List<GraphReduction> reductions = new List<GraphReduction>();
             Graph reducedGraph = this;
             while (minK < vertexCount - 1)
@@ -826,78 +827,58 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// possibly very naive way of recalculating the inlet and outlet of a PTD
+        /// determines the outlet of a PTD with a given bag as the root node and a given vertex set
         /// </summary>
-        public void RecalculateInletAndOutlet(PTD ptd)
+        /// <param name="bag">the PTD's root bag</param>
+        /// <param name="vertices">the PTD's vertex set</param>
+        /// <returns>the outlet of the PTD</returns>
+        public BitSet Outlet(BitSet bag, BitSet vertices)
         {
-            BitSet outlet = ptd.outlet;
-            BitSet inlet = ptd.inlet;
+            /*
+            // create neighbor set
+            List<int> elements = bag.Elements();
+            BitSet bitSet = new BitSet(vertexCount);
+            for (int i = 0; i < elements.Count; i++)
+            {
+                bitSet.UnionWith(neighborSetsWithout[elements[i]]);
+            }
+            bitSet.ExceptWith(vertices);
 
-            // TODO: not the naive way. Look at what changes and calculate inlet and outlet directly
+            // create outlet
+            elements = bitSet.Elements();
+            bitSet.Clear();
+            for (int i = 0; i < elements.Count; i++)
+            {
+                bitSet.UnionWith(neighborSetsWithout[elements[i]]);
+            }
+            bitSet.IntersectWith(vertices);
+            return bitSet;
+            */
             
-            // inlets of children are also inlet of ptd
-            // TODO: possibly unnecessary
-            for (int i = 0; i < ptd.children.Count; i++)
+            // create neighbor set            
+            BitSet neighbors = new BitSet(vertexCount);
+            int pos = -1;
+            while((pos = bag.NextElement(pos)) != -1)
             {
-                inlet.UnionWith(ptd.children[i].inlet);
+                neighbors.UnionWith(neighborSetsWithout[pos]);
             }
+            neighbors.ExceptWith(vertices);
 
-            List<int> X_r = ptd.Bag.Elements();
-            for (int i = 0; i < X_r.Count; i++)
+            // create outlet
+            BitSet outlet = new BitSet(vertexCount);
+            pos = -1;
+
+            while ((pos = neighbors.NextElement(pos)) != -1)
             {
-                int v = X_r[i];
-
-                // v is in the outlet iff there exists an edge from v to a vertex that is neither in the inlet nor in the bag
-                bool isInOutlet = false;
-                for (int j = 0; j < adjacencyList[v].Length; j++)
-                {
-                    int neighbor = adjacencyList[v][j];
-                    if (!ptd.vertices[neighbor])
-                    {
-                        isInOutlet = true;
-                        outlet[v] = true;
-                        break;
-                    }
-                }
-                if (!isInOutlet)
-                {
-                    inlet[v] = true;
-                    outlet[v] = false;
-                }
+                outlet.UnionWith(neighborSetsWithout[pos]);
             }
+            outlet.IntersectWith(vertices);
 
-            // TODO: remove the rest here. It's just for assertion
-            Debug.Assert(inlet.IsDisjoint(outlet));
-
-            List<int> vertices = ptd.vertices.Elements();
-            for (int i = 0; i < vertices.Count; i++)
-            {
-                int u = vertices[i];
-                if (inlet[u])
-                {
-                    for(int j = 0; j < adjacencyList[u].Length; j++)
-                    {
-                        int v = adjacencyList[u][j];
-                        Debug.Assert(ptd.vertices[v]);
-                    }
-                }
-                else
-                {
-                    Debug.Assert(outlet[u]);
-                    bool isInOutlet = false;
-                    for (int j = 0; j < adjacencyList[u].Length; j++)
-                    {
-                        int v = adjacencyList[u][j];
-                        if (!ptd.vertices[v])
-                        {
-                            isInOutlet = true;
-                            break;
-                        }
-                    }
-                    Debug.Assert(isInOutlet);
-                }
-            }
+            return outlet;
+            
         }
+
+        #region debug
 
         /// <summary>
         /// tests whether a given ptd is consistent
@@ -1082,5 +1063,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
+        #endregion
     }
 }

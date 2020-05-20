@@ -9,13 +9,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 {
     public class BitSet : IEquatable<BitSet>
     {
-        public readonly int[] bytes;
+        private int[] bytes;
 
         /// <summary>
         /// constructs a BitSet of the given length
         /// </summary>
         /// <param name="length">the number of entries</param>
-        //TODO: use length from a cache that's accessible from everywhere?
         public BitSet(int length)
         {
             bytes = new int[(length + 31) / 32];
@@ -112,8 +111,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return setBits;
         }
-        
-
+       
         /// <summary>
         /// tests if this set is a superset of the other set
         /// </summary>
@@ -274,6 +272,38 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return first;
         }
 
+        static uint currentByte = 0;
+        static int currentPos = -1;
+        public int NextElement(int pos)
+        {
+            for (int i = pos / 32; i < bytes.Length; i++)
+            {
+                if (pos == -1 || currentPos / 32 < i)
+                {
+                    currentByte = (uint) bytes[i];
+                }
+                if (currentByte != 0)
+                {
+                    /*
+                    v |= v >> 1; // first round down to one less than a power of 2 
+                    v |= v >> 2;
+                    v |= v >> 4;
+                    v |= v >> 8;
+                    v |= v >> 16;
+
+                    first = i * 32 + MultiplyDeBruijnBitPosition[((uint)((v & -v) * 0x077CB531U)) >> 27];
+                    break;
+                    */
+                    int first = i * 32 + Mod37BitPosition[(-currentByte & currentByte) % 37];
+                    currentByte &= ~(1U << first);
+                    currentPos = first;
+                    return first;
+                }
+            }
+            return -1;
+        }
+       
+
         /// <summary>
         /// determines wether this and the other set are disjoint
         /// </summary>
@@ -313,6 +343,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public bool Intersects(BitSet vs2)
         {
             return IsDisjoint(vs2) && !IsEmpty() && !vs2.IsEmpty();
+        }
+
+        /// <summary>
+        /// removes all elements from this set
+        /// </summary>
+        public void Clear()
+        {
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = 0;
+            }
         }
 
         /*

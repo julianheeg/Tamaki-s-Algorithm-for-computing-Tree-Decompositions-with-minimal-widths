@@ -102,15 +102,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             bag.UnionWith(Tau.outlet);
             List<PTD> children = new List<PTD>(Tau_prime.children);
             children.Add(Tau);
+            BitSet vertices = new BitSet(Tau_prime.vertices);
+            vertices.UnionWith(Tau.vertices);
 
+            /*
             BitSet inlet = new BitSet(Tau_prime.inlet);
             inlet.UnionWith(Tau.inlet);
             BitSet outlet = new BitSet(Tau_prime.outlet);
-            BitSet vertices = new BitSet(Tau_prime.vertices);
-            vertices.UnionWith(Tau.vertices);
             PTD result = new PTD(bag, vertices, outlet, inlet, children);
             graph.RecalculateInletAndOutlet(result);
             result.AssertVerticesCorrect();
+            */
+            BitSet outlet = graph.Outlet(bag, vertices);
+            BitSet inlet = new BitSet(vertices);
+            inlet.ExceptWith(outlet);
+            PTD result = new PTD(bag, vertices, outlet, inlet, children);
+
             return result;
         }
 
@@ -119,16 +126,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             BitSet bag = new BitSet(vNeighbors);
             List<PTD> children = new List<PTD>(Tau_wiggle.children);
-
-            // TODO: correct calculation of inlet and outlet? perhaps not
-            BitSet inlet = new BitSet(Tau_wiggle.inlet);
-            BitSet outlet = new BitSet(bag);
             BitSet vertices = new BitSet(Tau_wiggle.vertices);
             vertices.UnionWith(vNeighbors);
 
+            /*
+            // TODO: correct calculation of inlet and outlet? perhaps not
+            BitSet inlet = new BitSet(Tau_wiggle.inlet);
+            BitSet outlet = new BitSet(bag);
             PTD result = new PTD(bag, vertices, outlet, inlet, children);
             graph.RecalculateInletAndOutlet(result);
             result.AssertVerticesCorrect();
+            */
+
+            BitSet outlet = graph.Outlet(bag, vertices);
+            BitSet inlet = new BitSet(vertices);
+            inlet.ExceptWith(outlet);
+            PTD result = new PTD(bag, vertices, outlet, inlet, children);
+
             return result;
         }
 
@@ -137,16 +151,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             Debug.Assert(newRoot.IsSuperset(Tau_wiggle.Bag));
             BitSet bag = newRoot;
-          
-            BitSet outlet = new BitSet(Tau_wiggle.outlet);
-            BitSet inlet = new BitSet(Tau_wiggle.inlet);
             BitSet vertices = new BitSet(Tau_wiggle.vertices);
             vertices.UnionWith(newRoot);
             List<PTD> children = new List<PTD>(Tau_wiggle.children);
 
+            /*
+            BitSet outlet = new BitSet(Tau_wiggle.outlet);
+            BitSet inlet = new BitSet(Tau_wiggle.inlet);
             PTD result = new PTD(bag, vertices, outlet, inlet, children);
             graph.RecalculateInletAndOutlet(result);
             result.AssertVerticesCorrect();
+            */
+
+            BitSet outlet = graph.Outlet(bag, vertices);
+            BitSet inlet = new BitSet(vertices);
+            inlet.ExceptWith(outlet);
+            PTD result = new PTD(bag, vertices, outlet, inlet, children);
+
             return result;
         }
 

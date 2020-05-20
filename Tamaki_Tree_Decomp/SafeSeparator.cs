@@ -41,7 +41,7 @@ namespace Tamaki_Tree_Decomp
         public bool Separate(out List<Graph> separatedGraphs, ref int minK)
         {
             
-            if (Size2Separate() || HeuristicDecomposition())
+            if (Size2Separate())
             {
                 PrintSeparation();
                 separatedGraphs = subGraphs;
@@ -51,17 +51,16 @@ namespace Tamaki_Tree_Decomp
                 }
                 return true;
             }
-            /*
             else if (HeuristicDecomposition())
             {
+                PrintSeparation();
                 separatedGraphs = subGraphs;
-                if (minK < separatorSize)
+                if (minK < separatorSize - 1)
                 {
-                    minK = separatorSize;
+                    minK = separatorSize - 1;   // TODO: correct?
                 }
                 return true;
             }
-            */
 
             separatedGraphs = null;
             return false;
