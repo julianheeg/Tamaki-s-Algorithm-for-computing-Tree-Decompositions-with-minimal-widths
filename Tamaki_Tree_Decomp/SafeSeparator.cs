@@ -49,6 +49,7 @@ namespace Tamaki_Tree_Decomp
                 {
                     minK = separatorSize;
                 }
+                Console.WriteLine("size 2 separator found: {0}", separator.ToString());
                 return true;
             }
             else if (HeuristicDecomposition())
@@ -59,6 +60,7 @@ namespace Tamaki_Tree_Decomp
                 {
                     minK = separatorSize - 1;   // TODO: correct?
                 }
+                Console.WriteLine("clique minor found: {0}", separator.ToString());
                 return true;
             }
 
@@ -139,7 +141,7 @@ namespace Tamaki_Tree_Decomp
 
                     MakeSeparatorIntoClique(separatorVertices, adjacencyList, neighborSetsWithout);
 
-                    foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(separator))
+                    foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(separator))
                     {
                         BitSet component = C_NC.Item1;
                         BuildSubgraph(separatorVertices, adjacencyList, component);
@@ -165,7 +167,7 @@ namespace Tamaki_Tree_Decomp
             bool isFirstComponent = true;
 
             // try to find a contraction of each component where the candidate separator is a labelled minor
-            foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(candidateSeparator))
+            foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(candidateSeparator))
             {
                 BitSet component = C_NC.Item1;
 

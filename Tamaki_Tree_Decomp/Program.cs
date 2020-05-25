@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define statistics
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -74,16 +75,19 @@ namespace Tamaki_Tree_Decomp
         static readonly string test_r9 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_80_10_1.gr";
 
         static readonly string pace17_001 = "Test Data\\ex-instances-PACE2017-public\\ex001.gr";
+        static readonly string pace17_193 = "Test Data\\ex-instances-PACE2017-public\\ex193.gr";
 #pragma warning restore CS0414
 
         static void Main(string[] args)
         {
             
-            string filepath = pace17_001;
+            string filepath = test_m2;
+            //string filepath = PACE2017(193);
+
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
-            
+
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
@@ -94,12 +98,20 @@ namespace Tamaki_Tree_Decomp
 
             output.Print();
             Debug.Assert(debug.IsValidTreeDecomposition(output));
-            
+
             if (!debug.IsValidTreeDecomposition(output))
             {
                 Console.WriteLine("######################## tree decomposition is invalid #######################");
             }
-                        
+            
+            /*
+            string testFile1 = "Test Data\\test1.gr";
+            Graph graph = new Graph(testFile1);
+            
+            BitSet b = new BitSet(6, new int[] { 1, 2, 3, 4 });
+            
+            Debug.Assert(graph.IsPotMaxClique(b));
+            */
 
             /*
             SafeSeparator ss = new SafeSeparator(g);
@@ -133,6 +145,11 @@ namespace Tamaki_Tree_Decomp
             */
 
             Console.Read();
+        }
+
+        private static string PACE2017(int number)
+        {
+            return String.Format("Test Data\\ex-instances-PACE2017-public\\ex{0:D3}.gr", number);
         }
     }
 }

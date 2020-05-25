@@ -91,57 +91,87 @@ namespace Tamaki_Tree_Decomp.UnitTests
         [TestMethod]
         public void TreeWidth_MediumGraphs_ReturnTrue()
         {
-            Graph g = new Graph("Test Data\\medium\\NauruGraph.gr");
+            Graph g = new Graph("Test Data\\2016\\medium\\NauruGraph.gr");
             Assert.AreEqual(6, g.TreeWidth(out PTD output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\medium\\FlowerSnark.gr");
+            g = new Graph("Test Data\\2016\\medium\\FlowerSnark.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\medium\\DesarguesGraph.gr");
+            g = new Graph("Test Data\\2016\\medium\\DesarguesGraph.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\medium\\GeneralizedPetersenGraph_10_4.gr");
+            g = new Graph("Test Data\\2016\\medium\\GeneralizedPetersenGraph_10_4.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\medium\\HoffmanGraph.gr");
+            g = new Graph("Test Data\\2016\\medium\\HoffmanGraph.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
         [TestMethod]
-        public void TreeWidth_HardGraphs_ReturnTrue()
+        public void TreeWidth_2016_HardGraphs_ReturnTrue()
         {
-            Graph g = new Graph("Test Data\\hard\\ClebschGraph.gr");
+            Graph g = new Graph("Test Data\\2016\\hard\\ClebschGraph.gr");
             Assert.AreEqual(8, g.TreeWidth(out PTD output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\hard\\contiki_dhcpc_handle_dhcp.gr");
+            g = new Graph("Test Data\\2016\\hard\\contiki_dhcpc_handle_dhcp.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\hard\\DoubleStarSnark.gr");
+            g = new Graph("Test Data\\2016\\hard\\DoubleStarSnark.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\hard\\fuzix_vfscanf_vfscanf.gr");
+            g = new Graph("Test Data\\2016\\hard\\fuzix_vfscanf_vfscanf.gr");
             output = null;
             Assert.AreEqual(6, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
 
-            g = new Graph("Test Data\\hard\\McGeeGraph.gr");
+            g = new Graph("Test Data\\2016\\hard\\McGeeGraph.gr");
             output = null;
             Assert.AreEqual(7, g.TreeWidth(out output));
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
+        }
+
+        [TestMethod]
+        public void TreeWidth_2017_001_to_009_ReturnTrue()
+        {
+            Graph g = new Graph("Test Data\\2017\\ex001.gr");
+            Assert.AreEqual(10, g.TreeWidth(out PTD output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            /*
+            g = new Graph("Test Data\\2017\\ex003.gr");
+            output = null;
+            Assert.AreEqual(44, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\2017\\ex005.gr");
+            output = null;
+            Assert.AreEqual(7, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\2017\\ex007.gr");
+            output = null;
+            Assert.AreEqual(12, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+
+            g = new Graph("Test Data\\2017\\ex009.gr");
+            output = null;
+            Assert.AreEqual(7, g.TreeWidth(out output));
+            Assert.IsTrue(g.IsValidTreeDecomposition(output));
+            */
         }
     }
 }

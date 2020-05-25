@@ -9,7 +9,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 {
     public class BitSet : IEquatable<BitSet>
     {
-        private int[] bytes;
+        private uint[] bytes;
 
         /// <summary>
         /// constructs a BitSet of the given length
@@ -17,7 +17,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="length">the number of entries</param>
         public BitSet(int length)
         {
-            bytes = new int[(length + 31) / 32];
+            bytes = new uint[(length + 31) / 32];
         }
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="indices">the indices of the set bits</param>
         public BitSet(int length, int[] indices)
         {
-            bytes = new int[(length + 31) / 32];
+            bytes = new uint[(length + 31) / 32];
             for (int i = 0; i < indices.Length; i++)
             {
                 this[indices[i]] = true;
@@ -40,7 +40,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="from">the bit set from where to copy</param>
         public BitSet(BitSet from)
         {
-            bytes = new int[from.bytes.Length];
+            bytes = new uint[from.bytes.Length];
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = from.bytes[i];
+            }
+        }
+
+        /// <summary>
+        /// overwrites the contents of this bit set with the contents of another bit set
+        /// </summary>
+        /// <param name="from">the bit set to copy</param>
+        public void Copy(BitSet from)
+        {
             for (int i = 0; i < bytes.Length; i++)
             {
                 bytes[i] = from.bytes[i];
@@ -78,7 +90,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             set
             {
                 // adapted from https://stackoverflow.com/a/47990
-                bytes[key / 32] ^= (-(value ? 1 : 0) ^ bytes[key / 32]) & (1 << (key % 32));
+
+                bytes[key / 32] ^= ((value ? 0xFFFFFFFF : 0U) ^ bytes[key / 32]) & (1U << (key % 32));
+
+                //bytes[key / 32] ^= (-(value ? 1U : 0U) ^ bytes[key / 32]) & (1U << (key % 32));
             }
         }
 
@@ -99,10 +114,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     // iterate over bits
                     for (int j = 0; j < 32; j++)
                     {
-                        // get bit value
-                        int k = (bytes[i] & (1 << j));
                         // append index if bit not 0
-                        if ((bytes[i] & (1 << j)) != 0)
+                        if ((bytes[i] & (1U << j)) != 0)
                         {
                             setBits.Add(32 * i + j);
                         }
@@ -220,15 +233,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 20, 8, 19, 18
             };
 
+        /// <summary>
+        /// returns the position of the first set bit
+        /// </summary>
+        /// <returns>the position of the first set bit, if there is one, and -1 otherwise</returns>
         public int First()
         {
-            int first = 32 * bytes.Length;
+            int first = -1;
             // code taken from http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
             for (int i = 0; i < bytes.Length; i++)
             {
                 if (bytes[i] != 0)
                 {
-                    uint v = (uint) bytes[i];
+                    uint v = bytes[i];
                     
                     /*
                     v |= v >> 1; // first round down to one less than a power of 2 
@@ -248,7 +265,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
 #if DEBUG
             // TODO: remove if assertion never fails
-            int second = 32 * bytes.Length;
+            int second = int.MaxValue;
             for (int i = 0; i < bytes.Length; i++)
             {
                 if (bytes[i] != 0)
@@ -262,7 +279,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         }
                     }
                 }
-                if (second != 32 * bytes.Length)
+                if (second != int.MaxValue)
                 {
                     break;
                 }
@@ -274,6 +291,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         static uint currentByte = 0;
         static int currentPos = -1;
+        /// <summary>
+        /// returns the next element starting from a given element
+        /// </summary>
+        /// <param name="pos">the starting element index</param>
+        /// <returns>the position of the next set element if there is one, and -1 otherwise</returns>
         public int NextElement(int pos)
         {
             for (int i = pos / 32; i < bytes.Length; i++)
@@ -333,6 +355,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 complement.bytes[i] = ~complement.bytes[i];
             }
             return complement;
+        }
+
+        /// <summary>
+        /// flips the first "length" bits
+        /// </summary>
+        public void Flip(int length)
+        {
+            // flip all bits
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = ~bytes[i];
+            }
+            // truncate after length
+            uint mask = 0xFFFFFFFF >> (32 - length % 32);
+            int lastIndex = bytes.Length - 1;
+            bytes[lastIndex] &= mask;
         }
 
         /// <summary>
@@ -493,12 +531,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public override int GetHashCode()
         {
             // TODO: cache hash code?
-            int hashCode = 0;
+            uint hashCode = 0;
             for (int i = 0; i < bytes.Length; i++)
             {
                 hashCode ^= bytes[i];
             }
-            return hashCode;
+            return unchecked((int)hashCode);
         }
 
         /// <summary>

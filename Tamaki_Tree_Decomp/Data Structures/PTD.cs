@@ -100,6 +100,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
+
             List<PTD> children = new List<PTD>(Tau_prime.children);
             children.Add(Tau);
             BitSet vertices = new BitSet(Tau_prime.vertices);
@@ -111,6 +112,31 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             PTD result = new PTD(bag, vertices, outlet, inlet, children);
 
             return result;
+        }
+
+        // line 13, but exit early if bag size is too big
+        public static bool Line13_CheckBagSize(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
+        {
+            Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
+            BitSet bag = new BitSet(Tau_prime.Bag);
+            bag.UnionWith(Tau.outlet);
+            if (bag.Count() > k + 1)
+            {
+                result = null;
+                return false;
+            }
+
+            List<PTD> children = new List<PTD>(Tau_prime.children);
+            children.Add(Tau);
+            BitSet vertices = new BitSet(Tau_prime.vertices);
+            vertices.UnionWith(Tau.vertices);
+
+            BitSet outlet = graph.Outlet(bag, vertices);
+            BitSet inlet = new BitSet(vertices);
+            inlet.ExceptWith(outlet);
+            result = new PTD(bag, vertices, outlet, inlet, children);
+
+            return true;
         }
 
         // line 23
@@ -208,7 +234,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true iff the PTD is incoming</returns>
         public bool IsIncoming(Graph graph)
         {
-            
+            /*
             foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
@@ -220,10 +246,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
             return true;
-            
-            
-            /*
-            foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(vertices))
+            */
+
+            foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
                 {
@@ -235,7 +260,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return false;
             
-            */
+            
 
             /*
             // old definition
