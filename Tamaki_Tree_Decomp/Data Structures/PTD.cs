@@ -105,14 +105,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet vertices = new BitSet(Tau_prime.vertices);
             vertices.UnionWith(Tau.vertices);
 
-            /*
-            BitSet inlet = new BitSet(Tau_prime.inlet);
-            inlet.UnionWith(Tau.inlet);
-            BitSet outlet = new BitSet(Tau_prime.outlet);
-            PTD result = new PTD(bag, vertices, outlet, inlet, children);
-            graph.RecalculateInletAndOutlet(result);
-            result.AssertVerticesCorrect();
-            */
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
@@ -216,6 +208,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true iff the PTD is incoming</returns>
         public bool IsIncoming(Graph graph)
         {
+            
             foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
@@ -228,6 +221,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return true;
             
+            
+            /*
+            foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(vertices))
+            {
+                if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
+                {
+                    if (C_NC.Item1.First() > inlet.First())
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+            
+            */
+
             /*
             // old definition
             foreach(Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(Bag))

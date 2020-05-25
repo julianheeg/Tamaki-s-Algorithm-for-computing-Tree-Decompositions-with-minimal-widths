@@ -199,6 +199,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return vertexCount - 1;
         }
 
+        // statistics
+        int totalPCount = 0;
+        int totalUCount = 0;
+        int line13RejectCount = 0;
+        int line13DuplicateCount = 0;
+
         /// <summary>
         /// determines whether this graph has tree width k
         /// </summary>
@@ -295,6 +301,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             }
                             else
                             {
+                                line13DuplicateCount++;
                                 continue;
                             }
 
@@ -302,6 +309,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         // --------- line 15 ----------
                         else
                         {
+                            line13RejectCount++;
                             continue;
                         }
                     }
@@ -325,10 +333,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         {
                             if (p1.vertices.Equals(allVertices))
                             {
+                                PrintStats(P, U);
                                 treeDecomp = p1;
                                 return true;
                             }
-                            
+
                             if (!P_inlets.Contains(p1.inlet))
                             {
                                 if (IsMinimalSeparator(p1.outlet))
@@ -361,6 +370,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 {
                                     if (p2.vertices.Equals(allVertices))
                                     {
+                                        PrintStats(P, U);
                                         treeDecomp = p2;
                                         return true;
                                     }
@@ -405,6 +415,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             {
                                 if (p3.vertices.Equals(allVertices))
                                 {
+                                    PrintStats(P, U);
                                     treeDecomp = p3;
                                     return true;
                                 }
@@ -426,8 +437,15 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
 
             Console.WriteLine("considered {0} partial tree decompositions", P.Count);
+            totalPCount += P.Count;
+            totalUCount += U.Count;
             treeDecomp = null;
             return false;
+        }
+
+        private void PrintStats(List<PTD> P, List<PTD> U)
+        {
+            Console.WriteLine("total P: {0}, total U: {1}, Line 13 rejections: {2}, Line 13 duplicates: {3}", totalPCount + P.Count, totalUCount + U.Count, line13RejectCount, line13DuplicateCount);
         }
 
         #region IsPotMaxClique implementations
@@ -464,6 +482,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>an enumerable consisting of tuples of i) component C and ii) neighbors N(C)</returns>
         public IEnumerable<Tuple<BitSet, BitSet>> ComponentsAndNeighbors(BitSet separator)
         {
+            // TODO: dfs using sets
             BitSet visited = new BitSet(separator);
             Stack<int> dfsStack = new Stack<int>();
 
@@ -805,6 +824,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>the vertices in the outlet of ptd that are adjacent to vertices that are neither contained in the ptd nor in the component</returns>
         public BitSet UnionOutlet(PTD ptd, BitSet component)
         {
+            
             BitSet unionOutlet = new BitSet(vertexCount);
             BitSet unionVertices = new BitSet(ptd.vertices);
             unionVertices.UnionWith(component);
