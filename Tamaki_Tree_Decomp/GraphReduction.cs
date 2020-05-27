@@ -520,6 +520,36 @@ namespace Tamaki_Tree_Decomp
                     }
                 }
             }
+
+            Debug.Assert(reconstructionBagsToAppend.Count == 0);
+
+            CheckVertexCover(td);
+        }
+
+        [Conditional("DEBUG")]
+        private void CheckVertexCover(PTD td)
+        {
+            BitSet covered = new BitSet(vertexCount);
+
+            Stack<PTD> nodeStack = new Stack<PTD>();
+            nodeStack.Push(td);
+
+            while(nodeStack.Count > 0)
+            {
+                PTD current = nodeStack.Pop();
+                covered.UnionWith(current.Bag);
+                foreach(PTD child in current.children)
+                {
+                    nodeStack.Push(child);
+                }
+            }
+
+            if (!covered.Equals(BitSet.All(vertexCount)))
+            {
+                ;
+            }
+
+            Debug.Assert(covered.Equals(BitSet.All(vertexCount)));
         }
     }
 }

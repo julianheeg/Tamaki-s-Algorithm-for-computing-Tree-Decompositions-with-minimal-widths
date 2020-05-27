@@ -80,9 +80,9 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            
-            string filepath = test_m2;
-            //string filepath = PACE2017(193);
+            BitSet.plusOneInString = false;
+
+            string filepath = PACE2017(5);
 
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
@@ -104,11 +104,28 @@ namespace Tamaki_Tree_Decomp
                 Console.WriteLine("######################## tree decomposition is invalid #######################");
             }
             
+
+            /*
+            int counter = 0;
+            Graph graph = new Graph(test_m4);
+            foreach (IEnumerable<int> subset in SubSetsOf(Enumerable.Range(0, graph.vertexCount).ToArray()))
+            {
+                BitSet test = new BitSet(graph.vertexCount, subset.ToArray());
+                graph.ComponentsAndNeighbors(test);
+                counter++;
+                if (counter % 100000 == 0)
+                {
+                    Console.WriteLine(counter);
+                }
+            }
+            Console.WriteLine("Test finished");
+            */
+
             /*
             string testFile1 = "Test Data\\test1.gr";
             Graph graph = new Graph(testFile1);
             
-            BitSet b = new BitSet(6, new int[] { 1, 2, 3, 4 });
+            BitSet b = new BitSet(6, new int[] { 0, 1 ,2 });
             
             Debug.Assert(graph.IsPotMaxClique(b));
             */
@@ -145,6 +162,40 @@ namespace Tamaki_Tree_Decomp
             */
 
             Console.Read();
+        }
+
+        private static List<T[]> CreateSubsets<T>(T[] originalArray)
+        {
+            List<T[]> subsets = new List<T[]>();
+
+            for (int i = 0; i < originalArray.Length; i++)
+            {
+                int subsetCount = subsets.Count;
+                subsets.Add(new T[] { originalArray[i] });
+
+                for (int j = 0; j < subsetCount; j++)
+                {
+                    T[] newSubset = new T[subsets[j].Length + 1];
+                    subsets[j].CopyTo(newSubset, 0);
+                    newSubset[newSubset.Length - 1] = originalArray[i];
+                    subsets.Add(newSubset);
+                }
+            }
+
+            return subsets;
+        }
+
+        private static IEnumerable<IEnumerable<T>> SubSetsOf<T>(IEnumerable<T> source)
+        {
+            if (!source.Any())
+                return Enumerable.Repeat(Enumerable.Empty<T>(), 1);
+
+            var element = source.Take(1);
+
+            var haveNots = SubSetsOf(source.Skip(1));
+            var haves = haveNots.Select(set => element.Concat(set));
+
+            return haves.Concat(haveNots);
         }
 
         private static string PACE2017(int number)

@@ -51,7 +51,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// overwrites the contents of this bit set with the contents of another bit set
         /// </summary>
         /// <param name="from">the bit set to copy</param>
-        public void Copy(BitSet from)
+        public void CopyFrom(BitSet from)
         {
             for (int i = 0; i < bytes.Length; i++)
             {
@@ -295,32 +295,37 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// returns the next element starting from a given element
         /// </summary>
         /// <param name="pos">the starting element index</param>
+        /// <param name="getsReduced">pass true if elements are taken out of this set during an iteration. pass false otherwise</param>
         /// <returns>the position of the next set element if there is one, and -1 otherwise</returns>
-        public int NextElement(int pos)
+        public int NextElement(int pos, bool getsReduced)
         {
             for (int i = pos / 32; i < bytes.Length; i++)
             {
-                if (pos == -1 || currentPos / 32 < i)
+                
+                if (pos == -1 || currentPos / 32 < i || getsReduced)
                 {
-                    currentByte = (uint) bytes[i];
+                    currentByte = bytes[i];
                 }
                 if (currentByte != 0)
                 {
-                    /*
-                    v |= v >> 1; // first round down to one less than a power of 2 
-                    v |= v >> 2;
-                    v |= v >> 4;
-                    v |= v >> 8;
-                    v |= v >> 16;
-
-                    first = i * 32 + MultiplyDeBruijnBitPosition[((uint)((v & -v) * 0x077CB531U)) >> 27];
-                    break;
-                    */
                     int first = i * 32 + Mod37BitPosition[(-currentByte & currentByte) % 37];
                     currentByte &= ~(1U << first);
                     currentPos = first;
                     return first;
                 }
+                /*
+                currentByte = bytes[i];
+                if (currentByte != 0)
+                {
+                    int first = i * 32 + Mod37BitPosition[(-currentByte & currentByte) % 37];
+                    currentByte &= ~(1U << first);
+                    currentPos = first;
+
+
+
+                    return first;
+                }
+                */
             }
             return -1;
         }
@@ -496,6 +501,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             Console.WriteLine(sb.ToString());
         }
 
+        public static bool plusOneInString = true;
+
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
@@ -505,7 +512,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 if (this[i])
                 {
-                    sb.Append((i+1) + ",");
+                    sb.Append((i + (plusOneInString ? 1 : 0)) + ",");
                 }
             }
 

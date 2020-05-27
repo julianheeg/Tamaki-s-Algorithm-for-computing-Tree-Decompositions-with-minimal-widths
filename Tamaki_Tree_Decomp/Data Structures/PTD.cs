@@ -234,8 +234,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true iff the PTD is incoming</returns>
         public bool IsIncoming(Graph graph)
         {
-            /*
-            foreach (Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(vertices))
+            
+            foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
                 {
@@ -246,8 +246,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
             return true;
-            */
+            
 
+            /*
             foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
@@ -259,7 +260,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
             return false;
-            
+            */
             
 
             /*

@@ -4,9 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 
 namespace Tamaki_Tree_Decomp.Data_Structures
@@ -20,7 +17,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly BitSet[] neighborSetsWithout;   // contains N(v)
         public readonly BitSet[] neighborSetsWith;      // contains N[v]
         public readonly BitSet allVertices;
-
+        
         /// <summary>
         /// constructs a graph from a .gr file
         /// </summary>
@@ -525,7 +522,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet tempNeighbors_old = new BitSet(component);
             BitSet tempNeighbors_new = new BitSet(vertexCount);
             int neighbor = -1;
-            while ((neighbor = tempNeighbors_old.NextElement(neighbor + 1)) != -1)
+            while ((neighbor = tempNeighbors_old.NextElement(neighbor + 1, false)) != -1)
             {
 
             }
@@ -548,66 +545,68 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>an enumerable consisting of tuples of i) component C and ii) neighbors N(C)</returns>
         public IEnumerable<(BitSet, BitSet)> ComponentsAndNeighbors(BitSet separator)
         {
-            HashSet<(BitSet, BitSet)> debug = new HashSet<(BitSet, BitSet)>();  // TODO: remove
-            
+            // HashSet<(BitSet, BitSet)> debug = new HashSet<(BitSet, BitSet)>();  // TODO: remove
+
+            /* for every vertex v that is not in the separator{
+             * BitSet component = new BitSet(neighborSetsWith[v]);
+               component.ExceptWith(separator);
+               
+               BitSet tempNeighbors = new BitSet(neighborSetsWithout[v]);
+               tempNeighbors.ExceptWith(separator);
+               while (tempNeighbors != 0){
+                   List nnnnnnn = tempNeighbors.Elements()
+                   tempNeighbors = empty;
+                   for every vertex u in nnnnnnn {
+                       tempNeighbors.unionWith(neighborSetsWithout[u];
+                       component.UnionWith(u); // or neighborSetsWith[u];
+                   }
+                   component.exceptWith(separator);
+                   tempNeighbors.exceptWith(separator);
+               }
+           }
+            */
+
+            // TODO: correct neighbor calculation
+            // TODO: not use lists, but the iterator thingy instead
+
             BitSet unvisited = new BitSet(separator);
             unvisited.Flip(vertexCount);
 
             // find components as long as they exist
             int startingVertex = -1;
-            while ((startingVertex = unvisited.NextElement(startingVertex)) != -1)
+            while ((startingVertex = unvisited.NextElement(startingVertex, getsReduced: true)) != -1)
             {
-                BitSet component = new BitSet(neighborSetsWith[startingVertex]);
-                component.ExceptWith(separator);
-                BitSet component_previousIter = new BitSet(component);
-                BitSet currentNeighbors = new BitSet(neighborSetsWithout[startingVertex]);
-                currentNeighbors[startingVertex] = false;
-                currentNeighbors.ExceptWith(separator); // TODO: correct?
-                BitSet neighbors = new BitSet(neighborSetsWithout[startingVertex]);
-                                
-                int currentVertex = -1;
-                while (!currentNeighbors.IsEmpty()) {
-                    while ((currentVertex = currentNeighbors.NextElement(currentVertex)) != -1)
+                BitSet red = new BitSet(vertexCount);
+                red[startingVertex] = true;
+                BitSet green = new BitSet(vertexCount);
+                BitSet purple = new BitSet(vertexCount);
+                BitSet neighbors = Neighbors(purple);
+
+                while (!red.IsEmpty())
+                {
+                    List<int> redElements = red.Elements();
+                    green.Clear();
+                    for (int i = 0; i < redElements.Count; i++)
                     {
-                        component.UnionWith(neighborSetsWith[currentVertex]);
+                        green.UnionWith(neighborSetsWithout[redElements[i]]);
                     }
-                    neighbors.UnionWith(component);
-                    component.ExceptWith(separator);
-                    currentNeighbors.Copy(component);
-                    currentNeighbors.ExceptWith(component_previousIter);
-                    component_previousIter.Copy(component);
+
+                    purple.UnionWith(red);
+                    neighbors.UnionWith(green);
+                    green.ExceptWith(separator);
+                    green.ExceptWith(purple);
+
+                    red.CopyFrom(green);
                 }
-                neighbors.ExceptWith(component);
-                unvisited.ExceptWith(component);
 
-                // TODO: remove when all tests are passed
-                neighbors = Neighbors(component);
-
-                debug.Add((component, neighbors));
-                yield return (component, neighbors);
+                // debug.Add((new BitSet(purple), new BitSet(neighbors)));
+                unvisited.ExceptWith(purple);
+                neighbors.IntersectWith(separator);
+                Debug.Assert(neighbors.Equals(Neighbors(purple)));
+                yield return (purple, neighbors);
             }
 
-
-
-            /* for every vertex v that is not in the separator{
-         *      BitSet component = new BitSet(neighborSetsWith[v]);
-         *      component.ExceptWith(separator);
-         *      
-         *      BitSet tempNeighbors = new BitSet(neighborSetsWithout[v]);
-         *      tempNeighbors.ExceptWith(separator);
-         *      while (tempNeighbors != 0){
-         *          List nnnnnnn = tempNeighbors.Elements()
-         *          tempNeighbors = empty;
-         *          for every vertex u in nnnnnnn {
-         *              tempNeighbors.unionWith(neighborSetsWithout[u];
-         *              component.UnionWith(u); // or neighborSetsWith[u];
-         *          }
-         *          component.exceptWith(separator);
-         *          tempNeighbors.exceptWith(separator);
-         *      }
-         *  }
-            */
-
+            /*
 #if DEBUG
             int componentCount = 0;
 
@@ -663,7 +662,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             Debug.Assert(componentCount == debug.Count);
 #endif
-
+*/
         }
 
         /// <summary>
@@ -1015,7 +1014,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // create neighbor set            
             BitSet neighbors = new BitSet(vertexCount);
             int pos = -1;
-            while((pos = bag.NextElement(pos)) != -1)
+            while((pos = bag.NextElement(pos, getsReduced: false)) != -1)
             {
                 neighbors.UnionWith(neighborSetsWithout[pos]);
             }
@@ -1025,7 +1024,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = new BitSet(vertexCount);
             pos = -1;
 
-            while ((pos = neighbors.NextElement(pos)) != -1)
+            while ((pos = neighbors.NextElement(pos, getsReduced: false)) != -1)
             {
                 outlet.UnionWith(neighborSetsWithout[pos]);
             }
