@@ -289,8 +289,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return first;
         }
 
-        static uint currentByte = 0;
-        static int currentPos = -1;
+        [ThreadStatic] static uint currentByte = 0;
+        [ThreadStatic] static int currentPos = -1;
+
         /// <summary>
         /// returns the next element starting from a given element
         /// </summary>
@@ -301,7 +302,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             for (int i = pos / 32; i < bytes.Length; i++)
             {
-                
                 if (pos == -1 || currentPos / 32 < i || getsReduced)
                 {
                     currentByte = bytes[i];
@@ -326,6 +326,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     return first;
                 }
                 */
+                
             }
             return -1;
         }

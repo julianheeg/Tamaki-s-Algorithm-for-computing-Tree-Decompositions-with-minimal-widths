@@ -22,8 +22,11 @@ namespace Tamaki_Tree_Decomp
         readonly BitSet removedVertices;
         int low; // TODO: heuristic for setting low is given in the paper
         readonly Dictionary<int, int> reconstructionMapping;    // mapping from reduced vertex id to original vertex id
-        readonly List<BitSet> reconstructionBagsToAppendTo;     // a list of (subsets of) bags that the bags in the next list are appended to during reconstruction
-        readonly List<BitSet> reconstructionBagsToAppend;       // bags to append to (subsets of) bags in the list above during reconstruction 
+        readonly List<(BitSet, BitSet)> reconstructionBagsToAppend;     // a list of (bag, parentbag) for reconstructing the correct tree decomposition // TODO: HashSet instead?
+
+        readonly List<String> reconstructionBagsDebug;  // TODO: remove
+
+        public static bool reduce = true;
 
         public GraphReduction(Graph graph, int low = 0)
         {
@@ -38,8 +41,9 @@ namespace Tamaki_Tree_Decomp
             }
             removedVertices = new BitSet(vertexCount);
             reconstructionMapping = new Dictionary<int, int>();
-            reconstructionBagsToAppendTo = new List<BitSet>();
-            reconstructionBagsToAppend = new List<BitSet>();
+            reconstructionBagsToAppend = new List<(BitSet, BitSet)>();
+
+            reconstructionBagsDebug = new List<string>();
         }
 
         /// <summary>
@@ -88,6 +92,11 @@ namespace Tamaki_Tree_Decomp
 
         public bool Reduce(ref int out_low)
         {
+            if (!reduce)
+            {
+                return false;
+            }
+
             bool reduced = false;
             while (SimplicialVertexRule() || AlmostSimplicialVertexRule() || BuddyRule() || CubeRule())
             {
@@ -113,6 +122,11 @@ namespace Tamaki_Tree_Decomp
                 // ... that is not yet removed ...
                 if (!removedVertices[i])
                 {
+                    if (i == 145)   // TODO: remove
+                    {
+                        ;
+                    }
+
                     // ... and check if its neighbors form a clique
                     bool neighborsFormClique = true;
                     for (int j = 0; j < adjacencyList[i].Count && neighborsFormClique; j++)
@@ -146,8 +160,8 @@ namespace Tamaki_Tree_Decomp
                         // remember bag for reconstruction
                         BitSet bag = new BitSet(neighborSetsWithout[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[i]));
-                        reconstructionBagsToAppend.Add(bag);
+                        reconstructionBagsToAppend.Add((bag, new BitSet(neighborSetsWithout[i])));
+                        reconstructionBagsDebug.Add("simplicial");
                     }
                 }
             }
@@ -233,8 +247,8 @@ namespace Tamaki_Tree_Decomp
                         // remember bag for reconstruction
                         BitSet bag = new BitSet(neighborSetsWithout[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[i]));
-                        reconstructionBagsToAppend.Add(bag);
+                        reconstructionBagsToAppend.Add((bag, new BitSet(neighborSetsWithout[i])));
+                        reconstructionBagsDebug.Add("almost simplicial");
                     }
                 }
             }
@@ -306,12 +320,12 @@ namespace Tamaki_Tree_Decomp
                                 // remember bags for reconstruction
                                 BitSet bag1 = new BitSet(neighborSetsWithout[i]);
                                 bag1[i] = true;
-                                reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[i]));
-                                reconstructionBagsToAppend.Add(bag1);
+                                reconstructionBagsToAppend.Add((bag1, new BitSet(neighborSetsWithout[i])));
                                 BitSet bag2 = new BitSet(neighborSetsWithout[buddy]);
                                 bag2[buddy] = true;
-                                reconstructionBagsToAppendTo.Add(new BitSet(neighborSetsWithout[buddy]));
-                                reconstructionBagsToAppend.Add(bag2);
+                                reconstructionBagsToAppend.Add((bag2, new BitSet(neighborSetsWithout[buddy])));
+                                reconstructionBagsDebug.Add("buddy 1");
+                                reconstructionBagsDebug.Add("buddy 2");
                                 break;
                             }
                         }
@@ -422,15 +436,15 @@ namespace Tamaki_Tree_Decomp
                             appendTo[uvw[2]] = true;
                             BitSet append = new BitSet(appendTo);
                             append[i] = true;
-                            reconstructionBagsToAppendTo.Add(appendTo);
-                            reconstructionBagsToAppend.Add(append);
+                            reconstructionBagsToAppend.Add((append, appendTo));
+                            reconstructionBagsDebug.Add("cube i");
 
                             for (int j = 0; j < 3; j++)
                             {
-                                reconstructionBagsToAppendTo.Add(append);
-                                appendTo = neighborSetsWithout[neighbors[j]];
+                                appendTo = new BitSet(neighborSetsWithout[neighbors[j]]);
                                 appendTo[neighbors[j]] = true;
-                                reconstructionBagsToAppend.Add(appendTo);
+                                reconstructionBagsToAppend.Add((appendTo, append));
+                                reconstructionBagsDebug.Add("cube neighbor " + j);
                             }
                         }
                     }
@@ -440,6 +454,7 @@ namespace Tamaki_Tree_Decomp
             return isReduced;
         }
 
+        /*
         /// <summary>
         /// turns a tree decomposition of the reduced graph into a tree decomposition of the original input graph
         /// </summary>
@@ -525,6 +540,85 @@ namespace Tamaki_Tree_Decomp
 
             CheckVertexCover(td);
         }
+        */
+
+        /// <summary>
+        /// turns a tree decomposition of the reduced graph into a tree decomposition of the original input graph
+        /// </summary>
+        /// <param name="td">the tree decomposition of the reduced graph</param>
+        public void RebuildTreeDecomposition(ref PTD td)
+        {
+            // return if there is no bag to append
+            if (reconstructionBagsToAppend.Count == 0)
+            {
+                return;
+            }
+
+            Stack<PTD> nodeStack = new Stack<PTD>();
+            List<PTD> reconstructedNodes = new List<PTD>();
+            if (td == null)
+            {
+                int lastIndex = reconstructionBagsToAppend.Count - 1;
+                td = new PTD(reconstructionBagsToAppend[lastIndex].Item1);
+                reconstructedNodes.Add(td);
+                reconstructionBagsToAppend.RemoveAt(lastIndex);
+            }
+            else
+            {
+                nodeStack.Push(td);
+            }
+
+            while (nodeStack.Count > 0)
+            {
+                PTD currentNode = nodeStack.Pop();
+                BitSet reducedBag = currentNode.Bag;
+
+                // reindex bag
+                BitSet reconstructedBag = new BitSet(vertexCount);
+                foreach (int i in reducedBag.Elements())
+                {
+                    reconstructedBag[reconstructionMapping[i]] = true;
+                }
+                currentNode.SetBag(reconstructedBag);
+
+                reconstructedNodes.Add(currentNode);
+
+                // push children onto stack
+                for (int i = 0; i < currentNode.children.Count; i++)
+                {
+                    nodeStack.Push(currentNode.children[i]);
+                }
+            }
+
+            while (reconstructionBagsToAppend.Count > 0)
+            {
+                bool hasChanged = false;
+                for (int i = 0; i < reconstructionBagsToAppend.Count; i++)
+                {
+                    (BitSet child, BitSet parent) = reconstructionBagsToAppend[i];
+                    foreach(PTD node in reconstructedNodes)
+                    {
+                        if (node.Bag.IsSuperset(parent))
+                        {
+                            PTD childNode = new PTD(child);
+                            node.children.Add(childNode);
+                            reconstructedNodes.Add(childNode);
+                            reconstructionBagsToAppend.RemoveAt(i);
+                            reconstructionBagsDebug.RemoveAt(i);
+                            i--;
+                            hasChanged = true;
+                            break;
+                        }
+                    }
+                }
+                if (!hasChanged)
+                {
+                    ;
+                }
+            }
+
+            CheckVertexCover(td);
+        }
 
         [Conditional("DEBUG")]
         private void CheckVertexCover(PTD td)
@@ -551,5 +645,7 @@ namespace Tamaki_Tree_Decomp
 
             Debug.Assert(covered.Equals(BitSet.All(vertexCount)));
         }
+        
+
     }
 }

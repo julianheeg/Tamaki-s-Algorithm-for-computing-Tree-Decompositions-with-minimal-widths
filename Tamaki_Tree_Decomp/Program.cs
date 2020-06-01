@@ -76,18 +76,61 @@ namespace Tamaki_Tree_Decomp
 
         static readonly string pace17_001 = "Test Data\\ex-instances-PACE2017-public\\ex001.gr";
         static readonly string pace17_193 = "Test Data\\ex-instances-PACE2017-public\\ex193.gr";
+
+        static readonly string pace2017_ex193_004 = "Test Data\\ex193 safe sep components\\004 - 10_T9.gr";
+        static readonly string pace2017_ex193_006 = "Test Data\\ex193 safe sep components\\006 - 10_T9.gr";
+        static readonly string pace2017_ex193_008 = "Test Data\\ex193 safe sep components\\008 - 10_T9.gr";
+        static readonly string pace2017_ex193_010 = "Test Data\\ex193 safe sep components\\010 - 10_T9.gr";
+        static readonly string pace2017_ex193_012 = "Test Data\\ex193 safe sep components\\012 - 10_T9.gr";
+        static readonly string pace2017_ex193_014 = "Test Data\\ex193 safe sep components\\014 - 10_T9.gr";
+        static readonly string pace2017_ex193_016 = "Test Data\\ex193 safe sep components\\016 - 10_T9.gr";
+        static readonly string pace2017_ex193_018 = "Test Data\\ex193 safe sep components\\018 - 10_T9.gr";
+        static readonly string pace2017_ex193_020 = "Test Data\\ex193 safe sep components\\020 - 10_T9.gr";
+        static readonly string pace2017_ex193_022 = "Test Data\\ex193 safe sep components\\022 - 10_T9.gr";
+        static readonly string pace2017_ex193_024 = "Test Data\\ex193 safe sep components\\024 - 10_T9.gr";
+        static readonly string pace2017_ex193_026 = "Test Data\\ex193 safe sep components\\026 - 10_T9.gr";
+        static readonly string pace2017_ex193_029 = "Test Data\\ex193 safe sep components\\029 - 11_T10.gr";
+        static readonly string pace2017_ex193_031 = "Test Data\\ex193 safe sep components\\031 - 11_T10.gr";
+        static readonly string pace2017_ex193_033 = "Test Data\\ex193 safe sep components\\033 - 11_T10.gr";
+        static readonly string pace2017_ex193_035 = "Test Data\\ex193 safe sep components\\035 - 11_T10.gr";
+        static readonly string pace2017_ex193_037 = "Test Data\\ex193 safe sep components\\037 - 11_T10.gr";
+        static readonly string pace2017_ex193_039 = "Test Data\\ex193 safe sep components\\039 - 11_T10.gr";
+        static readonly string pace2017_ex193_041 = "Test Data\\ex193 safe sep components\\041 - 11_T10.gr";
+        static readonly string pace2017_ex193_043 = "Test Data\\ex193 safe sep components\\043 - 11_T10.gr";
+        static readonly string pace2017_ex193_044 = "Test Data\\ex193 safe sep components\\044 - 12_T10.gr";
+        static readonly string pace2017_ex193_046 = "Test Data\\ex193 safe sep components\\046 - 12_T10.gr";
+        static readonly string pace2017_ex193_048 = "Test Data\\ex193 safe sep components\\048 - 12_T10.gr";
+        static readonly string pace2017_ex193_050 = "Test Data\\ex193 safe sep components\\050 - 12_T10.gr";
+        static readonly string pace2017_ex193_052 = "Test Data\\ex193 safe sep components\\052 - 12_T10.gr";
+        static readonly string pace2017_ex193_054 = "Test Data\\ex193 safe sep components\\054 - 12_T10.gr";
+        static readonly string pace2017_ex193_056 = "Test Data\\ex193 safe sep components\\056 - 12_T10.gr";
+        static readonly string pace2017_ex193_058 = "Test Data\\ex193 safe sep components\\058 - 12_T10.gr";
+        static readonly string pace2017_ex193_060 = "Test Data\\ex193 safe sep components\\060 - 12_T10.gr";
+        static readonly string pace2017_ex193_062 = "Test Data\\ex193 safe sep components\\062 - 12_T10.gr";
+
+
 #pragma warning restore CS0414
+
+        public static string date_time_string;
 
         static void Main(string[] args)
         {
-            BitSet.plusOneInString = false;
-
             string filepath = PACE2017(5);
+            // string filepath = test_e0;
 
+            BitSet.plusOneInString = false;
+            // SafeSeparator.separate = false; // ###############################################################################################
+            // GraphReduction.reduce = false;  // ###############################################################################################
+
+            date_time_string = DateTime.Now.ToString();
+            date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
+            Console.WriteLine(date_time_string);
+            
+            
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
-
+            
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
@@ -104,6 +147,24 @@ namespace Tamaki_Tree_Decomp
                 Console.WriteLine("######################## tree decomposition is invalid #######################");
             }
             
+            
+            // TEST
+            /*
+            bool f = g.IsTreeWidthAtMost(9, out PTD output);
+            bool t = g.IsTreeWidthAtMost(10, out output);
+            Console.WriteLine(f);
+            Console.WriteLine(t);
+            if (!debug.IsValidTreeDecomposition(output))
+            {
+                Console.WriteLine("######################## tree decomposition is invalid #######################");
+            }
+            else
+            {
+                Console.WriteLine("tree decomposition is valid");
+            }
+            */
+            
+            // TEST END
 
             /*
             int counter = 0;

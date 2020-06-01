@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using Tamaki_Tree_Decomp.Data_Structures;
 
 namespace Tamaki_Tree_Decomp
@@ -12,14 +13,11 @@ namespace Tamaki_Tree_Decomp
 
         BitSet separator;
         readonly List<Graph> subGraphs;
-        int separatorSize;
-
+        public int separatorSize;
 
         readonly List<int[]> reconstructionMappings;            // mapping from reduced vertex id to original vertex id, by component
-        /*
-        readonly List<BitSet> reconstructionBagsToAppendTo;     // a list of (subsets of) bags that the bags in the next list are appended to during reconstruction
-        readonly List<BitSet> reconstructionBagsToAppend;       // bags to append to (subsets of) bags in the list above during reconstruction 
-        */
+
+        public static bool separate = true;
 
         public SafeSeparator(Graph graph)
         {
@@ -40,7 +38,12 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true iff a separation has been performed</returns>
         public bool Separate(out List<Graph> separatedGraphs, ref int minK)
         {
-            
+            if (!separate)
+            {
+                separatedGraphs = null;
+                return false;
+            }
+
             if (Size2Separate())
             {
                 PrintSeparation();
@@ -1025,13 +1028,15 @@ namespace Tamaki_Tree_Decomp
             }
         }
 
+        // private HashSet<(int, int)> cliqueCompletingEdges = new HashSet<(int, int)>();
+
         /// <summary>
         /// adds edges such that a separator becomes a clique in the graph given as an adjacency list
         /// </summary>
         /// <param name="separatorVertices">a list of vertices in the separator</param>
         /// <param name="adjacencyList">the graph given as an adjacency list</param>
         /// <param name="neighborSetsWithout">the open neighborhoods of that graph</param>
-        private static void MakeSeparatorIntoClique(List<int> separatorVertices, List<int>[] adjacencyList, BitSet[] neighborSetsWithout)
+        private void MakeSeparatorIntoClique(List<int> separatorVertices, List<int>[] adjacencyList, BitSet[] neighborSetsWithout)
         {
             for (int i = 0; i < separatorVertices.Count; i++)
             {
@@ -1042,6 +1047,7 @@ namespace Tamaki_Tree_Decomp
 
                     if (!neighborSetsWithout[u][v])
                     {
+                        // cliqueCompletingEdges.Add((u, v));
                         neighborSetsWithout[u][v] = true;
                         neighborSetsWithout[v][u] = true;
                         adjacencyList[u].Add(v);
@@ -1108,6 +1114,8 @@ namespace Tamaki_Tree_Decomp
                     }
                 }
             }
+
+            // SaveGraph(subAdjacencyList);
 
             // create graph
             subGraphs.Add(new Graph(subAdjacencyList));

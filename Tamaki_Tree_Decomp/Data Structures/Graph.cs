@@ -79,7 +79,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     neighborSetsWith[i][i] = true;
                 }
                 allVertices = BitSet.All(vertexCount);
-                Console.WriteLine("Graph has been imported.");
+
+                // Console.WriteLine("Graph {0} has been imported.", graphID);
             }
             catch (IOException e)
             {
@@ -112,6 +113,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
                 neighborSetsWith[i][i] = true;
             }
+
             allVertices = BitSet.All(vertexCount);
         }
 
@@ -169,12 +171,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         int subTreeWidth = separatedGraphs[i].TreeWidth(minK, out subTreeDecompositions[i]);
                         Debug.Assert(separatedGraphs[i].IsValidTreeDecomposition(subTreeDecompositions[i]));
+                        bool possiblyInduced = subTreeWidth == minK;
                         if (subTreeWidth > minK)
                         {
                             minK = subTreeWidth;
                         }
+                        if (safeSep.separatorSize > 2)
+                        {
+                            separatedGraphs[i].Dump(subTreeWidth, possiblyInduced);
+                        }
                     }
                     treeDecomp = safeSep.RecombineTreeDecompositions(subTreeDecompositions);
+                    
                     for (int i = reductions.Count - 1; i >= 0; i--)
                     {
                         reductions[i].RebuildTreeDecomposition(ref treeDecomp);
@@ -188,15 +196,99 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         reductions[i].RebuildTreeDecomposition(ref treeDecomp);
                     }
-                    // TODO: CRITICAL: possibly recalculate vertices, inlets, outlets in the tree decomposition
+
                     return minK;
                 }
                 Console.WriteLine("graph has tree width bigger than " + minK);
                 minK++;
             }
-            // TODO: correct? also loop condition above
             treeDecomp = new PTD(allVertices);
             return vertexCount - 1;
+        }
+
+        /// <summary>
+        /// determines whether the tree width of this graph is at most a given value
+        /// </summary>
+        /// <param name="k">the upper bound</param>
+        /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph, iff the tree width is at most k, else null</param>
+        /// <returns>true, iff the tree width is at most k</returns>
+        public bool IsTreeWidthAtMost(int k, out PTD treeDecomp)
+        {
+            // TODO: return root with empty bag instead
+            if (vertexCount == 0)
+            {
+                treeDecomp = null;
+                return k == -1;
+            }
+            else if (vertexCount == 1)
+            {
+                BitSet onlyBag = new BitSet(1);
+                onlyBag[0] = true;
+                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
+                return k == 0;
+            }
+
+            int minK = k;
+
+            // TODO: use previous reductions, not make an entirely new one each time
+            // TODO: when finding all clique/almost-clique separators, only do that once
+            List<GraphReduction> reductions = new List<GraphReduction>();
+            Graph reducedGraph = this;
+
+            // reduce graph
+            GraphReduction red = new GraphReduction(reducedGraph, k);
+            bool reduced = red.Reduce(ref minK);
+            if (minK > k)
+            {
+                treeDecomp = null;
+                return false;
+            }
+            if (reduced)
+            {
+                reducedGraph = red.ToGraph();
+                reductions.Add(red);
+            }
+            SafeSeparator safeSep = new SafeSeparator(reducedGraph);
+            if (safeSep.Separate(out List<Graph> separatedGraphs, ref minK))
+            {
+                if (minK > k)
+                {
+                    treeDecomp = null;
+                    return false;
+                }
+
+                PTD[] subTreeDecompositions = new PTD[separatedGraphs.Count];
+                for (int i = 0; i < subTreeDecompositions.Length; i++)
+                {
+                    if (separatedGraphs[i].IsTreeWidthAtMost(k, out subTreeDecompositions[i]))
+                    {
+                        Debug.Assert(separatedGraphs[i].IsValidTreeDecomposition(subTreeDecompositions[i]));
+                    }
+                    else
+                    {
+                        treeDecomp = null;
+                        return false;
+                    }
+                }
+                treeDecomp = safeSep.RecombineTreeDecompositions(subTreeDecompositions);
+
+                for (int i = reductions.Count - 1; i >= 0; i--)
+                {
+                    reductions[i].RebuildTreeDecomposition(ref treeDecomp);
+                }
+                return true;
+            }
+            if (reducedGraph.HasTreeWidth(minK, out treeDecomp))
+            {
+                Console.WriteLine("graph has tree width " + minK);
+                for (int i = reductions.Count - 1; i >= 0; i--)
+                {
+                    reductions[i].RebuildTreeDecomposition(ref treeDecomp);
+                }
+
+                return true;
+            }
+            return false;
         }
 
         // statistics
@@ -1034,6 +1126,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             
         }
 
+
 #region debug
 
         /// <summary>
@@ -1218,7 +1311,48 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return true;
         }
+        #endregion
 
-#endregion
+
+        private static int nextGraphID = 0;
+        public static bool dumpSubgraphs = false;
+
+        /// <summary>
+        /// saves the graph onto disk
+        /// </summary>
+        public void Dump(int treeWidth, bool possiblyInduced)
+        {
+            if (dumpSubgraphs)
+            {
+                // TODO: doesn't work in all languages/cultures
+                Directory.CreateDirectory(Program.date_time_string);
+                using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0:D3} - {1:D1}{2}.gr", nextGraphID, treeWidth, possiblyInduced ? "i" : "")))
+                {
+                    int vertexCount = adjacencyList.Length;
+                    int edgeCount = 0;
+                    for (int i = 0; i < vertexCount; i++)
+                    {
+                        edgeCount += adjacencyList[i].Length;
+                    }
+                    edgeCount /= 2;
+
+                    sw.WriteLine(String.Format("p tw {0} {1}", vertexCount, edgeCount));
+                    Console.WriteLine("Dumped graph {0} with {1} vertices and {2} edges and tree width {3}", nextGraphID, vertexCount, edgeCount, treeWidth);
+
+                    for (int u = 0; u < vertexCount; u++)
+                    {
+                        for (int j = 0; j < adjacencyList[u].Length; j++)
+                        {
+                            int v = adjacencyList[u][j];
+                            if (u < v)
+                            {
+                                sw.WriteLine(String.Format("{0} {1}", u + 1, v + 1));
+                            }
+                        }
+                    }
+                }
+                nextGraphID++;
+            }
+        }
     }
 }
