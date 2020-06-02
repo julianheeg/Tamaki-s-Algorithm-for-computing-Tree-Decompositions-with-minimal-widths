@@ -108,6 +108,7 @@ namespace Tamaki_Tree_Decomp
         static readonly string pace2017_ex193_060 = "Test Data\\ex193 safe sep components\\060 - 12_T10.gr";
         static readonly string pace2017_ex193_062 = "Test Data\\ex193 safe sep components\\062 - 12_T10.gr";
 
+        static readonly string pace2017_ex010_010 = "wrong_subgraphs\\002-.gr";
 
 #pragma warning restore CS0414
 
@@ -115,8 +116,9 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            string filepath = PACE2017(5);
-            // string filepath = test_e0;
+            //string filepath = PACE2017(199);
+            //string filepath = test_h0;
+            string filepath = pace2017_ex010_010;
 
             BitSet.plusOneInString = false;
             // SafeSeparator.separate = false; // ###############################################################################################
@@ -130,39 +132,42 @@ namespace Tamaki_Tree_Decomp
             Graph g = new Graph(filepath);
             Graph debug = new Graph(filepath);
 
-            
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
 
-            g.TreeWidth(0, out PTD output);
-
-            stopwatch.Stop();
-            Console.WriteLine("Time elapsed: {0}s", stopwatch.Elapsed);
-
-            output.Print();
-            Debug.Assert(debug.IsValidTreeDecomposition(output));
-
-            if (!debug.IsValidTreeDecomposition(output))
+            if (true)
             {
-                Console.WriteLine("######################## tree decomposition is invalid #######################");
-            }
-            
-            
-            // TEST
-            /*
-            bool f = g.IsTreeWidthAtMost(9, out PTD output);
-            bool t = g.IsTreeWidthAtMost(10, out output);
-            Console.WriteLine(f);
-            Console.WriteLine(t);
-            if (!debug.IsValidTreeDecomposition(output))
-            {
-                Console.WriteLine("######################## tree decomposition is invalid #######################");
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                g.TreeWidth(0, out PTD output);
+
+                stopwatch.Stop();
+                Console.WriteLine("Time elapsed: {0}s", stopwatch.Elapsed);
+
+                output.Print();
+                Debug.Assert(debug.IsValidTreeDecomposition(output));
+
+                if (!debug.IsValidTreeDecomposition(output))
+                {
+                    Console.WriteLine("######################## tree decomposition is invalid #######################");
+                }
             }
             else
             {
-                Console.WriteLine("tree decomposition is valid");
+                // TEST
+                bool f = g.IsTreeWidthAtMost(15, out PTD output);
+                bool t = g.IsTreeWidthAtMost(16, out output);
+                Console.WriteLine(f);
+                Console.WriteLine(t);
+                if (!debug.IsValidTreeDecomposition(output))
+                {
+                    Console.WriteLine("######################## tree decomposition is invalid #######################");
+                }
+                else
+                {
+                    Console.WriteLine("tree decomposition is valid");
+                }
             }
-            */
+            
             
             // TEST END
 

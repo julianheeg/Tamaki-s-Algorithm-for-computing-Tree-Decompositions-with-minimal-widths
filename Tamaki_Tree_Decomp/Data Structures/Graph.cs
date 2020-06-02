@@ -17,6 +17,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly BitSet[] neighborSetsWithout;   // contains N(v)
         public readonly BitSet[] neighborSetsWith;      // contains N[v]
         public readonly BitSet allVertices;
+
+        private readonly int graphID;
+        private static int graphCount = 0;
         
         /// <summary>
         /// constructs a graph from a .gr file
@@ -80,12 +83,16 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
                 allVertices = BitSet.All(vertexCount);
 
+                graphID = graphCount;
+                graphCount++;
+
                 // Console.WriteLine("Graph {0} has been imported.", graphID);
             }
             catch (IOException e)
             {
                 Console.WriteLine("The file could not be read:");
                 Console.WriteLine(e.Message);
+                throw e;
             }
         }
 
@@ -115,6 +122,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
 
             allVertices = BitSet.All(vertexCount);
+
+            graphID = graphCount;
+            graphCount++;
         }
 
         /// <summary>
@@ -169,6 +179,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     PTD[] subTreeDecompositions = new PTD[separatedGraphs.Count];
                     for (int i = 0; i < subTreeDecompositions.Length; i++)
                     {
+                        separatedGraphs[i].Dump();
                         int subTreeWidth = separatedGraphs[i].TreeWidth(minK, out subTreeDecompositions[i]);
                         Debug.Assert(separatedGraphs[i].IsValidTreeDecomposition(subTreeDecompositions[i]));
                         bool possiblyInduced = subTreeWidth == minK;
@@ -176,10 +187,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         {
                             minK = subTreeWidth;
                         }
-                        if (safeSep.separatorSize > 2)
-                        {
-                            separatedGraphs[i].Dump(subTreeWidth, possiblyInduced);
-                        }
+                        separatedGraphs[i].RenameDumped(subTreeWidth, possiblyInduced);
+                        //if (safeSep.separatorSize > 2)
+                        //{
+                        //    separatedGraphs[i].Dump(subTreeWidth, possiblyInduced);
+                        //}
                     }
                     treeDecomp = safeSep.RecombineTreeDecompositions(subTreeDecompositions);
                     
@@ -191,7 +203,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
                 if (reducedGraph.HasTreeWidth(minK, out treeDecomp))
                 {
-                    Console.WriteLine("graph has tree width " + minK);
+                    Console.WriteLine("graph {0} has tree width {1}", graphID, minK);
                     for (int i = reductions.Count - 1; i >= 0; i--)
                     {
                         reductions[i].RebuildTreeDecomposition(ref treeDecomp);
@@ -199,7 +211,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                     return minK;
                 }
-                Console.WriteLine("graph has tree width bigger than " + minK);
+                Console.WriteLine("graph {0} has tree width bigger than {1}", graphID, minK);
                 minK++;
             }
             treeDecomp = new PTD(allVertices);
@@ -435,7 +447,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         PTD p1 = new PTD(Tau_wiggle);
 
                         // TODO: check for normalized-ness
-                        if (!tau_tauprime_combined || p1.IsIncoming(this))
+                        // if (!tau_tauprime_combined || p1.IsIncoming_old(this))   // my old
+                        if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p1))   // Daniela's new
                         {
                             if (p1.vertices.Equals(allVertices))
                             {
@@ -472,7 +485,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                                 // --------- line 24 ----------
                                 // TODO: check for normalized-ness
-                                if (!tau_tauprime_combined || p2.IsIncoming(this))
+                                // if (!tau_tauprime_combined || p2.IsIncoming_old(this))                       // my old
+                                // if ((!tau_tauprime_combined || p2.IsNormalized(Tau)) && !p2.IsIncoming(this))   // Daniela's new
+                                if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p2))
                                 {
                                     if (p2.vertices.Equals(allVertices))
                                     {
@@ -517,7 +532,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                             // --------- line 30 ----------
                             // TODO: check for normalized-ness
-                            if (!tau_tauprime_combined || p3.IsIncoming(this))
+                            // if (!tau_tauprime_combined || p3.IsIncoming_old(this))           // my old
+                            // if ((!tau_tauprime_combined || p3.IsNormalized(Tau)) && !p3.IsIncoming(this))   // Daniela's new
+                            if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p3))
                             {
                                 if (p3.vertices.Equals(allVertices))
                                 {
@@ -547,6 +564,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             totalUCount += U.Count;
             treeDecomp = null;
             return false;
+        }
+
+        private bool PassesIncomingAndNormalizedTest(PTD Tau, bool tau_tauprime_combined, PTD toTest)
+        {
+            return !tau_tauprime_combined || toTest.IsIncoming(this);
+            return (!tau_tauprime_combined || toTest.IsNormalized_Daniela(Tau)) && !toTest.IsIncoming_Daniela(this);
         }
 
         private void PrintStats(List<PTD> P, List<PTD> U)
@@ -1313,20 +1336,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
         #endregion
 
-
-        private static int nextGraphID = 0;
-        public static bool dumpSubgraphs = false;
+        public static bool dumpSubgraphs = true;
 
         /// <summary>
         /// saves the graph onto disk
         /// </summary>
-        public void Dump(int treeWidth, bool possiblyInduced)
+        public void Dump()
         {
             if (dumpSubgraphs)
             {
                 // TODO: doesn't work in all languages/cultures
                 Directory.CreateDirectory(Program.date_time_string);
-                using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0:D3} - {1:D1}{2}.gr", nextGraphID, treeWidth, possiblyInduced ? "i" : "")))
+                using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0:D3}-.gr", graphID)))
                 {
                     int vertexCount = adjacencyList.Length;
                     int edgeCount = 0;
@@ -1337,7 +1358,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     edgeCount /= 2;
 
                     sw.WriteLine(String.Format("p tw {0} {1}", vertexCount, edgeCount));
-                    Console.WriteLine("Dumped graph {0} with {1} vertices and {2} edges and tree width {3}", nextGraphID, vertexCount, edgeCount, treeWidth);
+                    Console.WriteLine("Dumped graph {0} with {1} vertices and {2} edges", graphID, vertexCount, edgeCount);
 
                     for (int u = 0; u < vertexCount; u++)
                     {
@@ -1351,8 +1372,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         }
                     }
                 }
-                nextGraphID++;
             }
+        }
+
+        public void RenameDumped(int treeWidth, bool possiblyInduced)
+        {
+            File.Move(String.Format(Program.date_time_string + "\\{0:D3}-.gr", graphID), String.Format(Program.date_time_string + "\\{0:D3}-{1:D1}{2}.gr", graphID, treeWidth, possiblyInduced ? "i" : ""));
+            Console.WriteLine("dumped graph {0} with {1} vertices and {2} edges has tree width {3}", graphID, vertexCount, edgeCount, treeWidth);
         }
     }
 }

@@ -11,7 +11,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         /// <summary>
         /// use random data to test if the indexing works, both for setting and for getting
         /// </summary>
-        [TestMethod, Timeout(600000)]
+        [TestMethod]
         public void Indexer()
         {
             // seeded random number generator
@@ -47,7 +47,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         /// <summary>
         /// use random data to test if a superset is recognized as a superset
         /// </summary>
-        [TestMethod, Timeout(600000)]
+        [TestMethod]
         public void IsSuperset_Superset_ReturnTrue()
         {
             // seeded random number generator
@@ -86,7 +86,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         /// <summary>
         /// use random data to test if a set that is not a superset is recognized as not being a superset
         /// </summary>
-        [TestMethod, Timeout(600000)]
+        [TestMethod]
         public void IsSuperset_NoSuperset_ReturnFalse()
         {
             // seeded random number generator

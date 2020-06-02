@@ -10,7 +10,10 @@ namespace Tamaki_Tree_Decomp.UnitTests
     [TestClass]
     public class Graph_UnitTest
     {
-        [TestMethod, Timeout(600000)]
+        // test timeout in milliseconds
+        private const int timeout = 60000;
+
+        [TestMethod, Timeout(timeout)]
         public void IsPotMaxClique_PotMax_Clique_ReturnTrue()
         {
             string testFile1 = "Test Data\\test1.gr";
@@ -25,7 +28,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(graph.IsPotMaxClique(c));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void IsPotMaxClique_NotPotMaxClique_ReturnFalse()
         {
             string testFile1 = "Test Data\\test1.gr";
@@ -52,7 +55,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsFalse(graph.IsPotMaxClique(r));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_SmallGraphs_ReturnTrue()
         {
             Graph g = new Graph("Test Data\\test1.gr");
@@ -90,7 +93,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_MediumGraphs_ReturnTrue()
         {
             Graph g = new Graph("Test Data\\2016\\medium\\NauruGraph.gr");
@@ -119,7 +122,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2016_HardGraphs_ReturnTrue()
         {
             Graph g = new Graph("Test Data\\2016\\hard\\ClebschGraph.gr");
@@ -147,7 +150,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_001_ReturnTrue()
         {
             int treeWidth = 10;
@@ -158,7 +161,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         }
 
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_003_ReturnTrue()
         {
             int treeWidth = 44;
@@ -168,7 +171,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_005_ReturnTrue()
         {
             int treeWidth = 7;
@@ -178,7 +181,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_007_ReturnTrue()
         {
             int treeWidth = 12;
@@ -188,7 +191,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_009_ReturnTrue()
         {
             int treeWidth = 7;
@@ -198,7 +201,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_011_ReturnTrue()
         {
             int treeWidth = 9;
@@ -208,7 +211,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_013_ReturnTrue()
         {
             int treeWidth = 29;
@@ -218,7 +221,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_015_ReturnTrue()
         {
             int treeWidth = 15;
@@ -229,7 +232,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         }
 
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_017_ReturnTrue()
         {
             int treeWidth = 9;
@@ -239,7 +242,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_019_ReturnTrue()
         {
             int treeWidth = 11;
@@ -249,7 +252,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_021_ReturnTrue()
         {
             int treeWidth = 9;
@@ -259,7 +262,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_023_ReturnTrue()
         {
             int treeWidth = 8;
@@ -269,7 +272,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_025_ReturnTrue()
         {
             int treeWidth = 20;
@@ -279,7 +282,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_027_ReturnTrue()
         {
             int treeWidth = 11;
@@ -289,7 +292,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_029_ReturnTrue()
         {
             int treeWidth = 9;
@@ -299,7 +302,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_031_ReturnTrue()
         {
             int treeWidth = 8;
@@ -309,7 +312,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_033_ReturnTrue()
         {
             int treeWidth = 7;
@@ -319,7 +322,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_035_ReturnTrue()
         {
             int treeWidth = 14;
@@ -329,7 +332,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_037_ReturnTrue()
         {
             int treeWidth = 10;
@@ -339,7 +342,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_039_ReturnTrue()
         {
             int treeWidth = 32;
@@ -349,7 +352,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_041_ReturnTrue()
         {
             int treeWidth = 9;
@@ -359,7 +362,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_043_ReturnTrue()
         {
             int treeWidth = 9;
@@ -369,7 +372,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_045_ReturnTrue()
         {
             int treeWidth = 7;
@@ -379,7 +382,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_047_ReturnTrue()
         {
             int treeWidth = 21;
@@ -389,7 +392,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_049_ReturnTrue()
         {
             int treeWidth = 13;
@@ -399,7 +402,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_051_ReturnTrue()
         {
             int treeWidth = 10;
@@ -409,7 +412,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_053_ReturnTrue()
         {
             int treeWidth = 9;
@@ -419,7 +422,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_055_ReturnTrue()
         {
             int treeWidth = 18;
@@ -429,7 +432,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_057_ReturnTrue()
         {
             int treeWidth = 117;
@@ -439,7 +442,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_059_ReturnTrue()
         {
             int treeWidth = 10;
@@ -449,7 +452,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_061_ReturnTrue()
         {
             int treeWidth = 22;
@@ -459,7 +462,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_063_ReturnTrue()
         {
             int treeWidth = 34;
@@ -469,7 +472,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_065_ReturnTrue()
         {
             int treeWidth = 25;
@@ -479,7 +482,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_067_ReturnTrue()
         {
             int treeWidth = 10;
@@ -489,7 +492,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_069_ReturnTrue()
         {
             int treeWidth = 9;
@@ -499,7 +502,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_071_ReturnTrue()
         {
             int treeWidth = 9;
@@ -509,7 +512,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_073_ReturnTrue()
         {
             int treeWidth = 7;
@@ -519,7 +522,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_075_ReturnTrue()
         {
             int treeWidth = 8;
@@ -529,7 +532,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_077_ReturnTrue()
         {
             int treeWidth = 10;
@@ -539,7 +542,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_079_ReturnTrue()
         {
             int treeWidth = 42;
@@ -549,7 +552,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_081_ReturnTrue()
         {
             int treeWidth = 6;
@@ -559,7 +562,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_083_ReturnTrue()
         {
             int treeWidth = 10;
@@ -569,7 +572,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_085_ReturnTrue()
         {
             int treeWidth = 8;
@@ -579,7 +582,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_087_ReturnTrue()
         {
             int treeWidth = 47;
@@ -589,7 +592,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_089_ReturnTrue()
         {
             int treeWidth = 9;
@@ -599,7 +602,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_091_ReturnTrue()
         {
             int treeWidth = 9;
@@ -609,7 +612,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_093_ReturnTrue()
         {
             int treeWidth = 7;
@@ -619,7 +622,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_095_ReturnTrue()
         {
             int treeWidth = 11;
@@ -629,7 +632,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_097_ReturnTrue()
         {
             int treeWidth = 48;
@@ -639,7 +642,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_099_ReturnTrue()
         {
             int treeWidth = 7;
@@ -649,7 +652,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_101_ReturnTrue()
         {
             int treeWidth = 540;
@@ -659,7 +662,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_103_ReturnTrue()
         {
             int treeWidth = 10;
@@ -669,7 +672,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_105_ReturnTrue()
         {
             int treeWidth = 540;
@@ -679,7 +682,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_107_ReturnTrue()
         {
             int treeWidth = 12;
@@ -689,7 +692,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_109_ReturnTrue()
         {
             int treeWidth = 7;
@@ -699,7 +702,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_111_ReturnTrue()
         {
             int treeWidth = 9;
@@ -709,7 +712,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_113_ReturnTrue()
         {
             int treeWidth = 14;
@@ -719,7 +722,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_115_ReturnTrue()
         {
             int treeWidth = 908;
@@ -729,7 +732,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_117_ReturnTrue()
         {
             int treeWidth = 13;
@@ -739,7 +742,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_119_ReturnTrue()
         {
             int treeWidth = 23;
@@ -749,7 +752,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_121_ReturnTrue()
         {
             int treeWidth = 34;
@@ -759,7 +762,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_123_ReturnTrue()
         {
             int treeWidth = 35;
@@ -769,7 +772,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_125_ReturnTrue()
         {
             int treeWidth = 70;
@@ -779,7 +782,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_127_ReturnTrue()
         {
             int treeWidth = 10;
@@ -789,7 +792,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_129_ReturnTrue()
         {
             int treeWidth = 14;
@@ -799,7 +802,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_131_ReturnTrue()
         {
             int treeWidth = 18;
@@ -809,7 +812,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_133_ReturnTrue()
         {
             int treeWidth = 11;
@@ -819,7 +822,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_135_ReturnTrue()
         {
             int treeWidth = 87;
@@ -829,7 +832,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_137_ReturnTrue()
         {
             int treeWidth = 19;
@@ -839,7 +842,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_139_ReturnTrue()
         {
             int treeWidth = 9;
@@ -849,7 +852,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_141_ReturnTrue()
         {
             int treeWidth = 34;
@@ -859,7 +862,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_143_ReturnTrue()
         {
             int treeWidth = 35;
@@ -869,7 +872,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_145_ReturnTrue()
         {
             int treeWidth = 12;
@@ -879,7 +882,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_147_ReturnTrue()
         {
             int treeWidth = 16;
@@ -889,7 +892,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_149_ReturnTrue()
         {
             int treeWidth = 12;
@@ -899,7 +902,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_151_ReturnTrue()
         {
             int treeWidth = 12;
@@ -909,7 +912,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_153_ReturnTrue()
         {
             int treeWidth = 47;
@@ -919,7 +922,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_155_ReturnTrue()
         {
             int treeWidth = 47;
@@ -929,7 +932,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_157_ReturnTrue()
         {
             int treeWidth = 9;
@@ -939,7 +942,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_159_ReturnTrue()
         {
             int treeWidth = 18;
@@ -949,7 +952,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_161_ReturnTrue()
         {
             int treeWidth = 12;
@@ -959,7 +962,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_163_ReturnTrue()
         {
             int treeWidth = 10;
@@ -969,7 +972,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_165_ReturnTrue()
         {
             int treeWidth = 14;
@@ -979,7 +982,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_167_ReturnTrue()
         {
             int treeWidth = 10;
@@ -989,7 +992,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_169_ReturnTrue()
         {
             int treeWidth = 23;
@@ -999,7 +1002,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_171_ReturnTrue()
         {
             int treeWidth = 14;
@@ -1009,7 +1012,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_173_ReturnTrue()
         {
             int treeWidth = 10;
@@ -1019,7 +1022,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_175_ReturnTrue()
         {
             int treeWidth = 18;
@@ -1029,7 +1032,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_177_ReturnTrue()
         {
             int treeWidth = 14;
@@ -1039,7 +1042,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_179_ReturnTrue()
         {
             int treeWidth = 10;
@@ -1049,7 +1052,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_181_ReturnTrue()
         {
             int treeWidth = 18;
@@ -1059,7 +1062,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_183_ReturnTrue()
         {
             int treeWidth = 11;
@@ -1069,7 +1072,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_185_ReturnTrue()
         {
             int treeWidth = 14;
@@ -1079,7 +1082,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_187_ReturnTrue()
         {
             int treeWidth = 10;
@@ -1089,7 +1092,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_189_ReturnTrue()
         {
             int treeWidth = 70;
@@ -1099,7 +1102,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_191_ReturnTrue()
         {
             int treeWidth = 15;
@@ -1109,7 +1112,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_193_ReturnTrue()
         {
             int treeWidth = 10;
@@ -1119,7 +1122,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_195_ReturnTrue()
         {
             int treeWidth = 10;
@@ -1129,7 +1132,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_197_ReturnTrue()
         {
             int treeWidth = 15;
@@ -1139,7 +1142,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
             Assert.IsTrue(g.IsValidTreeDecomposition(output));
         }
 
-        [TestMethod, Timeout(600000)]
+        [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_199_ReturnTrue()
         {
             int treeWidth = 9;

@@ -228,13 +228,29 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
+
+        /// <summary>
+        /// tests if this PTD is an incoming PTD
+        /// </summary>
+        /// <returns>true iff the PTD is incoming</returns>
+        public bool IsIncoming_Daniela(Graph graph)
+        {
+            BitSet rest = vertices.Complement();
+            return inlet.First() < rest.First();
+        }
+
+        public bool IsNormalized_Daniela(PTD child)
+        {
+            return !outlet.IsSuperset(child.outlet);
+        }
+
         /// <summary>
         /// tests if this PTD is an incoming PTD
         /// </summary>
         /// <returns>true iff the PTD is incoming</returns>
         public bool IsIncoming(Graph graph)
         {
-            
+            /*
             foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
@@ -246,9 +262,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
             return true;
+            */
             
-
-            /*
             foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
@@ -259,22 +274,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
                 }
             }
-            return false;
-            */
+            return false;           
             
-
-            /*
-            // old definition
-            foreach(Tuple<BitSet, BitSet> C_NC in graph.ComponentsAndNeighbors(Bag))
-            {
-                if (outlet.IsSuperset(C_NC.Item2) && !C_NC.Item2.Equals(outlet) && C_NC.Item2.First() < inlet.First())
-                {
-                    return false;
-                }
-            }
-            return true;
-            */
         }
+
 
         [Conditional("DEBUG")]
         private void AssertVerticesCorrect()
