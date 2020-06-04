@@ -115,12 +115,12 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            string filepath = PACE2017(035);
+            string filepath = PACE2017(137);
             //string filepath = test_h0;
-            //string filepath = "wrong_subgraphs\\010-10-10_T9.gr";
+            //string filepath = "wrong graphs\\002-15 - Kopie.gr";
 
             BitSet.plusOneInString = false;
-            //Graph.dumpSubgraphs = true;
+            // Graph.dumpSubgraphs = true;
             // SafeSeparator.separate = false; // ###############################################################################################
             // GraphReduction.reduce = false;  // ###############################################################################################
 
@@ -148,7 +148,11 @@ namespace Tamaki_Tree_Decomp
 
                 Console.WriteLine("Tree width = {0}", treeWidth);
 
-                if (!debug.IsValidTreeDecomposition(output))
+                if (debug.IsValidTreeDecomposition(output))
+                {
+                    Console.WriteLine("Tree decomposition is valid.");
+                }
+                else
                 {
                     Console.WriteLine("######################## tree decomposition is invalid #######################");
                 }
@@ -169,65 +173,6 @@ namespace Tamaki_Tree_Decomp
                     Console.WriteLine("tree decomposition is valid");
                 }
             }
-            
-            
-            // TEST END
-
-            /*
-            int counter = 0;
-            Graph graph = new Graph(test_m4);
-            foreach (IEnumerable<int> subset in SubSetsOf(Enumerable.Range(0, graph.vertexCount).ToArray()))
-            {
-                BitSet test = new BitSet(graph.vertexCount, subset.ToArray());
-                graph.ComponentsAndNeighbors(test);
-                counter++;
-                if (counter % 100000 == 0)
-                {
-                    Console.WriteLine(counter);
-                }
-            }
-            Console.WriteLine("Test finished");
-            */
-
-            /*
-            string testFile1 = "Test Data\\test1.gr";
-            Graph graph = new Graph(testFile1);
-            
-            BitSet b = new BitSet(6, new int[] { 0, 1 ,2 });
-            
-            Debug.Assert(graph.IsPotMaxClique(b));
-            */
-
-            /*
-            SafeSeparator ss = new SafeSeparator(g);
-            foreach(BitSet candidate in ss.CandidateSeparators())
-            {
-                Console.WriteLine("currently testing {0}", candidate);
-                if (ss.IsSafeSeparator(candidate))
-                {
-                    Console.WriteLine("{0} is a safe separator", candidate);
-                    //Console.Read();
-                }
-            }
-            Console.WriteLine("test for safe separators concluded");
-            */
-
-            /*
-            PTD tamaki = PTD.ImportPTD("Test Data\\test decomps\\Tamaki_NauruGraph.td");
-            Debug.Assert(debug.IsValidTreeDecomposition(tamaki));
-            tamaki.Print();
-            */
-
-            /*
-            bool testOwn = false;
-            if (testOwn)
-            {
-                Console.WriteLine("\n--------own decomposition--------\n");
-                PTD own = PTD.ImportPTD(td_o_a2);
-                Debug.Assert(g.IsValidTreeDecomposition(own));
-                own.Print();
-            }
-            */
 
             Console.Read();
         }

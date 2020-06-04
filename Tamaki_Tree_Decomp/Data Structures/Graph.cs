@@ -389,43 +389,34 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         tau_tauprime_combined = true;
 
-                        // --------- line 13 with early continue if bag size is too big ----------
-
-                        if (!PTD.Line13_CheckBagSize(Tau_prime, Tau, this, k, out Tau_wiggle))
+                        // --------- line 13 with early continue if bag size is too big or tree is not possibly usable ----------
+                        
+                        if (!PTD.Line13_CheckBagSize_CheckPossiblyUsable(Tau_prime, Tau, this, k, out Tau_wiggle))
                         {
                             // ---------- line 15 ----------
 
                             continue;
                         }
 
-                        // --------- lines 14 and 15 (check if bag size is too big is done earlier) ----------
+                        // --------- lines 14 and 15 (only the check for cliquish remains) ----------
 
-                        if (Tau_wiggle.IsPossiblyUsable())
+                        if (IsCliquish(Tau_wiggle.Bag))
                         {
-                            if (IsCliquish(Tau_wiggle.Bag))
+                            if (!U_inlets.Contains(Tau_wiggle.inlet))
                             {
-                                if (!U_inlets.Contains(Tau_wiggle.inlet))
-                                {
-                                    Debug.Assert(IsConsistent(Tau_wiggle));
-                                    U.Add(Tau_wiggle);
-                                    U_inlets.Add(Tau_wiggle.inlet);
-                                }
-                                else
-                                {
-                                    continue;
-                                }
+                                Debug.Assert(IsConsistent(Tau_wiggle));
+                                U.Add(Tau_wiggle);
+                                U_inlets.Add(Tau_wiggle.inlet);
                             }
                             else
                             {
-                                line13RejectCount++;
-                                line13RejectCount_NotCliquish++;
                                 continue;
                             }
                         }
                         else
                         {
                             line13RejectCount++;
-                            line13RejectCount_Unusable++;
+                            line13RejectCount_NotCliquish++;
                             continue;
                         }
                     }
@@ -559,7 +550,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             //return true;
             //return !tau_tauprime_combined;                                                                              // test
-            return !tau_tauprime_combined || toTest.IsIncoming(this);                                                   // mine
+            return !tau_tauprime_combined || !toTest.IsIncoming(this);                                                   // mine
             //return (!tau_tauprime_combined || toTest.IsNormalized_Daniela(Tau)) && !toTest.IsIncoming_Daniela(this);  // Daniela old
 
             //return !tau_tauprime_combined || (toTest.IsNormalized_Daniela(Tau) && !toTest.IsIncoming_Daniela(this));  // Daniela very old

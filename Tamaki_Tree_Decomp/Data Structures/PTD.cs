@@ -139,6 +139,55 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
+        // line 13, but exit early if bag size is too big
+        public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
+        {
+            Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
+            BitSet bag = new BitSet(Tau_prime.Bag);
+            bag.UnionWith(Tau.outlet);
+
+            // exit early if bag is too big
+            if (bag.Count() > k + 1)
+            {
+                result = null;
+                return false;
+            }
+
+            List<PTD> children = new List<PTD>(Tau_prime.children);
+            children.Add(Tau);
+
+            // exit early if not possibly usable
+            for (int i = 0; i < children.Count; i++)
+            {
+                for (int j = i + 1; j < children.Count; j++)
+                {
+                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    {
+                        result = null;
+                        return false;
+                    }
+
+                    BitSet verticesIntersection = new BitSet(children[i].vertices);
+                    verticesIntersection.IntersectWith(children[j].vertices);
+                    if (!children[i].outlet.IsSuperset(verticesIntersection) || !children[j].outlet.IsSuperset(verticesIntersection))
+                    {
+                        result = null;
+                        return false;
+                    }
+                }
+            }
+
+            BitSet vertices = new BitSet(Tau_prime.vertices);
+            vertices.UnionWith(Tau.vertices);
+
+            BitSet outlet = graph.Outlet(bag, vertices);
+            BitSet inlet = new BitSet(vertices);
+            inlet.ExceptWith(outlet);
+            result = new PTD(bag, vertices, outlet, inlet, children);
+
+            return true;
+        }
+
         // line 23
         public static PTD Line23(PTD Tau_wiggle, BitSet vNeighbors, Graph graph)
         {
@@ -207,7 +256,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             for (int i = 0; i < children.Count; i++)
             {
-                // TODO: check correct?
                 Debug.Assert(children[i].inlet.IsDisjoint(outlet));
 
                 for (int j = i + 1; j < children.Count; j++)
