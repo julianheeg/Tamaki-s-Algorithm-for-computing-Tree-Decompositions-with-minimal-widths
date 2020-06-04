@@ -239,7 +239,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>the position of the first set bit, if there is one, and -1 otherwise</returns>
         public int First()
         {
-            int first = -1;
+            int first = bytes.Length * 32;
             // code taken from http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
             for (int i = 0; i < bytes.Length; i++)
             {

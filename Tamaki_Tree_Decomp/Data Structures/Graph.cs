@@ -370,12 +370,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 // --------- lines 10 ----------
 
-                if (!U_inlets.Contains(Tau_wiggle_original.inlet))
-                {
-                    Debug.Assert(IsConsistent(Tau_wiggle_original));
-                    U.Add(Tau_wiggle_original);
-                    U_inlets.Add(Tau_wiggle_original.inlet);
-                }
+                // TODO: perhaps check using dictionary and only add to u if bag is smaller / bag is subset?
+                Debug.Assert(IsConsistent(Tau_wiggle_original));
+                U.Add(Tau_wiggle_original);
+                U_inlets.Add(Tau_wiggle_original.inlet);
 
                 // --------- lines 11 to 32 ----------
 
@@ -384,9 +382,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     PTD Tau_prime = U[j];
                     PTD Tau_wiggle;
                     bool tau_tauprime_combined;
-                    
+
                     // --------- lines 12 to 15 ----------
-                    
+
                     if (!Tau_wiggle_original.Equivalent(Tau_prime))
                     {
                         tau_tauprime_combined = true;
@@ -436,7 +434,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         tau_tauprime_combined = false;
                         Tau_wiggle = Tau_wiggle_original;
                     }
-                    
 
                     // --------- lines 16 to 20 ----------
 
@@ -446,9 +443,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         // TODO: can at least copy after tests are done
                         PTD p1 = new PTD(Tau_wiggle);
 
-                        // TODO: check for normalized-ness
-                        // if (!tau_tauprime_combined || p1.IsIncoming_old(this))   // my old
-                        if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p1))   // Daniela's new
+                        if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p1))
                         {
                             if (p1.vertices.Equals(allVertices))
                             {
@@ -484,9 +479,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
 
                                 // --------- line 24 ----------
-                                // TODO: check for normalized-ness
-                                // if (!tau_tauprime_combined || p2.IsIncoming_old(this))                       // my old
-                                // if ((!tau_tauprime_combined || p2.IsNormalized(Tau)) && !p2.IsIncoming(this))   // Daniela's new
                                 if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p2))
                                 {
                                     if (p2.vertices.Equals(allVertices))
@@ -531,9 +523,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             PTD p3 = PTD.Line29(Tau_wiggle, potNewRootBag, this);
 
                             // --------- line 30 ----------
-                            // TODO: check for normalized-ness
-                            // if (!tau_tauprime_combined || p3.IsIncoming_old(this))           // my old
-                            // if ((!tau_tauprime_combined || p3.IsNormalized(Tau)) && !p3.IsIncoming(this))   // Daniela's new
                             if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p3))
                             {
                                 if (p3.vertices.Equals(allVertices))
@@ -568,8 +557,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         private bool PassesIncomingAndNormalizedTest(PTD Tau, bool tau_tauprime_combined, PTD toTest)
         {
-            return !tau_tauprime_combined || toTest.IsIncoming(this);
-            return (!tau_tauprime_combined || toTest.IsNormalized_Daniela(Tau)) && !toTest.IsIncoming_Daniela(this);
+            //return true;
+            //return !tau_tauprime_combined;                                                                              // test
+            return !tau_tauprime_combined || toTest.IsIncoming(this);                                                   // mine
+            //return (!tau_tauprime_combined || toTest.IsNormalized_Daniela(Tau)) && !toTest.IsIncoming_Daniela(this);  // Daniela old
+
+            //return !tau_tauprime_combined || (toTest.IsNormalized_Daniela(Tau) && !toTest.IsIncoming_Daniela(this));  // Daniela very old
         }
 
         private void PrintStats(List<PTD> P, List<PTD> U)
@@ -1336,7 +1329,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
         #endregion
 
-        public static bool dumpSubgraphs = true;
+        public static bool dumpSubgraphs = false;
 
         /// <summary>
         /// saves the graph onto disk
@@ -1377,8 +1370,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         public void RenameDumped(int treeWidth, bool possiblyInduced)
         {
-            File.Move(String.Format(Program.date_time_string + "\\{0:D3}-.gr", graphID), String.Format(Program.date_time_string + "\\{0:D3}-{1:D1}{2}.gr", graphID, treeWidth, possiblyInduced ? "i" : ""));
-            Console.WriteLine("dumped graph {0} with {1} vertices and {2} edges has tree width {3}", graphID, vertexCount, edgeCount, treeWidth);
+            if (dumpSubgraphs)
+            {
+                File.Move(String.Format(Program.date_time_string + "\\{0:D3}-.gr", graphID), String.Format(Program.date_time_string + "\\{0:D3}-{1:D1}{2}.gr", graphID, treeWidth, possiblyInduced ? "i" : ""));
+                Console.WriteLine("dumped graph {0} with {1} vertices and {2} edges has tree width {3}", graphID, vertexCount, edgeCount, treeWidth);
+            }
         }
     }
 }

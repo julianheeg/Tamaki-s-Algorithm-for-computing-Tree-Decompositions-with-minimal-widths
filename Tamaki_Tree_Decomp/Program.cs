@@ -108,7 +108,6 @@ namespace Tamaki_Tree_Decomp
         static readonly string pace2017_ex193_060 = "Test Data\\ex193 safe sep components\\060 - 12_T10.gr";
         static readonly string pace2017_ex193_062 = "Test Data\\ex193 safe sep components\\062 - 12_T10.gr";
 
-        static readonly string pace2017_ex010_010 = "wrong_subgraphs\\002-.gr";
 
 #pragma warning restore CS0414
 
@@ -116,11 +115,12 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            //string filepath = PACE2017(199);
+            string filepath = PACE2017(035);
             //string filepath = test_h0;
-            string filepath = pace2017_ex010_010;
+            //string filepath = "wrong_subgraphs\\010-10-10_T9.gr";
 
             BitSet.plusOneInString = false;
+            //Graph.dumpSubgraphs = true;
             // SafeSeparator.separate = false; // ###############################################################################################
             // GraphReduction.reduce = false;  // ###############################################################################################
 
@@ -138,13 +138,15 @@ namespace Tamaki_Tree_Decomp
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
 
-                g.TreeWidth(0, out PTD output);
+                int treeWidth = g.TreeWidth(0, out PTD output);
 
                 stopwatch.Stop();
                 Console.WriteLine("Time elapsed: {0}s", stopwatch.Elapsed);
 
                 output.Print();
                 Debug.Assert(debug.IsValidTreeDecomposition(output));
+
+                Console.WriteLine("Tree width = {0}", treeWidth);
 
                 if (!debug.IsValidTreeDecomposition(output))
                 {
