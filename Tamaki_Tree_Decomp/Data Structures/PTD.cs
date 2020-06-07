@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -16,8 +17,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly BitSet outlet;
         public readonly List<PTD> children;
 
-        //TODO: perhaps maintain the sets of components associated with the outel
-
+        //TODO: perhaps maintain the sets of components associated with the outlet
+        
         /// <summary>
         /// copy constructor
         /// </summary>
@@ -74,11 +75,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             Bag = newBag;
         }
-        
+
         /// <summary>
         /// creates a new root with the given node as a child and the child's outlet as bag
         /// </summary>
         /// <param name="Tau">the child of this node</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line9(PTD Tau)
         {
             BitSet bag = new BitSet(Tau.outlet);        // TODO: not copy? would be probably wrong since the child's outlet is used in line 9 and the bag of this root can change
@@ -95,6 +97,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         // line 13
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line13(PTD Tau_prime, PTD Tau, Graph graph)
         {
             Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
@@ -115,6 +118,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         // line 13, but exit early if bag size is too big
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Line13_CheckBagSize(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
         {
             Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
@@ -139,7 +143,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
+        public static int childrenCastings = 0;
+
         // line 13, but exit early if bag size is too big
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
         {
             Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
@@ -159,8 +166,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // exit early if not possibly usable
             for (int i = 0; i < children.Count; i++)
             {
+                childrenCastings++;
                 for (int j = i + 1; j < children.Count; j++)
                 {
+                    childrenCastings++;
                     if (!children[i].inlet.IsDisjoint(children[j].inlet))
                     {
                         result = null;
@@ -189,6 +198,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         // line 23
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line23(PTD Tau_wiggle, BitSet vNeighbors, Graph graph)
         {
             BitSet bag = new BitSet(vNeighbors);
@@ -214,6 +224,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         // line 29
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line29(PTD Tau_wiggle, BitSet newRoot, Graph graph)
         {
             Debug.Assert(newRoot.IsSuperset(Tau_wiggle.Bag));
@@ -252,14 +263,16 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// tests whether this PTD is possibly usable
         /// </summary>
         /// <returns>true iff the PTD is possibly usable</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsPossiblyUsable()
         {
             for (int i = 0; i < children.Count; i++)
             {
                 Debug.Assert(children[i].inlet.IsDisjoint(outlet));
-
+                childrenCastings++;
                 for (int j = i + 1; j < children.Count; j++)
                 {
+                    childrenCastings ++;
                     if (!children[i].inlet.IsDisjoint(children[j].inlet))
                     {
                         return false;
@@ -344,6 +357,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// </summary>
         /// <param name="rootSet">a subset of the future root</param>
         /// <returns>a rerooted version of this tree decomposition where rootSet is a subset of the new root</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public PTD Reroot(BitSet rootSet)
         {
             if (Bag.IsSuperset(rootSet))

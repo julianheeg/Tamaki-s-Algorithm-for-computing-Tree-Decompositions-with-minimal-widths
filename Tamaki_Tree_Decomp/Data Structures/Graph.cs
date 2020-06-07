@@ -188,10 +188,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             minK = subTreeWidth;
                         }
                         separatedGraphs[i].RenameDumped(subTreeWidth, possiblyInduced);
-                        //if (safeSep.separatorSize > 2)
-                        //{
-                        //    separatedGraphs[i].Dump(subTreeWidth, possiblyInduced);
-                        //}
                     }
                     treeDecomp = safeSep.RecombineTreeDecompositions(subTreeDecompositions);
                     
@@ -307,9 +303,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         int totalPCount = 0;
         int totalUCount = 0;
         int line13RejectCount = 0;
-        int line13RejectCount_TooBig = 0;
-        int line13RejectCount_Unusable = 0;
         int line13RejectCount_NotCliquish = 0;
+        int UDuplicateInletCount = 0;
 
         /// <summary>
         /// determines whether this graph has tree width k
@@ -369,6 +364,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 PTD Tau_wiggle_original = PTD.Line9(Tau);
 
                 // --------- lines 10 ----------
+
+                // TODO: remove
+                if (U_inlets.Contains(Tau_wiggle_original.inlet))
+                {
+                    UDuplicateInletCount++;
+                }
 
                 // TODO: perhaps check using dictionary and only add to u if bag is smaller / bag is subset?
                 Debug.Assert(IsConsistent(Tau_wiggle_original));
@@ -558,7 +559,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         private void PrintStats(List<PTD> P, List<PTD> U)
         {
-            Console.WriteLine("total P: {0}, total U: {1}, Line 13 rejections: {2}, too big: {3}, unusable: {4}, not cliquish: {5}", totalPCount + P.Count, totalUCount + U.Count, line13RejectCount, line13RejectCount_TooBig, line13RejectCount_Unusable, line13RejectCount_NotCliquish);
+            Console.WriteLine("total P: {0}, total U: {1}, U inlet duplicates: {2}, Line 13 rejections: not cliquish: {3}", totalPCount + P.Count, totalUCount + U.Count, UDuplicateInletCount, line13RejectCount_NotCliquish);
         }
 
 
@@ -683,11 +684,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 while (!red.IsEmpty())
                 {
-                    List<int> redElements = red.Elements();
                     green.Clear();
+                    /*
+                    List<int> redElements = red.Elements();
                     for (int i = 0; i < redElements.Count; i++)
                     {
                         green.UnionWith(neighborSetsWithout[redElements[i]]);
+                    }
+                    */
+                    int redElement = -1;
+                    while ((redElement = red.NextElement(redElement, getsReduced: false)) != -1)
+                    {
+                        green.UnionWith(neighborSetsWithout[redElement]);
                     }
 
                     purple.UnionWith(red);
@@ -1323,8 +1331,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public static bool dumpSubgraphs = false;
 
         /// <summary>
-        /// saves the graph onto disk
+        /// writes the graph to disk
         /// </summary>
+        [Conditional("DEBUG")]
         public void Dump()
         {
             if (dumpSubgraphs)
@@ -1359,6 +1368,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
+        /// changes the graph's name on disk so that it reflects which tree width this algorithm has determined for it
+        /// <param name="treeWidth">the tree width</param>
+        /// <param name="possiblyInduced">whether that tree width might be larger than if it would be if the subgraph was run alone</param>
+        [Conditional("DEBUG")]
         public void RenameDumped(int treeWidth, bool possiblyInduced)
         {
             if (dumpSubgraphs)

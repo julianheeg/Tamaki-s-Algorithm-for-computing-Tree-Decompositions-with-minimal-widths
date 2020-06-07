@@ -11,7 +11,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
     public class Graph_UnitTest
     {
         // test timeout in milliseconds
-        private const int timeout = 600000;
+        private const int timeout = 3600000;
 
         [TestMethod, Timeout(timeout)]
         public void IsPotMaxClique_PotMax_Clique_ReturnTrue()
@@ -995,7 +995,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_169_ReturnTrue()
         {
-            int treeWidth = 23;
+            int treeWidth = 22;
             Graph g = new Graph("Test Data\\2017\\ex169.gr");
             Assert.IsFalse(g.IsTreeWidthAtMost(treeWidth - 1, out PTD output));
             Assert.IsTrue(g.IsTreeWidthAtMost(treeWidth, out output));

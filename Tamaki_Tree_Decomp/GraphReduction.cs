@@ -614,6 +614,7 @@ namespace Tamaki_Tree_Decomp
                 if (!hasChanged)
                 {
                     ;
+                    throw new Exception("tree decomposition could not be rebuilt");
                 }
             }
 

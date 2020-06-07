@@ -115,8 +115,8 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            string filepath = PACE2017(137);
-            //string filepath = test_h0;
+            string filepath = PACE2017(11);
+            //string filepath = test_a9;
             //string filepath = "wrong graphs\\002-15 - Kopie.gr";
 
             BitSet.plusOneInString = false;
@@ -156,6 +156,7 @@ namespace Tamaki_Tree_Decomp
                 {
                     Console.WriteLine("######################## tree decomposition is invalid #######################");
                 }
+                Console.WriteLine("children castings: {0}", PTD.childrenCastings);
             }
             else
             {

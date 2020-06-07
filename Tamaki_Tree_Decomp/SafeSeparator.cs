@@ -43,27 +43,39 @@ namespace Tamaki_Tree_Decomp
                 separatedGraphs = null;
                 return false;
             }
-
-            if (Size2Separate())
+            
+            if (Size1Separate(new BitSet(vertexCount)))
             {
+                Console.WriteLine("size 1 separator found: {0}", separator.ToString());
                 PrintSeparation();
                 separatedGraphs = subGraphs;
                 if (minK < separatorSize)
                 {
                     minK = separatorSize;
                 }
+                return true;
+            }            
+
+            if (Size2Separate())
+            {
                 Console.WriteLine("size 2 separator found: {0}", separator.ToString());
+                PrintSeparation();
+                separatedGraphs = subGraphs;
+                if (minK < separatorSize)
+                {
+                    minK = separatorSize;
+                }
                 return true;
             }
             else if (HeuristicDecomposition())
             {
+                Console.WriteLine("clique minor found: {0}", separator.ToString());
                 PrintSeparation();
                 separatedGraphs = subGraphs;
                 if (minK < separatorSize - 1)
                 {
                     minK = separatorSize - 1;   // TODO: correct?
                 }
-                Console.WriteLine("clique minor found: {0}", separator.ToString());
                 return true;
             }
 
@@ -72,6 +84,97 @@ namespace Tamaki_Tree_Decomp
         }
 
         #region exact safe separator search
+
+        /// <summary>
+        /// Tests if the graph can be separated with a separator of size 1. If so, the graph is split and the
+        /// resulting subgraphs and the reconstruction mappings are saved in the corresponding member variables.
+        /// This method can also be used to test for separators of size n by passing a set of n-1 vertices as
+        /// ignoredVertices 
+        /// </summary>
+        /// <param name="ignoredVertices">vertices to ignore. The search skips these vertices entirely, thus allowing searches for separators of size larger than 1</param>
+        /// <returns>true iff a size 1 separator exists</returns>
+        private bool Size1Separate(BitSet ignoredVertices)
+        {
+            int timer = 0;
+            BitSet visited = new BitSet(vertexCount);
+            int[] tin = new int[vertexCount];
+            int[] low = new int[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                tin[i] = -1;
+                low[i] = -1;
+            }
+            CopyGraph(out List<int>[] adjacencyList, out BitSet[] neighborSetsWithout);
+
+            for (int i = 0; i < vertexCount; i++)
+            {
+                if (!visited[i])
+                {
+                    if (Size1Separate_Recursive(i, adjacencyList, ignoredVertices, ref timer, visited, tin, low, out int result))
+                    {
+                        separator = ignoredVertices;
+                        separator[result] = true;
+                        List<int> separatorVertices = separator.Elements();
+                        separatorSize = separatorVertices.Count;
+                        MakeSeparatorIntoClique(separatorVertices, adjacencyList, neighborSetsWithout);
+                        foreach ((BitSet component, BitSet neighbor) in graph.ComponentsAndNeighbors(separator))
+                        {
+                            BuildSubgraph(separatorVertices, adjacencyList, component);
+                        }
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private bool Size1Separate_Recursive(int v, List<int>[] adjacencyList, BitSet removedVertices, ref int timer, BitSet visited, int[] tin, int[] low, out int result, int p = -1)
+        {
+            visited[v] = true;
+            tin[v] = timer;
+            low[v] = timer;
+            timer++;
+            int children = 0;
+            for (int i = 0; i < adjacencyList[v].Count; i++)
+            {
+                int to = adjacencyList[v][i];
+                if (to == p || removedVertices[to])
+                {
+                    continue;
+                }
+                if (visited[to])
+                {
+                    if (low[v] > tin[to])
+                    {
+                        low[v] = tin[to];
+                    }
+                }
+                else
+                {
+                    if (Size1Separate_Recursive(to, adjacencyList, removedVertices, ref timer, visited, tin, low, out result, v))
+                    {
+                        return true;
+                    }
+                    if (low[v] > low[to])
+                    {
+                        low[v] = low[to];
+                    }
+                    if (low[to] >= tin[v] && p != -1)
+                    {
+                        result = v;
+                        return true;
+                    }
+                    children++;
+                }
+            }
+            if (p == -1 && children > 1)
+            {
+                result = v;
+                return true;
+            }
+            result = -1;
+            return false;
+        }
 
         /// <summary>
         /// Tests if the graph can be separated with a separator of size 2. If so, the graph is split and the
