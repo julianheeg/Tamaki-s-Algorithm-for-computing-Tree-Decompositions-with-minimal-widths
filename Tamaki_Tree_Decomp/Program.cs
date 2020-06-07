@@ -115,8 +115,8 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            string filepath = PACE2017(11);
-            //string filepath = test_a9;
+            string filepath = PACE2017(169);
+            //string filepath = test_m0;
             //string filepath = "wrong graphs\\002-15 - Kopie.gr";
 
             BitSet.plusOneInString = false;

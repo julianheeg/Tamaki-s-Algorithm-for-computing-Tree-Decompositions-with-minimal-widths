@@ -11,7 +11,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
     public class Graph_UnitTest
     {
         // test timeout in milliseconds
-        private const int timeout = 3600000;
+        private const int timeout = 60000;
 
         [TestMethod, Timeout(timeout)]
         public void IsPotMaxClique_PotMax_Clique_ReturnTrue()

@@ -54,8 +54,7 @@ namespace Tamaki_Tree_Decomp
                     minK = separatorSize;
                 }
                 return true;
-            }            
-
+            }
             if (Size2Separate())
             {
                 Console.WriteLine("size 2 separator found: {0}", separator.ToString());
@@ -89,7 +88,8 @@ namespace Tamaki_Tree_Decomp
         /// Tests if the graph can be separated with a separator of size 1. If so, the graph is split and the
         /// resulting subgraphs and the reconstruction mappings are saved in the corresponding member variables.
         /// This method can also be used to test for separators of size n by passing a set of n-1 vertices as
-        /// ignoredVertices 
+        /// ignoredVertices. Even in that case the graph is split.
+        /// Code ist adapted from https://cp-algorithms.com/graph/cutpoints.html.
         /// </summary>
         /// <param name="ignoredVertices">vertices to ignore. The search skips these vertices entirely, thus allowing searches for separators of size larger than 1</param>
         /// <returns>true iff a size 1 separator exists</returns>
@@ -108,7 +108,7 @@ namespace Tamaki_Tree_Decomp
 
             for (int i = 0; i < vertexCount; i++)
             {
-                if (!visited[i])
+                if (!visited[i] && !ignoredVertices[i])
                 {
                     if (Size1Separate_Recursive(i, adjacencyList, ignoredVertices, ref timer, visited, tin, low, out int result))
                     {
@@ -128,6 +128,19 @@ namespace Tamaki_Tree_Decomp
             return false;
         }
 
+        /// <summary>
+        /// recursive helper function for Size1Separate. Code is adapted from https://cp-algorithms.com/graph/cutpoints.html.
+        /// </summary>
+        /// <param name="v"></param>
+        /// <param name="adjacencyList"></param>
+        /// <param name="removedVertices"></param>
+        /// <param name="timer"></param>
+        /// <param name="visited"></param>
+        /// <param name="tin"></param>
+        /// <param name="low"></param>
+        /// <param name="result"></param>
+        /// <param name="p"></param>
+        /// <returns></returns>
         private bool Size1Separate_Recursive(int v, List<int>[] adjacencyList, BitSet removedVertices, ref int timer, BitSet visited, int[] tin, int[] low, out int result, int p = -1)
         {
             visited[v] = true;
@@ -179,6 +192,30 @@ namespace Tamaki_Tree_Decomp
         /// <summary>
         /// Tests if the graph can be separated with a separator of size 2. If so, the graph is split and the
         /// resulting subgraphs and the reconstruction mappings are saved in the corresponding member variables
+        /// </summary>
+        /// <returns>true iff a size 2 separator exists</returns>
+        public bool Size2Separate()
+        {
+            BitSet separator = new BitSet(vertexCount);
+
+            // loop over every pair of vertices
+            for (int u = 0; u < vertexCount; u++)
+            {
+                separator[u] = true;
+                if (Size1Separate(separator))
+                {
+                    return true;
+                }
+                // reset first vertex
+                separator[u] = false;
+            }
+            return false;
+        }
+
+        /*
+        /// <summary>
+        /// Tests if the graph can be separated with a separator of size 2. If so, the graph is split and the
+        /// resulting subgraphs and the reconstruction mappings are saved in the corresponding member variables
         /// TODO: Improve. This is a naive (n^3) implementation.
         /// </summary>
         /// <returns>true iff a size 2 separator exists</returns>
@@ -222,6 +259,7 @@ namespace Tamaki_Tree_Decomp
             }
             return false;
         }
+        */
 
         #endregion
 
