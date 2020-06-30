@@ -1,9 +1,10 @@
-﻿#define statistics
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Tamaki_Tree_Decomp.Data_Structures;
 
@@ -43,7 +44,7 @@ namespace Tamaki_Tree_Decomp
 
         static readonly string test_s0 = "Test Data\\s0_fuzix_clock_settime_clock_settime.gr";
         static readonly string test_s1 = "Test Data\\s1_fuzix_clock_settime_clock_settime.gr";
-        static readonly string test_s3 = "Test Data\\s3_fuzix_clock_settime_clock_settime.gr";
+        static readonly string test_s2 = "Test Data\\s3_fuzix_clock_settime_clock_settime.gr";
 
         static readonly string test_e0 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\easy\\fuzix_filesys_getinode.gr";
         static readonly string test_e1 = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\easy\\fuzix_devf_fd_transfer.gr";
@@ -77,139 +78,160 @@ namespace Tamaki_Tree_Decomp
         static readonly string pace17_001 = "Test Data\\ex-instances-PACE2017-public\\ex001.gr";
         static readonly string pace17_193 = "Test Data\\ex-instances-PACE2017-public\\ex193.gr";
 
-        static readonly string pace2017_ex193_004 = "Test Data\\ex193 safe sep components\\004 - 10_T9.gr";
-        static readonly string pace2017_ex193_006 = "Test Data\\ex193 safe sep components\\006 - 10_T9.gr";
-        static readonly string pace2017_ex193_008 = "Test Data\\ex193 safe sep components\\008 - 10_T9.gr";
-        static readonly string pace2017_ex193_010 = "Test Data\\ex193 safe sep components\\010 - 10_T9.gr";
-        static readonly string pace2017_ex193_012 = "Test Data\\ex193 safe sep components\\012 - 10_T9.gr";
-        static readonly string pace2017_ex193_014 = "Test Data\\ex193 safe sep components\\014 - 10_T9.gr";
-        static readonly string pace2017_ex193_016 = "Test Data\\ex193 safe sep components\\016 - 10_T9.gr";
-        static readonly string pace2017_ex193_018 = "Test Data\\ex193 safe sep components\\018 - 10_T9.gr";
-        static readonly string pace2017_ex193_020 = "Test Data\\ex193 safe sep components\\020 - 10_T9.gr";
-        static readonly string pace2017_ex193_022 = "Test Data\\ex193 safe sep components\\022 - 10_T9.gr";
-        static readonly string pace2017_ex193_024 = "Test Data\\ex193 safe sep components\\024 - 10_T9.gr";
-        static readonly string pace2017_ex193_026 = "Test Data\\ex193 safe sep components\\026 - 10_T9.gr";
-        static readonly string pace2017_ex193_029 = "Test Data\\ex193 safe sep components\\029 - 11_T10.gr";
-        static readonly string pace2017_ex193_031 = "Test Data\\ex193 safe sep components\\031 - 11_T10.gr";
-        static readonly string pace2017_ex193_033 = "Test Data\\ex193 safe sep components\\033 - 11_T10.gr";
-        static readonly string pace2017_ex193_035 = "Test Data\\ex193 safe sep components\\035 - 11_T10.gr";
-        static readonly string pace2017_ex193_037 = "Test Data\\ex193 safe sep components\\037 - 11_T10.gr";
-        static readonly string pace2017_ex193_039 = "Test Data\\ex193 safe sep components\\039 - 11_T10.gr";
-        static readonly string pace2017_ex193_041 = "Test Data\\ex193 safe sep components\\041 - 11_T10.gr";
-        static readonly string pace2017_ex193_043 = "Test Data\\ex193 safe sep components\\043 - 11_T10.gr";
-        static readonly string pace2017_ex193_044 = "Test Data\\ex193 safe sep components\\044 - 12_T10.gr";
-        static readonly string pace2017_ex193_046 = "Test Data\\ex193 safe sep components\\046 - 12_T10.gr";
-        static readonly string pace2017_ex193_048 = "Test Data\\ex193 safe sep components\\048 - 12_T10.gr";
-        static readonly string pace2017_ex193_050 = "Test Data\\ex193 safe sep components\\050 - 12_T10.gr";
-        static readonly string pace2017_ex193_052 = "Test Data\\ex193 safe sep components\\052 - 12_T10.gr";
-        static readonly string pace2017_ex193_054 = "Test Data\\ex193 safe sep components\\054 - 12_T10.gr";
-        static readonly string pace2017_ex193_056 = "Test Data\\ex193 safe sep components\\056 - 12_T10.gr";
-        static readonly string pace2017_ex193_058 = "Test Data\\ex193 safe sep components\\058 - 12_T10.gr";
-        static readonly string pace2017_ex193_060 = "Test Data\\ex193 safe sep components\\060 - 12_T10.gr";
-        static readonly string pace2017_ex193_062 = "Test Data\\ex193 safe sep components\\062 - 12_T10.gr";
-
-
 #pragma warning restore CS0414
 
-        public static string date_time_string;
+        static int workerThreads = 1;
+        static int timePerInstance = 1800000;
+        static int startingInstance = 0;
 
         static void Main(string[] args)
         {
-            string filepath = PACE2017(169);
-            //string filepath = test_m0;
-            //string filepath = "wrong graphs\\002-15 - Kopie.gr";
+            if (args.Length > 0 && int.TryParse(args[0], out int start))
+            {
+                startingInstance =  start / 2;
+            }
+
+            //string filepath = PACE2017(175);
+            string filepath = "Test Data\\graphs_MC2020\\bipartite_graphs\\track1_002.gr";
+            //string filepath = "30-06-2020 11-52-58\\444-.gr";
+            string directory = "Test Data\\graphs_MC2020\\";
+            //string directory = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\";
 
             BitSet.plusOneInString = false;
-            // Graph.dumpSubgraphs = true;
-            // SafeSeparator.separate = false; // ###############################################################################################
-            // GraphReduction.reduce = false;  // ###############################################################################################
+            //Graph.dumpSubgraphs = true;
+            // Graph.old = false;
+            // SafeSeparator.separate = false;
+            // GraphReduction.reduce = false;
 
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
-            Console.WriteLine(date_time_string);
-            
-            
-            Graph g = new Graph(filepath);
-            Graph debug = new Graph(filepath);
 
+            Run(filepath, true);
 
-            if (true)
-            {
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
+            //RunAllParallel(directory);
 
-                int treeWidth = g.TreeWidth(0, out PTD output);
-
-                stopwatch.Stop();
-                Console.WriteLine("Time elapsed: {0}s", stopwatch.Elapsed);
-
-                output.Print();
-                Debug.Assert(debug.IsValidTreeDecomposition(output));
-
-                Console.WriteLine("Tree width = {0}", treeWidth);
-
-                if (debug.IsValidTreeDecomposition(output))
-                {
-                    Console.WriteLine("Tree decomposition is valid.");
-                }
-                else
-                {
-                    Console.WriteLine("######################## tree decomposition is invalid #######################");
-                }
-                Console.WriteLine("children castings: {0}", PTD.childrenCastings);
-            }
-            else
-            {
-                // TEST
-                bool f = g.IsTreeWidthAtMost(15, out PTD output);
-                bool t = g.IsTreeWidthAtMost(16, out output);
-                Console.WriteLine(f);
-                Console.WriteLine(t);
-                if (!debug.IsValidTreeDecomposition(output))
-                {
-                    Console.WriteLine("######################## tree decomposition is invalid #######################");
-                }
-                else
-                {
-                    Console.WriteLine("tree decomposition is valid");
-                }
-            }
+            // TestSpecificTreewidth(filepath, 16);
 
             Console.Read();
         }
 
-        private static List<T[]> CreateSubsets<T>(T[] originalArray)
+        public static string date_time_string;
+        static Thread[] threads;
+        static Timer[] timers;
+        static string[] filepaths;
+        static string[] currentlyRunning;
+        static int started = startingInstance;
+        static readonly Object timerCallbackLock = new Object();
+
+        /// <summary>
+        /// runs the algorithm for all graphs in the directory (and subdirectories) in "workerThreads" many threads.
+        /// </summary>
+        /// <param name="directory"></param>
+        private static void RunAllParallel(string directory)
         {
-            List<T[]> subsets = new List<T[]>();
-
-            for (int i = 0; i < originalArray.Length; i++)
+            filepaths = Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories);
+            threads = new Thread[workerThreads];
+            timers = new Timer[workerThreads];
+            currentlyRunning = new string[workerThreads];
+            started = startingInstance;
+            lock (timerCallbackLock)
             {
-                int subsetCount = subsets.Count;
-                subsets.Add(new T[] { originalArray[i] });
-
-                for (int j = 0; j < subsetCount; j++)
+                for (int i = 0; i < workerThreads && startingInstance + i < filepaths.Length; i++)
                 {
-                    T[] newSubset = new T[subsets[j].Length + 1];
-                    subsets[j].CopyTo(newSubset, 0);
-                    newSubset[newSubset.Length - 1] = originalArray[i];
-                    subsets.Add(newSubset);
+                    int copy = i;
+                    threads[copy] = new Thread(() =>
+                        {
+                            currentlyRunning[copy] = filepaths[startingInstance + copy];
+                            Run(filepaths[startingInstance + copy], false);
+                            // TODO: result
+                            lock (timerCallbackLock)
+                            {
+                                threads[copy] = null;
+                            }
+                            AbortThread(copy);
+                        }
+                    );
+                    threads[i].Start();
+                    timers[i] = new Timer(new TimerCallback(AbortThread), i, timePerInstance, Timeout.Infinite);
+                    started++;
                 }
             }
-
-            return subsets;
         }
 
-        private static IEnumerable<IEnumerable<T>> SubSetsOf<T>(IEnumerable<T> source)
+        /// <summary>
+        /// callback to abort a running thread after a timeout and to restart computation on a new graph instance if there are any left.
+        /// </summary>
+        /// <param name="state">the thread index in the array of threads (and timer index in the array of timers)</param>
+        private static void AbortThread(object state)
         {
-            if (!source.Any())
-                return Enumerable.Repeat(Enumerable.Empty<T>(), 1);
+            int threadIndex = (int)state;
+            lock (timerCallbackLock)
+            {
+                if (threads[threadIndex] != null){
+                    threads[threadIndex].Abort();
+                    Console.WriteLine("graph {0} timed out", currentlyRunning[threadIndex]);
+                }
+                if (started < filepaths.Length) {
+                    int copy = started;
+                    threads[threadIndex] = new Thread(() =>
+                        {
+                            currentlyRunning[threadIndex] = filepaths[copy];
+                            Run(filepaths[copy], false);
+                            // TODO: result
+                            lock (timerCallbackLock)
+                            {
+                                threads[threadIndex] = null;
+                            }
+                            AbortThread(state);
+                        }
+                    );
+                    started++;
+                    threads[threadIndex].Start();
+                    timers[threadIndex].Change(timePerInstance, Timeout.Infinite);
+                }
+            }
+        }
 
-            var element = source.Take(1);
+        private static int Run(string filepath, bool print)
+        {
+            Graph g = new Graph(filepath);
+            if (g.vertexCount > 35000)
+            {
+                Console.WriteLine("graph {0} has more than 35000 vertices. Skipping...", filepath);
+                return -1;
+            }
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            int treeWidth = g.TreeWidth(out PTD output, print);
+            stopwatch.Stop();
+            Console.WriteLine("Tree decomposition of {0} found in {1}s", filepath, stopwatch.Elapsed);
+            if (print)
+            {
+                output.Print();
+            }
+            if (!g.IsValidTreeDecomposition(output))
+            {
+                Console.WriteLine("######################## tree decomposition is invalid #######################");
+            }
+            return treeWidth;
+        }
 
-            var haveNots = SubSetsOf(source.Skip(1));
-            var haves = haveNots.Select(set => element.Concat(set));
 
-            return haves.Concat(haveNots);
+        private static void TestSpecificTreewidth(string filepath, int actualTreewidth)
+        {
+            Graph g = new Graph(filepath);
+            bool f = g.IsTreeWidthAtMost(actualTreewidth - 1, out PTD output);
+            bool t = g.IsTreeWidthAtMost(actualTreewidth, out output);
+            Console.WriteLine(f);
+            Console.WriteLine(t);
+            if (!g.IsValidTreeDecomposition(output))
+            {
+                Console.WriteLine("######################## tree decomposition is invalid #######################");
+            }
+            else
+            {
+                Console.WriteLine("tree decomposition is valid");
+            }
         }
 
         private static string PACE2017(int number)

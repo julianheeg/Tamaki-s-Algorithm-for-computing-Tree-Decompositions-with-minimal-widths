@@ -8,8 +8,13 @@ using System.IO;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
+    /// <summary>
+    /// a class for representing graphs and calculating tree decompositions
+    /// </summary>
     public class Graph
     {
+        public static bool old = true;
+
         public readonly int vertexCount = -1;
         public readonly int edgeCount;
 
@@ -18,9 +23,15 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly BitSet[] neighborSetsWith;      // contains N[v]
         public readonly BitSet allVertices;
 
+        private readonly int degree = 0;
+
         private readonly int graphID;
         private static int graphCount = 0;
+
+        public static bool verbose = true;
         
+        #region constructors
+
         /// <summary>
         /// constructs a graph from a .gr file
         /// </summary>
@@ -71,6 +82,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 for (int i = 0; i < vertexCount; i++)
                 {
                     adjacencyList[i] = tempAdjacencyList[i].ToArray();
+                    if (adjacencyList[i].Length > degree)
+                    {
+                        degree = adjacencyList[i].Length;
+                    }
                 }
                 neighborSetsWithout = new BitSet[vertexCount];
                 neighborSetsWith = new BitSet[vertexCount];
@@ -107,6 +122,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             for (int i = 0; i < vertexCount; i++)
             {
                 this.adjacencyList[i] = adjacencyList[i].ToArray();
+                if (this.adjacencyList[i].Length > degree)
+                {
+                    degree = this.adjacencyList[i].Length;
+                }
                 edgeCount += this.adjacencyList[i].Length;
             }
             edgeCount /= 2;
@@ -127,13 +146,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             graphCount++;
         }
 
+        #endregion
+
+        #region algorithm
+
         /// <summary>
         /// determines the tree width of this graph
         /// </summary>
         /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph</param>
         /// <returns>the graph's tree width</returns>
-        public int TreeWidth(out PTD treeDecomp)
+        public int TreeWidth(out PTD treeDecomp, bool verbose = true)
         {
+            Graph.verbose = verbose;
             return TreeWidth(0, out treeDecomp);
         }
 
@@ -166,14 +190,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             while (minK < vertexCount - 1)
             {
                 // reduce graph
-                GraphReduction red = new GraphReduction(reducedGraph, minK);
+                GraphReduction red = new GraphReduction(reducedGraph, minK, verbose);
                 bool reduced = red.Reduce(ref minK);
                 if (reduced)
                 {
                     reducedGraph = red.ToGraph();
                     reductions.Add(red);
                 }
-                SafeSeparator safeSep = new SafeSeparator(reducedGraph);
+                SafeSeparator safeSep = new SafeSeparator(reducedGraph, verbose);
                 if (safeSep.Separate(out List<Graph> separatedGraphs, ref minK))
                 {
                     PTD[] subTreeDecompositions = new PTD[separatedGraphs.Count];
@@ -197,9 +221,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
                     return minK;
                 }
+
                 if (reducedGraph.HasTreeWidth(minK, out treeDecomp))
                 {
-                    Console.WriteLine("graph {0} has tree width {1}", graphID, minK);
+                    if (verbose)
+                    {
+                        Console.WriteLine("graph {0} has tree width {1}", graphID, minK);
+                    }
                     for (int i = reductions.Count - 1; i >= 0; i--)
                     {
                         reductions[i].RebuildTreeDecomposition(ref treeDecomp);
@@ -207,15 +235,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                     return minK;
                 }
-                Console.WriteLine("graph {0} has tree width bigger than {1}", graphID, minK);
-                minK++;
+                if (verbose)
+                {
+                    Console.WriteLine("graph {0} has tree width bigger than {1}", graphID, minK);
+                }
+                minK++;               
             }
             treeDecomp = new PTD(allVertices);
             return vertexCount - 1;
         }
 
         /// <summary>
-        /// determines whether the tree width of this graph is at most a given value
+        /// determines whether the tree width of this graph is at most a given value.
+        /// (Really only used for faster testing. Will be obsolete when the idea to reuse the ptds and ptdurs during later iterations is implemented.)
         /// </summary>
         /// <param name="k">the upper bound</param>
         /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph, iff the tree width is at most k, else null</param>
@@ -286,6 +318,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
                 return true;
             }
+
             if (reducedGraph.HasTreeWidth(minK, out treeDecomp))
             {
                 Console.WriteLine("graph has tree width " + minK);
@@ -293,18 +326,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 {
                     reductions[i].RebuildTreeDecomposition(ref treeDecomp);
                 }
-
                 return true;
             }
+           
             return false;
         }
-
-        // statistics
-        int totalPCount = 0;
-        int totalUCount = 0;
-        int line13RejectCount = 0;
-        int line13RejectCount_NotCliquish = 0;
-        int UDuplicateInletCount = 0;
 
         /// <summary>
         /// determines whether this graph has tree width k
@@ -319,18 +345,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 treeDecomp = null;
                 return true;
             }
-
-            // TODO P and U can be cached so that they're not destroyed and rebuilt when k is incremented. In that case, they need to be cleared at the end of the method ()
-            // TODO: P can be Queue so that old entries are discarded and some memory is saved.
-            List<PTD> P = new List<PTD>();
+            
+            // TODO: P and U can actually be reused from the previous iteration
+            Stack<PTD> P = new Stack<PTD>();    // stack seems to be so much faster than a list in the last iteration,
+                                                // at least for the 2017 instances.
             HashSet<BitSet> P_inlets = new HashSet<BitSet>();
+
             List<PTD> U = new List<PTD>();
-            HashSet<BitSet> U_inlets = new HashSet<BitSet>();
+            // basically the same as P_inlets, but here the index of the PTD in U is saved along with the inlet
+            Dictionary<BitSet, int> U_inletsWithIndex = new Dictionary<BitSet, int>();
 
             // ---------line 1 is in the method that calls this one----------
 
             // --------- lines 2 to 6 ---------- (5 is skipped and tested in the method that calls this one)
-
 
             for (int v = 0; v < vertexCount; v++)
             {
@@ -341,7 +368,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         if (IsMinimalSeparator(outlet))
                         {
-                            P.Add(p0); // ptd mit Tasche N[v] als einzelnen Knoten
+                            //P.Add(p0); // ptd mit Tasche N[v] als einzelnen Knoten
+                            P.Push(p0); // ptd mit Tasche N[v] als einzelnen Knoten
                             P_inlets.Add(p0.inlet);
                         }
                     }
@@ -350,12 +378,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             // --------- lines 7 to 32 ----------
 
-            // TODO: parallel for loop?
-            for (int i = 0; i < P.Count; i++)
+            //for (int i = 0; i < P.Count; i++)
+            while (P.Count > 0)
             {
-                PTD Tau = P[i];
-
-                // --------- TODO: line 8 ----------
+                // PTD Tau = P[i];
+                PTD Tau = P.Pop();
 
                 Debug.Assert(IsMinimalSeparator(Tau.outlet));
 
@@ -365,16 +392,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 // --------- lines 10 ----------
 
-                // TODO: remove
-                if (U_inlets.Contains(Tau_wiggle_original.inlet))
-                {
-                    UDuplicateInletCount++;
-                }
-
-                // TODO: perhaps check using dictionary and only add to u if bag is smaller / bag is subset?
                 Debug.Assert(IsConsistent(Tau_wiggle_original));
-                U.Add(Tau_wiggle_original);
-                U_inlets.Add(Tau_wiggle_original.inlet);
+
+                // add the new ptdur if there are no equivalent ptdurs
+                // if it has a smaller root bag than an equivalent ptdur, replace that one instead
+                if (U_inletsWithIndex.TryGetValue(Tau_wiggle_original.inlet, out int index))
+                {
+                    PTD equivalentPtdur = U[index];
+                    if (Tau_wiggle_original.Bag.Count() < equivalentPtdur.Bag.Count())
+                    {
+                        U[index] = Tau_wiggle_original;
+                    }
+                }
+                else
+                {
+                    U_inletsWithIndex.Add(Tau_wiggle_original.inlet, U.Count);
+                    U.Add(Tau_wiggle_original);
+                }
 
                 // --------- lines 11 to 32 ----------
 
@@ -394,20 +428,21 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         
                         if (!PTD.Line13_CheckBagSize_CheckPossiblyUsable(Tau_prime, Tau, this, k, out Tau_wiggle))
                         {
-                            // ---------- line 15 ----------
-
+                            // ---------- line 15 (first two cases) ----------
                             continue;
                         }
 
                         // --------- lines 14 and 15 (only the check for cliquish remains) ----------
-
+                        
+                        // TODO: cache cliquish, and see if that makes a difference
                         if (IsCliquish(Tau_wiggle.Bag))
                         {
-                            if (!U_inlets.Contains(Tau_wiggle.inlet))
+                            // add the new ptdur only if no equivalent ptdur exists
+                            if (!U_inletsWithIndex.ContainsKey(Tau_wiggle.inlet))
                             {
                                 Debug.Assert(IsConsistent(Tau_wiggle));
+                                U_inletsWithIndex.Add(Tau_wiggle.inlet, U.Count);
                                 U.Add(Tau_wiggle);
-                                U_inlets.Add(Tau_wiggle.inlet);
                             }
                             else
                             {
@@ -416,8 +451,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         }
                         else
                         {
-                            line13RejectCount++;
-                            line13RejectCount_NotCliquish++;
                             continue;
                         }
                     }
@@ -429,17 +462,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                     // --------- lines 16 to 20 ----------
 
-                    if (Tau_wiggle.Bag.Count() <= k+1 && IsPotMaxClique(Tau_wiggle.Bag))
+                    Debug.Assert(Tau_wiggle.Bag.Count() <= k + 1);
+
+                    // TODO: count should always be small enough due to construction. Move count into assertion
+                    if (Tau_wiggle.Bag.Count() <= k+1 && IsPotMaxClique(Tau_wiggle.Bag, out _))
                     {
-                        // TODO: perhaps no need to copy
-                        // TODO: can at least copy after tests are done
+                        // TODO: outlet from the isPotMaxClique calculation may be able to be used
+                        // TODO: p1 is the same as tau_wiggle, so we can copy after tests are done. (We could also move this case to the end and not copy at all.)
+                        //       Only do this if it becomes an issue because the code becomes less readable.
                         PTD p1 = new PTD(Tau_wiggle);
 
                         if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p1))
                         {
                             if (p1.vertices.Equals(allVertices))
                             {
-                                PrintStats(P, U);
                                 treeDecomp = p1;
                                 return true;
                             }
@@ -449,7 +485,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 if (IsMinimalSeparator(p1.outlet))
                                 {
                                     Debug.Assert(IsConsistent(p1));
-                                    P.Add(p1);
+                                    //P.Add(p1);
+                                    P.Push(p1);
                                     P_inlets.Add(p1.inlet);
                                 }
                             }
@@ -464,18 +501,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         {
                             // --------- lines 22 to 26 ----------
 
-                            if (adjacencyList[v].Length <= k && neighborSetsWith[v].IsSuperset(Tau_wiggle.Bag) && IsPotMaxClique(neighborSetsWith[v]))
+                            // TODO: isPotMaxClique can be pre calculated for every v and has in fact been done already during the leaf generation.
+                            //       Just use a bool array for that (or BitSet) and get true or false here.
+                            //       Change order of the check in that case so that this query is made first.
+
+                            if (adjacencyList[v].Length <= k + 1 && neighborSetsWith[v].IsSupersetOf(Tau_wiggle.Bag) && IsPotMaxClique(neighborSetsWith[v], out _))
                             {
                                 // --------- line 23 ----------
                                 PTD p2 = PTD.Line23(Tau_wiggle, neighborSetsWith[v], this);
-
 
                                 // --------- line 24 ----------
                                 if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p2))
                                 {
                                     if (p2.vertices.Equals(allVertices))
                                     {
-                                        PrintStats(P, U);
                                         treeDecomp = p2;
                                         return true;
                                     }
@@ -486,14 +525,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                         if (IsMinimalSeparator(p2.outlet))
                                         {
                                             Debug.Assert(IsConsistent(p2));
-                                            P.Add(p2);
+                                            //P.Add(p2);
+                                            P.Push(p2);
                                             P_inlets.Add(p2.inlet);
                                         }
                                     }
                                 }
 
                             }
-                            // Daniela: continue, wenn adjacecyList[v].Length > k
                         }
                     }
 
@@ -509,8 +548,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         potNewRootBag.ExceptWith(Tau_wiggle.inlet);
                         potNewRootBag.UnionWith(Tau_wiggle.Bag);
 
-                        if (potNewRootBag.Count() <= k + 1 && IsPotMaxClique(potNewRootBag))
+                        if (potNewRootBag.Count() <= k + 1 && IsPotMaxClique(potNewRootBag, out _))
                         {
+                            // TODO: outlet from the isPotMaxClique calculation may be able to be used
+
                             // --------- line 29 ----------
                             PTD p3 = PTD.Line29(Tau_wiggle, potNewRootBag, this);
 
@@ -519,7 +560,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             {
                                 if (p3.vertices.Equals(allVertices))
                                 {
-                                    PrintStats(P, U);
                                     treeDecomp = p3;
                                     return true;
                                 }
@@ -530,7 +570,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                     if (IsMinimalSeparator(p3.outlet))
                                     {
                                         Debug.Assert(IsConsistent(p3));
-                                        P.Add(p3);
+                                        //P.Add(p3);
+                                        P.Push(p3);
                                         P_inlets.Add(p3.inlet);
                                     }
                                 }
@@ -540,13 +581,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
-            Console.WriteLine("considered {0} PTDs and {1} PTDURs", P.Count, U.Count);
-            totalPCount += P.Count;
-            totalUCount += U.Count;
+            if (verbose)
+            {
+                Console.WriteLine("considered {0} PTDs and {1} PTDURs", P.Count, U.Count);
+            }
             treeDecomp = null;
             return false;
         }
 
+        #endregion
+
+        /// <summary>
+        /// tests if a PTD is incoming and normalized
+        /// </summary>
+        /// <param name="Tau"></param>
+        /// <param name="tau_tauprime_combined"></param>
+        /// <param name="toTest"></param>
+        /// <returns></returns>
         private bool PassesIncomingAndNormalizedTest(PTD Tau, bool tau_tauprime_combined, PTD toTest)
         {
             //return true;
@@ -557,16 +608,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             //return !tau_tauprime_combined || (toTest.IsNormalized_Daniela(Tau) && !toTest.IsIncoming_Daniela(this));  // Daniela very old
         }
 
-        private void PrintStats(List<PTD> P, List<PTD> U)
-        {
-            Console.WriteLine("total P: {0}, total U: {1}, U inlet duplicates: {2}, Line 13 rejections: not cliquish: {3}", totalPCount + P.Count, totalUCount + U.Count, UDuplicateInletCount, line13RejectCount_NotCliquish);
-        }
 
-
-        #region IsPotMaxClique implementations
+        #region neighbors, components, cliquish, pmc, etc.
 
         /*
          * TODO: depth first search can be done using bit operations and it may be faster that way
+         *       This is implemented in some of the functions here already, but not in all
          * 
          *  for every vertex v that is not in the separator{
          *      BitSet component = new BitSet(neighborSetsWith[v]);
@@ -587,54 +634,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
          *  }
          *  
          * */
-
-        BitSet unvisitedSeparatorVertices;
-        int currentSeparatorIndex = 0;
-        BitSet currentSeparatorVertexUnvisitedNeighbors;
-
-        public bool NextComponentAndNeighbor(BitSet separator, out BitSet component, out BitSet neighbors)
-        {
-            // TODO: reset (with parameter)
-
-            // if the current separator vertex has no unvisited neighbors move on to the next one
-            int componentVertex;
-            if ((componentVertex = currentSeparatorVertexUnvisitedNeighbors.First()) == -1)
-            {
-                // 
-                int separatorVertex;
-                if ((separatorVertex = unvisitedSeparatorVertices.First()) != -1)
-                {
-                    unvisitedSeparatorVertices[separatorVertex] = false;
-                    currentSeparatorVertexUnvisitedNeighbors = new BitSet(neighborSetsWithout[separatorVertex]);
-                    currentSeparatorVertexUnvisitedNeighbors.ExceptWith(separator);
-                    componentVertex = currentSeparatorVertexUnvisitedNeighbors.First();
-                }
-                else
-                {
-                    component = null;
-                    neighbors = null;
-                    return false;
-                }
-            }
-            component = new BitSet(neighborSetsWith[componentVertex]);
-            component.ExceptWith(separator);
-
-            BitSet tempNeighbors_old = new BitSet(component);
-            BitSet tempNeighbors_new = new BitSet(vertexCount);
-            int neighbor = -1;
-            while ((neighbor = tempNeighbors_old.NextElement(neighbor + 1, false)) != -1)
-            {
-
-            }
-
-
-
-            currentSeparatorVertexUnvisitedNeighbors.ExceptWith(component);
-            // TODO component
-            // TODO neighbors
-            neighbors = null;
-            return true;
-        }
         
 
         /// <summary>
@@ -645,30 +644,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>an enumerable consisting of tuples of i) component C and ii) neighbors N(C)</returns>
         public IEnumerable<(BitSet, BitSet)> ComponentsAndNeighbors(BitSet separator)
         {
-            // HashSet<(BitSet, BitSet)> debug = new HashSet<(BitSet, BitSet)>();  // TODO: remove
-
-            /* for every vertex v that is not in the separator{
-             * BitSet component = new BitSet(neighborSetsWith[v]);
-               component.ExceptWith(separator);
-               
-               BitSet tempNeighbors = new BitSet(neighborSetsWithout[v]);
-               tempNeighbors.ExceptWith(separator);
-               while (tempNeighbors != 0){
-                   List nnnnnnn = tempNeighbors.Elements()
-                   tempNeighbors = empty;
-                   for every vertex u in nnnnnnn {
-                       tempNeighbors.unionWith(neighborSetsWithout[u];
-                       component.UnionWith(u); // or neighborSetsWith[u];
-                   }
-                   component.exceptWith(separator);
-                   tempNeighbors.exceptWith(separator);
-               }
-           }
-            */
-
-            // TODO: correct neighbor calculation
-            // TODO: not use lists, but the iterator thingy instead
-
             BitSet unvisited = new BitSet(separator);
             unvisited.Flip(vertexCount);
 
@@ -676,100 +651,36 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             int startingVertex = -1;
             while ((startingVertex = unvisited.NextElement(startingVertex, getsReduced: true)) != -1)
             {
-                BitSet red = new BitSet(vertexCount);
-                red[startingVertex] = true;
-                BitSet green = new BitSet(vertexCount);
-                BitSet purple = new BitSet(vertexCount);
-                BitSet neighbors = Neighbors(purple);
+                BitSet currentIterationFrontier = new BitSet(vertexCount);
+                currentIterationFrontier[startingVertex] = true;
+                BitSet nextIterationFromtier = new BitSet(vertexCount);
+                BitSet component = new BitSet(vertexCount);
+                BitSet neighbors = Neighbors(component);
 
-                while (!red.IsEmpty())
+                while (!currentIterationFrontier.IsEmpty())
                 {
-                    green.Clear();
-                    /*
-                    List<int> redElements = red.Elements();
-                    for (int i = 0; i < redElements.Count; i++)
-                    {
-                        green.UnionWith(neighborSetsWithout[redElements[i]]);
-                    }
-                    */
+                    nextIterationFromtier.Clear();
+
                     int redElement = -1;
-                    while ((redElement = red.NextElement(redElement, getsReduced: false)) != -1)
+                    while ((redElement = currentIterationFrontier.NextElement(redElement, getsReduced: false)) != -1)
                     {
-                        green.UnionWith(neighborSetsWithout[redElement]);
+                        nextIterationFromtier.UnionWith(neighborSetsWithout[redElement]);
                     }
 
-                    purple.UnionWith(red);
-                    neighbors.UnionWith(green);
-                    green.ExceptWith(separator);
-                    green.ExceptWith(purple);
+                    component.UnionWith(currentIterationFrontier);
+                    neighbors.UnionWith(nextIterationFromtier);
+                    nextIterationFromtier.ExceptWith(separator);
+                    nextIterationFromtier.ExceptWith(component);
 
-                    red.CopyFrom(green);
+                    currentIterationFrontier.CopyFrom(nextIterationFromtier);
                 }
 
                 // debug.Add((new BitSet(purple), new BitSet(neighbors)));
-                unvisited.ExceptWith(purple);
+                unvisited.ExceptWith(component);
                 neighbors.IntersectWith(separator);
-                Debug.Assert(neighbors.Equals(Neighbors(purple)));
-                yield return (purple, neighbors);
+                Debug.Assert(neighbors.Equals(Neighbors(component)));
+                yield return (component, neighbors);
             }
-
-            /*
-#if DEBUG
-            int componentCount = 0;
-
-            BitSet visited = new BitSet(separator);
-            Stack<int> dfsStack = new Stack<int>();
-
-            List<int> separatorBits = separator.Elements();
-
-            // loop over all vertices in the separator
-            for (int i = 0; i < separatorBits.Count; i++)
-            {
-                int separatorVertex = separatorBits[i];
-                // loop over all neighbors of that separator-vertex
-                for (int j = 0; j < adjacencyList[separatorVertex].Length; j++)
-                {
-                    int separatorNeighbor = adjacencyList[separatorVertex][j];
-
-                    // if that vertex hasn't been visited, it's part of a new component. Perform a depth first search
-                    if (!visited[separatorNeighbor])
-                    {
-                        dfsStack.Push(separatorNeighbor);
-                        BitSet component = new BitSet(vertexCount);
-                        BitSet N_C = new BitSet(vertexCount);    // cache N(C) for this component
-
-                        while (dfsStack.Count > 0)
-                        {
-                            int vertex = dfsStack.Pop();
-                            visited[vertex] = true;
-                            component[vertex] = true;
-                            for (int k = 0; k < adjacencyList[vertex].Length; k++)
-                            {
-                                int vNeighbor = adjacencyList[vertex][k];
-                                if (separator[vNeighbor])
-                                {
-                                    N_C[vNeighbor] = true;
-                                }
-                                else if (!visited[vNeighbor])
-                                {
-                                    dfsStack.Push(vNeighbor);
-                                }
-                            }
-                        }
-
-                        componentCount++;
-
-                        if (!debug.Contains((component, N_C)))
-                        {
-                            ;
-                        }
-                        Debug.Assert(debug.Contains((component, N_C)));
-                    }
-                }
-            }
-            Debug.Assert(componentCount == debug.Count);
-#endif
-*/
         }
 
         /// <summary>
@@ -808,7 +719,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
                 }
             }
-            //Console.WriteLine("kein minimaler Separator");
             return false;
         }
 
@@ -840,6 +750,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
+        /// <summary>
+        /// determines if a given vertex set is cliquish
+        /// </summary>
+        /// <param name="K">the vertex set</param>
+        /// <returns>true, iff the vertex set is cliquish</returns>
         public bool IsCliquish(BitSet K)
         {
             // ------ 1.------
@@ -888,87 +803,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             return true;
         }
-
-
-
-        /// <summary>
-        /// checks if K is a potential maximal clique
-        /// </summary>
-        /// <param name="K">the vertex set to test</param>
-        /// <returns>true iff K is a potential maximal clique</returns>
-        // TODO: cache lists, stack, sets, etc.
-        public bool IsPotMaxClique(BitSet K)
-        {
-            /*
-             *  This method operates by the following principle:
-             *  K is potential maximal clique <=>
-             *      1. G\K has no full-components associated with K
-             *      and
-             *      2. K is cliquish
-             * 
-             *  For 1. we need to separate G into components C associated with K and check if N(C) is a proper subset of K,
-             *      or in this case equivalently, if N(C) != K
-             *  
-             *  For 2. we need to check for each pair of vertices u,v in K if either of these conditions hold:
-             *      a.) u,v are neighbors
-             *      or
-             *      b.) there exists C such that u,v are in N(C)
-             * 
-             *  During 1., while we determine the components, we save N(C) for each component so that we can use it in 2. later
-             * 
-             */
-
-            // ------ 1.------
-
-            List<BitSet> componentNeighborsInK = new List<BitSet>();
-            foreach((BitSet, BitSet) C_NC in ComponentsAndNeighbors(K))
-            {
-                BitSet N_C = C_NC.Item2;
-                if (N_C.Equals(K))
-                {
-                    return false;
-                }
-                componentNeighborsInK.Add(C_NC.Item2);
-            }
-            List<int> KBits = K.Elements();
-
-            // ------ 2.------
-            // check if K is cliquish
-
-            for (int i = 0; i < KBits.Count; i++)
-            {
-                int u = KBits[i];
-                for (int j = i + 1; j < KBits.Count; j++)   // check only u and v with u < v
-                {
-                    int v = KBits[j];
-
-                    // if a.) doesn't hold ...
-                    if (!neighborSetsWithout[u][v])
-                    {
-                        bool b_satisfied = false;
-
-                        // ... check if there is a component such that b.) doesn't hold ...
-                        for (int k = 0; k < componentNeighborsInK.Count; k++)
-                        {
-                            if (componentNeighborsInK[k][u] && componentNeighborsInK[k][v])
-                            {
-                                b_satisfied = true;
-                                break;
-                            }
-                        }
-                        // ... if neither a.) nor b.) hold, K is not a potential maximal clique
-                        if (!b_satisfied)
-                        {
-                            return false;
-                        }
-                    }
-                    
-                }
-            }
-
-            return true;
-        }
-
 
         /// <summary>
         /// checks if K is a potential maximal clique and if so, computes the boundary vertices of K
@@ -1057,7 +891,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
-#endregion
+        #endregion
 
         /// <summary>
         /// computes the outlet of the union of a ptd with a component
@@ -1141,8 +975,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             
         }
 
-
-#region debug
+        #region debug
 
         /// <summary>
         /// tests whether a given ptd is consistent
@@ -1326,7 +1159,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return true;
         }
-        #endregion
+
 
         public static bool dumpSubgraphs = false;
 
@@ -1380,5 +1213,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 Console.WriteLine("dumped graph {0} with {1} vertices and {2} edges has tree width {3}", graphID, vertexCount, edgeCount, treeWidth);
             }
         }
+
+        #endregion
     }
 }

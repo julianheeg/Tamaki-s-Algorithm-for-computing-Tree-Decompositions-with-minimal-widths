@@ -11,7 +11,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
     public class Graph_UnitTest
     {
         // test timeout in milliseconds
-        private const int timeout = 60000;
+        private const int timeout = 120000;
 
         [TestMethod, Timeout(timeout)]
         public void IsPotMaxClique_PotMax_Clique_ReturnTrue()
@@ -23,9 +23,9 @@ namespace Tamaki_Tree_Decomp.UnitTests
             BitSet b = new BitSet(6, new int[] { 1, 2, 3, 4 });
             BitSet c = new BitSet(6, new int[] { 4, 5 });
 
-            Assert.IsTrue(graph.IsPotMaxClique(a));
-            Assert.IsTrue(graph.IsPotMaxClique(b));
-            Assert.IsTrue(graph.IsPotMaxClique(c));
+            Assert.IsTrue(graph.IsPotMaxClique(a, out _));
+            Assert.IsTrue(graph.IsPotMaxClique(b, out _));
+            Assert.IsTrue(graph.IsPotMaxClique(c, out _));
         }
 
         [TestMethod, Timeout(timeout)]
@@ -44,15 +44,15 @@ namespace Tamaki_Tree_Decomp.UnitTests
             BitSet q = new BitSet(6, new int[] { 1, 2 });
             BitSet r = new BitSet(6, new int[] { 0, 3 });
 
-            Assert.IsFalse(graph.IsPotMaxClique(j));
-            Assert.IsFalse(graph.IsPotMaxClique(k));
-            Assert.IsFalse(graph.IsPotMaxClique(l));
-            Assert.IsFalse(graph.IsPotMaxClique(m));
-            Assert.IsFalse(graph.IsPotMaxClique(n));
-            Assert.IsFalse(graph.IsPotMaxClique(o));
-            Assert.IsFalse(graph.IsPotMaxClique(p));
-            Assert.IsFalse(graph.IsPotMaxClique(q));
-            Assert.IsFalse(graph.IsPotMaxClique(r));
+            Assert.IsFalse(graph.IsPotMaxClique(j, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(k, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(l, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(m, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(n, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(o, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(p, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(q, out _));
+            Assert.IsFalse(graph.IsPotMaxClique(r, out _));
         }
 
         [TestMethod, Timeout(timeout)]
@@ -1025,7 +1025,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         [TestMethod, Timeout(timeout)]
         public void TreeWidth_2017_175_ReturnTrue()
         {
-            int treeWidth = 18;
+            int treeWidth = 17;
             Graph g = new Graph("Test Data\\2017\\ex175.gr");
             Assert.IsFalse(g.IsTreeWidthAtMost(treeWidth - 1, out PTD output));
             Assert.IsTrue(g.IsTreeWidthAtMost(treeWidth, out output));

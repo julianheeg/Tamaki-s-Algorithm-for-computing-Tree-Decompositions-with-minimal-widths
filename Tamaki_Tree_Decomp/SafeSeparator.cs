@@ -6,6 +6,9 @@ using Tamaki_Tree_Decomp.Data_Structures;
 
 namespace Tamaki_Tree_Decomp
 {
+    /// <summary>
+    /// a class for finding safe separators and handling the reconstruction of partial tree decompositions
+    /// </summary>
     class SafeSeparator
     {
         readonly int vertexCount;
@@ -17,9 +20,12 @@ namespace Tamaki_Tree_Decomp
 
         readonly List<int[]> reconstructionMappings;            // mapping from reduced vertex id to original vertex id, by component
 
-        public static bool separate = true;
+        private readonly bool verbose;
 
-        public SafeSeparator(Graph graph)
+        public static bool separate = true; // this can be set to false in order to easily disable
+                                            // the search for safe separators for debugging reasons
+
+        public SafeSeparator(Graph graph, bool verbose = true)
         {
             vertexCount = graph.vertexCount;
             this.graph = graph;
@@ -28,6 +34,8 @@ namespace Tamaki_Tree_Decomp
             subGraphs = new List<Graph>();
 
             reconstructionMappings = new List<int[]>();
+
+            this.verbose = verbose;
         }
 
         /// <summary>
@@ -43,11 +51,14 @@ namespace Tamaki_Tree_Decomp
                 separatedGraphs = null;
                 return false;
             }
-            
+
             if (Size1Separate(new BitSet(vertexCount)))
             {
-                Console.WriteLine("size 1 separator found: {0}", separator.ToString());
-                PrintSeparation();
+                if (verbose)
+                {
+                    Console.WriteLine("size 1 separator found: {0}", separator.ToString());
+                    PrintSeparation();
+                }
                 separatedGraphs = subGraphs;
                 if (minK < separatorSize)
                 {
@@ -57,8 +68,11 @@ namespace Tamaki_Tree_Decomp
             }
             if (Size2Separate())
             {
-                Console.WriteLine("size 2 separator found: {0}", separator.ToString());
-                PrintSeparation();
+                if (verbose)
+                {
+                    Console.WriteLine("size 2 separator found: {0}", separator.ToString());
+                    PrintSeparation();
+                }
                 separatedGraphs = subGraphs;
                 if (minK < separatorSize)
                 {
@@ -68,8 +82,11 @@ namespace Tamaki_Tree_Decomp
             }
             else if (HeuristicDecomposition())
             {
-                Console.WriteLine("clique minor found: {0}", separator.ToString());
-                PrintSeparation();
+                if (verbose)
+                {
+                    Console.WriteLine("clique minor found: {0}", separator.ToString());
+                    PrintSeparation();
+                }
                 separatedGraphs = subGraphs;
                 if (minK < separatorSize - 1)
                 {
@@ -889,7 +906,7 @@ namespace Tamaki_Tree_Decomp
                     BitSet uniqueSeparator = joined[0];
                     BitSet test = new BitSet(neighborSetsWithout[vmin]);
                     test.IntersectWith(remaining);
-                    if (uniqueSeparator.IsSuperset(test))
+                    if (uniqueSeparator.IsSupersetOf(test))
                     {
                         uniqueSeparator[vmin] = false;
                         if (uniqueSeparator.IsEmpty())
@@ -1108,7 +1125,7 @@ namespace Tamaki_Tree_Decomp
             PTD separatorNode = null;
             Stack<PTD> childrenStack = new Stack<PTD>();
 
-            // reindex the tree decompositions
+            // re-index the tree decompositions
             for (int i = 0; i < ptds.Length; i++)
             {
                 int[] reconstructionMapping = reconstructionMappings[i];
@@ -1118,7 +1135,7 @@ namespace Tamaki_Tree_Decomp
                 {
                     PTD currentNode = childrenStack.Pop();
 
-                    // reindex bag
+                    // re-index bag
                     BitSet reconstructedBag = new BitSet(vertexCount);
                     foreach (int j in currentNode.Bag.Elements())
                     {
@@ -1127,7 +1144,7 @@ namespace Tamaki_Tree_Decomp
                     currentNode.SetBag(reconstructedBag);
 
                     // find separator node in the first tree decomposition
-                    if (i == 0 && currentNode.Bag.IsSuperset(separator))
+                    if (i == 0 && currentNode.Bag.IsSupersetOf(separator))
                     {
                         separatorNode = currentNode;
                     }

@@ -79,7 +79,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
                 }
 
                 // check if the superset is determined as a superset
-                Assert.IsTrue(superSet.IsSuperset(subSet), String.Format("IsSuperset_Superset_ReturnTrue test failed in iteration {0}", i));
+                Assert.IsTrue(superSet.IsSupersetOf(subSet), String.Format("IsSuperset_Superset_ReturnTrue test failed in iteration {0}", i));
             }
         }
 
@@ -122,7 +122,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
                 }
 
                 // check if the second set is not a superset of the first one
-                Assert.IsFalse(notSuperSet.IsSuperset(notSubSet), String.Format("IsSuperset_NoSuperset_ReturnFalse test failed in iteration {0}", i));
+                Assert.IsFalse(notSuperSet.IsSupersetOf(notSubSet), String.Format("IsSuperset_NoSuperset_ReturnFalse test failed in iteration {0}", i));
             }
         }
     }

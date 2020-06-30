@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
+    /// <summary>
+    /// a class for representing sets whose elements are "small" non-negative integers
+    /// </summary>
     public class BitSet : IEquatable<BitSet>
     {
         private uint[] bytes;
+
+        #region constructors and copy functions
 
         /// <summary>
         /// constructs a BitSet of the given length
@@ -41,7 +45,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public BitSet(BitSet from)
         {
             bytes = new uint[from.bytes.Length];
-            for (int i = 0; i < bytes.Length; i++)
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
             {
                 bytes[i] = from.bytes[i];
             }
@@ -53,7 +58,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="from">the bit set to copy</param>
         public void CopyFrom(BitSet from)
         {
-            for (int i = 0; i < bytes.Length; i++)
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
             {
                 bytes[i] = from.bytes[i];
             }
@@ -75,10 +81,24 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
+        /// removes all elements from this set
+        /// </summary>
+        public void Clear()
+        {
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = 0;
+            }
+        }
+
+        #endregion
+
+
+        /// <summary>
         /// accesses the bit at position key
         /// </summary>
         /// <param name="key">the position</param>
-        /// <returns>true iff the bit at that position is set</returns>
+        /// <returns>true, iff the bit at that position is set</returns>
         public bool this[int key]
         {
             // unsafe because no check for index out of range is being made
@@ -92,119 +112,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 // adapted from https://stackoverflow.com/a/47990
 
                 bytes[key / 32] ^= ((value ? 0xFFFFFFFF : 0U) ^ bytes[key / 32]) & (1U << (key % 32));
-
-                //bytes[key / 32] ^= (-(value ? 1U : 0U) ^ bytes[key / 32]) & (1U << (key % 32));
             }
-        }
-
-        /// <summary>
-        /// returns a list of the indices of the set bits
-        /// </summary>
-        /// <returns>that list</returns>
-        public List<int> Elements()
-        {
-            List<int> setBits = new List<int>(); // TODO: array if capacity is known
-
-            // iterate over bytes
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                // if byte not 0
-                if (bytes[i] != 0)
-                {
-                    // iterate over bits
-                    for (int j = 0; j < 32; j++)
-                    {
-                        // append index if bit not 0
-                        if ((bytes[i] & (1U << j)) != 0)
-                        {
-                            setBits.Add(32 * i + j);
-                        }
-                    }
-                }
-            }
-            return setBits;
-        }
-       
-        /// <summary>
-        /// tests if this set is a superset of the other set
-        /// </summary>
-        /// <param name="subset">the supposed subset</param>
-        /// <returns>true, iff this set is a superset of the subset</returns>
-        public bool IsSuperset(BitSet subset)
-        {
-            bool result = true;
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                result &= (bytes[i] | subset.bytes[i]) == bytes[i];
-            }
-            return result;
-        }
-
-        /// <summary>
-        /// tests if this set is equal to the other set
-        /// </summary>
-        /// <param name="other">the other set</param>
-        /// <returns>true iff both sets contain the same elements</returns>
-        public bool Equals(BitSet other)
-        {
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                if ((bytes[i]) != (other.bytes[i]))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        /// <summary>
-        /// alters this bit set so that it represents the union of this bit set with the other bit set
-        /// </summary>
-        /// <param name="other">the bit set to union with</param>
-        public void UnionWith(BitSet other)
-        {
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                bytes[i] |= other.bytes[i];
-            }
-        }
-
-        /// <summary>
-        /// alters this bit set so that it represents the intersection of this bit set with the other bit set
-        /// </summary>
-        /// <param name="other">the bit set to intersect with</param>
-        public void IntersectWith(BitSet other)
-        {
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                bytes[i] &= other.bytes[i];
-            }
-        }
-
-        /// <summary>
-        /// removes the bits in other from this bit set
-        /// </summary>
-        /// <param name="other">the elements to remove</param>
-        public void ExceptWith(BitSet other)
-        {
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                bytes[i] &= ~other.bytes[i];
-            }
-        }
-
-        /// <summary>
-        /// tests if this set is empty
-        /// </summary>
-        /// <returns>true, iff this set is empty</returns>
-        public bool IsEmpty()
-        {
-            bool result = true;
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                result &= bytes[i] == 0;
-            }
-            return result;
         }
 
         /// <summary>
@@ -212,20 +120,50 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// </summary>
         /// <returns>the number of items in this set</returns>
         public uint Count()
-        {
+        {              
             // code taken from http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-            // TODO: it probably doesn't make much sense here to check for equality to 0 since it's so fast anyways and would just introduce branches
+            // it probably doesn't make much sense here to check for equality to 0 since it's so fast anyways and would just introduce branches
             uint count = 0;
-            for (int i = 0; i < bytes.Length; i++)
+            int length = bytes.Length;
+            for (int i = 0; i < length; i++)
             {
-                uint v = (uint) bytes[i];
+                uint v = bytes[i];
+
                 v = v - ((v >> 1) & 0x55555555);
                 v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
                 count += ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
             }
-            return count;
+            return count;            
         }
 
+
+        //TODO: does not seem to be significantly faster
+        /// <summary>
+        /// checks if the number of elements is smaller than a given value
+        /// </summary>
+        /// <param name="k">the number of elements to test against</param>
+        /// <returns>true, iff there are less elements than the given number</returns>
+        public bool IsCountSmallerThan(int k)
+        {
+            // code taken from http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+            // it probably doesn't make much sense here to check for equality to 0 since it's so fast anyways and would just introduce branches
+            uint count = 0;
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                uint v = bytes[i];
+                v = v - ((v >> 1) & 0x55555555);
+                v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+                count += ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+                if (count >= k)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // look in the method below for explanation
         static readonly int[] Mod37BitPosition = // map a bit value mod 37 to its position
             {
                 32, 0, 1, 26, 2, 23, 27, 0, 3, 16, 24, 30, 28, 11, 0, 13, 4,
@@ -239,61 +177,32 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>the position of the first set bit, if there is one, and -1 otherwise</returns>
         public int First()
         {
-            int first = bytes.Length * 32;
+            int length = bytes.Length;
+            int first = length * 32;
             // code taken from http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
-            for (int i = 0; i < bytes.Length; i++)
+            for (int i = 0; i < length; i++)
             {
                 if (bytes[i] != 0)
                 {
                     uint v = bytes[i];
-                    
-                    /*
-                    v |= v >> 1; // first round down to one less than a power of 2 
-                    v |= v >> 2;
-                    v |= v >> 4;
-                    v |= v >> 8;
-                    v |= v >> 16;
-
-                    first = i * 32 + MultiplyDeBruijnBitPosition[((uint)((v & -v) * 0x077CB531U)) >> 27];
-                    break;
-                    */
 
                     first = i * 32 + Mod37BitPosition[(-v & v) % 37];
                     break;
                 }
             }
 
-#if DEBUG
-            // TODO: remove if assertion never fails
-            int second = int.MaxValue;
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                if (bytes[i] != 0)
-                {
-                    for (int j = 0; j < 32; j++)
-                    {
-                        if (this[32 * i + j])
-                        {
-                            second = i * 32 + j;
-                            break;
-                        }
-                    }
-                }
-                if (second != int.MaxValue)
-                {
-                    break;
-                }
-            }
-            Debug.Assert(first == second);
-#endif
             return first;
         }
 
+        // needed for the method below
         [ThreadStatic] static uint currentByte = 0;
         [ThreadStatic] static int currentPos = -1;
 
         /// <summary>
-        /// returns the next element starting from a given element
+        /// returns the next element starting from a given element. This method is slightly faster than using the Elements function.
+        /// when iterating it can be used as follows:
+        ///     int pos = -1;
+        ///     while((pos = NextElement(pos, true/false)) != -1) { ... }
         /// </summary>
         /// <param name="pos">the starting element index</param>
         /// <param name="getsReduced">pass true if elements are taken out of this set during an iteration. pass false otherwise</param>
@@ -313,24 +222,128 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     currentPos = first;
                     return first;
                 }
-                /*
-                currentByte = bytes[i];
-                if (currentByte != 0)
-                {
-                    int first = i * 32 + Mod37BitPosition[(-currentByte & currentByte) % 37];
-                    currentByte &= ~(1U << first);
-                    currentPos = first;
-
-
-
-                    return first;
-                }
-                */
-                
             }
             return -1;
         }
-       
+
+        /// <summary>
+        /// returns a list of the indices of the set bits. The NextElement method is slightly faster, but not as intuitive to use. 
+        /// </summary>
+        /// <returns>that list</returns>
+        public List<int> Elements()
+        {
+            List<int> setBits = new List<int>();
+
+            // iterate over bytes
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                // if byte not 0
+                if (bytes[i] != 0)
+                {
+                    // iterate over bits
+                    for (int j = 0; j < 32; j++)
+                    {
+                        // append index if bit not 0
+                        if ((bytes[i] & (1U << j)) != 0)
+                        {
+                            setBits.Add(32 * i + j);
+                        }
+                    }
+                }
+            }
+            return setBits;
+        }
+
+        #region set operations
+
+        /// <summary>
+        /// tests if this set is a superset of the other set
+        /// </summary>
+        /// <param name="subset">the supposed subset</param>
+        /// <returns>true, iff this set is a superset of the subset</returns>
+        public bool IsSupersetOf(BitSet subset)
+        {
+            bool result = true;
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                result &= (bytes[i] | subset.bytes[i]) == bytes[i];
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// tests if this set is equal to the other set
+        /// </summary>
+        /// <param name="other">the other set</param>
+        /// <returns>true iff both sets contain the same elements</returns>
+        public bool Equals(BitSet other)
+        {
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                if ((bytes[i]) != (other.bytes[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// alters this bit set so that it represents the union of this bit set with the other bit set
+        /// </summary>
+        /// <param name="other">the bit set to union with</param>
+        public void UnionWith(BitSet other)
+        {
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                bytes[i] |= other.bytes[i];
+            }
+        }
+
+        /// <summary>
+        /// alters this bit set so that it represents the intersection of this bit set with the other bit set
+        /// </summary>
+        /// <param name="other">the bit set to intersect with</param>
+        public void IntersectWith(BitSet other)
+        {
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                bytes[i] &= other.bytes[i];
+            }
+        }
+
+        /// <summary>
+        /// removes the bits in other from this bit set
+        /// </summary>
+        /// <param name="other">the elements to remove</param>
+        public void ExceptWith(BitSet other)
+        {
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                bytes[i] &= ~other.bytes[i];
+            }
+        }
+
+        /// <summary>
+        /// tests if this set is empty
+        /// </summary>
+        /// <returns>true, iff this set is empty</returns>
+        public bool IsEmpty()
+        {
+            bool result = true;
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
+            {
+                result &= bytes[i] == 0;
+            }
+            return result;
+        }       
 
         /// <summary>
         /// determines wether this and the other set are disjoint
@@ -339,7 +352,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true iff both sets are disjoint</returns>
         public bool IsDisjoint(BitSet other)
         {
-            for (int i = 0; i < bytes.Length; i++)
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
             {
                 if (((bytes[i]) & (other.bytes[i])) != 0)
                 {
@@ -350,13 +364,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// constructs a bit set that is the compliment of this one (bits after the maximum size are set)
+        /// constructs a bit set that is the compliment of this one (bits after the maximum size are set). This method is possibly obsolete.
         /// </summary>
         /// <returns>a complimentary bit set</returns>
         public BitSet Complement()
         {
             BitSet complement = new BitSet(this);
-            for (int i = 0; i < bytes.Length; i++)
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
             {
                 complement.bytes[i] = ~complement.bytes[i];
             }
@@ -364,12 +379,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// flips the first "length" bits
+        /// flips the first "length" bits. Can be used as an in place complement function.
         /// </summary>
+        /// <param name="length">the amount of bits to flip</param>
         public void Flip(int length)
         {
             // flip all bits
-            for (int i = 0; i < bytes.Length; i++)
+            int length1 = bytes.Length; // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length1; i++)
             {
                 bytes[i] = ~bytes[i];
             }
@@ -389,42 +406,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return IsDisjoint(vs2) && !IsEmpty() && !vs2.IsEmpty();
         }
 
-        /// <summary>
-        /// removes all elements from this set
-        /// </summary>
-        public void Clear()
-        {
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                bytes[i] = 0;
-            }
-        }
-
-        /*
-        /// <summary>
-        /// tests if the union of both bit sets contains all elements
-        /// </summary>
-        /// <param name="first">the first bit set</param>
-        /// <param name="second">the second bit set</param>
-        /// <param name="length">the length of the bit sets</param>
-        /// <returns></returns>
-        public static bool UnionContainsAll(BitSet first, BitSet second, int length)
-        {
-            for (int i = 0; i < length / 32; i++)
-            {
-                if ((first.bytes[i] | second.bytes[i]) != -1)
-                {
-                    return false;
-                }
-            }
-            if ((first.bytes[(length - 1) / 32] | second.bytes[(length - 1) / 32]) != ~(-1 << (length % 32)))
-            {
-                // Console.WriteLine("UnionContainsAll method: union is {0}, 32-modulus is {1}. Is it correct to say false?", Convert.ToString((first.bytes[(length - 1) / 32] | second.bytes[(length - 1) / 32]), 2), length % 32);
-                return false;
-            }
-            return true;
-        }
-        */
+        #endregion
 
         /*
         /// <summary>
@@ -439,6 +421,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
         */
+
+        #region printing
 
         /// <summary>
         /// prints the set to the console
@@ -532,6 +516,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return sb.ToString();
         }
 
+        #endregion
+
+        #region technical stuff needed for inclusion in hash based data structures
+
         /// <summary>
         /// assigns a hash code to this bit set.
         /// </summary>
@@ -540,7 +528,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             // TODO: cache hash code?
             uint hashCode = 0;
-            for (int i = 0; i < bytes.Length; i++)
+            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            for (int i = 0; i < length; i++)
             {
                 hashCode ^= bytes[i];
             }
@@ -558,5 +547,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             Debug.Assert(other != null);
             return this.Equals(other);
         }
+
+        #endregion
     }
 }

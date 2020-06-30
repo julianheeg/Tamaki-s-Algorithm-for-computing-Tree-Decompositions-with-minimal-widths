@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Tamaki_Tree_Decomp.Data_Structures;
 
 namespace Tamaki_Tree_Decomp
@@ -17,18 +14,21 @@ namespace Tamaki_Tree_Decomp
     public class GraphReduction
     {
         readonly int vertexCount;
-        readonly List<int>[] adjacencyList;
-        readonly BitSet[] neighborSetsWithout;
-        readonly BitSet removedVertices;
+        List<int>[] adjacencyList;
+        BitSet[] neighborSetsWithout;
+        BitSet removedVertices;
         int low; // TODO: heuristic for setting low is given in the paper
         readonly Dictionary<int, int> reconstructionMapping;    // mapping from reduced vertex id to original vertex id
         readonly List<(BitSet, BitSet)> reconstructionBagsToAppend;     // a list of (bag, parentbag) for reconstructing the correct tree decomposition // TODO: HashSet instead?
 
         readonly List<String> reconstructionBagsDebug;  // TODO: remove
 
-        public static bool reduce = true;
+        private readonly bool verbose;
 
-        public GraphReduction(Graph graph, int low = 0)
+        public static bool reduce = true;   // this can be set to false in order to easily disable
+                                            // the graph reduction for debugging reasons
+
+        public GraphReduction(Graph graph, int low = 0, bool verbose = true)
         {
             this.low = low;
             vertexCount = graph.vertexCount;
@@ -44,6 +44,8 @@ namespace Tamaki_Tree_Decomp
             reconstructionBagsToAppend = new List<(BitSet, BitSet)>();
 
             reconstructionBagsDebug = new List<string>();
+
+            this.verbose = verbose;
         }
 
         /// <summary>
@@ -83,13 +85,24 @@ namespace Tamaki_Tree_Decomp
                 }
             }
 
-            // TODO: can save a small bit of memory by deleting the old adjacency list and neighbor bit sets 
+            adjacencyList = null;
+            neighborSetsWithout = null;
+            removedVertices = null;
+
 
             edgeCount /= 2;
-            Console.WriteLine("Graph reduced to {0} nodes and {1} edges", reducedAdjacencyList.Length, edgeCount);
+            if (verbose)
+            {
+                Console.WriteLine("Graph reduced to {0} nodes and {1} edges", reducedAdjacencyList.Length, edgeCount);
+            }
             return new Graph(reducedAdjacencyList);
         }
 
+        /// <summary>
+        /// performs as many reductions as possible
+        /// </summary>
+        /// <param name="out_low">a lower bound for the tree width of the graph. It can be increased on basis of the reduction rules.</param>
+        /// <returns>true, iff at least one reduction could be performed</returns>
         public bool Reduce(ref int out_low)
         {
             if (!reduce)
@@ -122,11 +135,6 @@ namespace Tamaki_Tree_Decomp
                 // ... that is not yet removed ...
                 if (!removedVertices[i])
                 {
-                    if (i == 145)   // TODO: remove
-                    {
-                        ;
-                    }
-
                     // ... and check if its neighbors form a clique
                     bool neighborsFormClique = true;
                     for (int j = 0; j < adjacencyList[i].Count && neighborsFormClique; j++)
@@ -424,7 +432,7 @@ namespace Tamaki_Tree_Decomp
                                     if (node != uvw[j] && !adjacencyList[node].Contains(uvw[j]))
                                     {
                                         adjacencyList[node].Add(uvw[j]);
-                                        neighborSetsWithout[node][j] = true;
+                                        neighborSetsWithout[node][uvw[j]] = true;
                                     }
                                 }
                             }
@@ -541,7 +549,7 @@ namespace Tamaki_Tree_Decomp
             CheckVertexCover(td);
         }
         */
-
+        
         /// <summary>
         /// turns a tree decomposition of the reduced graph into a tree decomposition of the original input graph
         /// </summary>
@@ -554,33 +562,34 @@ namespace Tamaki_Tree_Decomp
                 return;
             }
 
+            // initialize a stack of nodes
             Stack<PTD> nodeStack = new Stack<PTD>();
             List<PTD> reconstructedNodes = new List<PTD>();
-            if (td == null)
+            if (td == null)         // case where the graph has been reduced to 0 vertices and 0 edges
             {
                 int lastIndex = reconstructionBagsToAppend.Count - 1;
                 td = new PTD(reconstructionBagsToAppend[lastIndex].Item1);
                 reconstructedNodes.Add(td);
                 reconstructionBagsToAppend.RemoveAt(lastIndex);
             }
-            else
+            else                    // the other case
             {
                 nodeStack.Push(td);
             }
 
+            // re-index all bags with the vertices they had before reduction
             while (nodeStack.Count > 0)
             {
                 PTD currentNode = nodeStack.Pop();
                 BitSet reducedBag = currentNode.Bag;
 
-                // reindex bag
+                // re-index bag
                 BitSet reconstructedBag = new BitSet(vertexCount);
                 foreach (int i in reducedBag.Elements())
                 {
                     reconstructedBag[reconstructionMapping[i]] = true;
                 }
                 currentNode.SetBag(reconstructedBag);
-
                 reconstructedNodes.Add(currentNode);
 
                 // push children onto stack
@@ -590,15 +599,17 @@ namespace Tamaki_Tree_Decomp
                 }
             }
 
+            // add the bags with the vertices that have been removed during reduction
             while (reconstructionBagsToAppend.Count > 0)
             {
                 bool hasChanged = false;
                 for (int i = 0; i < reconstructionBagsToAppend.Count; i++)
                 {
                     (BitSet child, BitSet parent) = reconstructionBagsToAppend[i];
-                    foreach(PTD node in reconstructedNodes)
+                    foreach(PTD node in reconstructedNodes)     // TODO: bad loop for searching parent bags,
+                                                                //       could use a better data structure
                     {
-                        if (node.Bag.IsSuperset(parent))
+                        if (node.Bag.IsSupersetOf(parent))
                         {
                             PTD childNode = new PTD(child);
                             node.children.Add(childNode);
@@ -611,10 +622,94 @@ namespace Tamaki_Tree_Decomp
                         }
                     }
                 }
+
+                // debug stuff. TODO: remove eventually
                 if (!hasChanged)
                 {
                     ;
                     throw new Exception("tree decomposition could not be rebuilt");
+                }
+            }
+
+            // --- make tree decomposition canonical again ---
+
+            Dictionary<PTD, PTD> parents = new Dictionary<PTD, PTD> { [td] = null };
+
+            // remove the nodes where the child is a subset of a node (this occurs
+            //because the simplicial vertex rule is also applied to vertices in cliques)
+            nodeStack.Push(td);
+            while (nodeStack.Count > 0)
+            {
+                PTD currentNode = nodeStack.Pop();
+
+                // consider all children
+                for (int i = 0; i < currentNode.children.Count; i++)
+                {
+                    PTD child = currentNode.children[i];
+                    // if child is a subset, remove the child and adopt grandchildren
+                    if (currentNode.Bag.IsSupersetOf(child.Bag))
+                    {
+                        currentNode.children.RemoveAt(i);
+                        i--;
+                        currentNode.children.AddRange(child.children);
+                    }
+                    // else push the child onto the stack
+                    else
+                    {
+                        nodeStack.Push(child);
+                        parents[child] = currentNode;
+                    }
+                }
+            }
+
+
+            // remove the nodes where a node is the subset of its child (this occurs
+            // because the simplicial vertex rule is also applied to vertices in cliques)
+
+            // get nodes in post order
+            Stack<PTD> postOrderHelperStack = new Stack<PTD>();
+            postOrderHelperStack.Push(td);
+            while (postOrderHelperStack.Count > 0)
+            {
+                PTD currentNode = postOrderHelperStack.Pop();
+                for (int i = 0; i < currentNode.children.Count; i++)
+                {
+                    postOrderHelperStack.Push(currentNode.children[i]);
+                }
+                nodeStack.Push(currentNode);
+            }
+
+            // remove the nodes where a node is the subset of its child
+            while (nodeStack.Count > 0)
+            {
+                PTD currentNode = nodeStack.Pop();
+                for (int i = 0; i < currentNode.children.Count; i++)
+                {
+
+                    PTD child = currentNode.children[i];
+                    if (child.Bag.IsSupersetOf(currentNode.Bag))
+                    {
+                        PTD parent = parents[currentNode];
+                        if (parent != null)     // if current node is not the root, attach child to its grandparent
+                        {
+                            // replace the parent in the grandparent's children list
+                            parents[child] = parent;
+                            int index = parent.children.IndexOf(currentNode);
+                            parent.children[index] = child;
+
+                            // add former parent's children to this node
+                            currentNode.children.RemoveAt(i);
+                            child.children.AddRange(currentNode.children);
+                        }
+                        else                    // if current node is the root, make the child the root instead
+                        {
+                            parents[child] = null;
+                            td.children.RemoveAt(i);
+                            child.children.AddRange(td.children);
+                            td = child;
+                        }
+                        break;
+                    }
                 }
             }
 
@@ -637,11 +732,6 @@ namespace Tamaki_Tree_Decomp
                 {
                     nodeStack.Push(child);
                 }
-            }
-
-            if (!covered.Equals(BitSet.All(vertexCount)))
-            {
-                ;
             }
 
             Debug.Assert(covered.Equals(BitSet.All(vertexCount)));

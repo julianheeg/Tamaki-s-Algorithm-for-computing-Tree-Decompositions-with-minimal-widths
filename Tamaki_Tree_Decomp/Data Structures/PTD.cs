@@ -2,23 +2,25 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
+    /// <summary>
+    /// a class for representing partial tree decompositions and partial tree decompositions with unfinished root
+    /// </summary>
     public class PTD
     {
         public BitSet Bag { get; private set; }
         public readonly BitSet vertices;
-        public readonly BitSet inlet;
-        public readonly BitSet outlet;
+        public BitSet inlet;
+        public BitSet outlet;
         public readonly List<PTD> children;
 
         //TODO: perhaps maintain the sets of components associated with the outlet
-        
+
+        #region constructors
+
         /// <summary>
         /// copy constructor
         /// </summary>
@@ -50,7 +52,21 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// constructor for one node of a PTD. variables are shared
+        /// constructor that explicitly sets bag, vertices and children
+        /// </summary>
+        /// <param name="bag"></param>
+        /// <param name="vertices"></param>
+        /// <param name="children"></param>
+        public PTD(BitSet bag, BitSet vertices, List<PTD> children)
+        {
+            // TODO: construct inlet and outlet as empty sets
+            Bag = bag;
+            this.vertices = vertices;
+            this.children = children;
+        }
+
+        /// <summary>
+        /// constructor for one node of a PTD.
         /// used in line 4
         /// </summary>
         /// <param name="bag">the set of vertices that this node contains</param>
@@ -63,12 +79,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             inlet = new BitSet(bag);
             inlet.ExceptWith(outlet);
             children = new List<PTD>();
-
-            AssertVerticesCorrect();
         }
 
+        #endregion
+
         /// <summary>
-        /// sets the bag of this node to a new set of vertices. Only for reconstruction purposes
+        /// sets the bag of this node to a new set of vertices.
+        /// Only used for the purpose of reconstruction from graph reduction rules.
         /// </summary>
         /// <param name="newBag">the new bag</param>
         public void SetBag(BitSet newBag)
@@ -77,30 +94,41 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
+        /// calculates the outlet and inlet. Used for lazy evaluation
+        /// </summary>
+        /// <param name="graph">the underlying graph</param>
+        public void CalculateOutlet(Graph graph)
+        {
+            outlet = graph.Outlet(Bag, vertices);   // TODO: use already constructed, but not yet initialized members members
+            inlet = new BitSet(vertices);           // TODO: here also
+            inlet.ExceptWith(outlet);
+
+            // TODO: perhaps add a member variable that indicates whether outlet and inlet have been evaluated already?
+        }
+
+        #region combination rules from algorithm
+
+        /// <summary>
         /// creates a new root with the given node as a child and the child's outlet as bag
         /// </summary>
         /// <param name="Tau">the child of this node</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line9(PTD Tau)
         {
-            BitSet bag = new BitSet(Tau.outlet);        // TODO: not copy? would be probably wrong since the child's outlet is used in line 9 and the bag of this root can change
-            BitSet outlet = new BitSet(Tau.outlet);     // TODO: not copy? the outlet doesn't really change, does it?
-            BitSet inlet = new BitSet(Tau.inlet);       // TODO: not copy? same here...
-            BitSet vertices = new BitSet(Tau.vertices); // TODO: not copy
+            BitSet bag = new BitSet(Tau.outlet);
+            BitSet outlet = new BitSet(Tau.outlet);
+            BitSet inlet = new BitSet(Tau.inlet);
+            BitSet vertices = new BitSet(Tau.vertices);
 
             List<PTD> children = new List<PTD>();
             children.Add(Tau);
-            PTD result = new PTD(bag, vertices, outlet, inlet, children);
-            result.AssertVerticesCorrect();
-
-            return result;
+            return new PTD(bag, vertices, outlet, inlet, children);
         }
 
         // line 13
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line13(PTD Tau_prime, PTD Tau, Graph graph)
         {
-            Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
 
@@ -112,16 +140,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            PTD result = new PTD(bag, vertices, outlet, inlet, children);
-
-            return result;
+            return new PTD(bag, vertices, outlet, inlet, children);
         }
 
         // line 13, but exit early if bag size is too big
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Line13_CheckBagSize(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
         {
-            Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
             if (bag.Count() > k + 1)
@@ -143,13 +168,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
-        public static int childrenCastings = 0;
-
         // line 13, but exit early if bag size is too big
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
         {
-            Debug.Assert(!Tau_prime.inlet.Equals(Tau.inlet));
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
 
@@ -160,16 +182,29 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 return false;
             }
 
+            return Line13_CheckBagSize_CheckPossiblyUsable_FunctionTail(Tau_prime, Tau, graph, out result, bag);
+        }
+
+        /// <summary>
+        /// a method extracted from the method above. Doing it this way improves performance probably
+        /// because the function code would be very large otherwise and not fit into the cache as easily.
+        /// </summary>
+        /// <param name="Tau_prime"></param>
+        /// <param name="Tau"></param>
+        /// <param name="graph"></param>
+        /// <param name="result"></param>
+        /// <param name="bag"></param>
+        /// <returns></returns>
+        private static bool Line13_CheckBagSize_CheckPossiblyUsable_FunctionTail(PTD Tau_prime, PTD Tau, Graph graph, out PTD result, BitSet bag)
+        {
             List<PTD> children = new List<PTD>(Tau_prime.children);
             children.Add(Tau);
 
             // exit early if not possibly usable
             for (int i = 0; i < children.Count; i++)
             {
-                childrenCastings++;
                 for (int j = i + 1; j < children.Count; j++)
                 {
-                    childrenCastings++;
                     if (!children[i].inlet.IsDisjoint(children[j].inlet))
                     {
                         result = null;
@@ -178,7 +213,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                     BitSet verticesIntersection = new BitSet(children[i].vertices);
                     verticesIntersection.IntersectWith(children[j].vertices);
-                    if (!children[i].outlet.IsSuperset(verticesIntersection) || !children[j].outlet.IsSuperset(verticesIntersection))
+                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
                     {
                         result = null;
                         return false;
@@ -192,7 +227,46 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            result = new PTD(bag, vertices, outlet, inlet, children);
+            result = new PTD(new BitSet(bag), vertices, outlet, inlet, children);   // TODO: not copy bag
+
+            return true;
+        }
+
+        // line 13, but exit early if bag size is too big
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, Graph graph, out PTD result)
+        {
+            BitSet bag = new BitSet(Tau_prime.Bag);
+            bag.UnionWith(Tau.outlet);
+
+            List<PTD> children = new List<PTD>(Tau_prime.children);
+            children.Add(Tau);
+
+            // exit early if not possibly usable
+            for (int i = 0; i < children.Count; i++)
+            {
+                for (int j = i + 1; j < children.Count; j++)
+                {
+                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    {
+                        result = null;
+                        return false;
+                    }
+
+                    BitSet verticesIntersection = new BitSet(children[i].vertices);
+                    verticesIntersection.IntersectWith(children[j].vertices);
+                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
+                    {
+                        result = null;
+                        return false;
+                    }
+                }
+            }
+
+            BitSet vertices = new BitSet(Tau_prime.vertices);
+            vertices.UnionWith(Tau.vertices);
+
+            result = new PTD(bag, vertices, children);
 
             return true;
         }
@@ -206,48 +280,29 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet vertices = new BitSet(Tau_wiggle.vertices);
             vertices.UnionWith(vNeighbors);
 
-            /*
-            // TODO: correct calculation of inlet and outlet? perhaps not
-            BitSet inlet = new BitSet(Tau_wiggle.inlet);
-            BitSet outlet = new BitSet(bag);
-            PTD result = new PTD(bag, vertices, outlet, inlet, children);
-            graph.RecalculateInletAndOutlet(result);
-            result.AssertVerticesCorrect();
-            */
-
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            PTD result = new PTD(bag, vertices, outlet, inlet, children);
-
-            return result;
+            return new PTD(bag, vertices, outlet, inlet, children);
         }
 
         // line 29
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line29(PTD Tau_wiggle, BitSet newRoot, Graph graph)
         {
-            Debug.Assert(newRoot.IsSuperset(Tau_wiggle.Bag));
+            Debug.Assert(newRoot.IsSupersetOf(Tau_wiggle.Bag));
             BitSet bag = newRoot;
             BitSet vertices = new BitSet(Tau_wiggle.vertices);
             vertices.UnionWith(newRoot);
             List<PTD> children = new List<PTD>(Tau_wiggle.children);
 
-            /*
-            BitSet outlet = new BitSet(Tau_wiggle.outlet);
-            BitSet inlet = new BitSet(Tau_wiggle.inlet);
-            PTD result = new PTD(bag, vertices, outlet, inlet, children);
-            graph.RecalculateInletAndOutlet(result);
-            result.AssertVerticesCorrect();
-            */
-
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            PTD result = new PTD(bag, vertices, outlet, inlet, children);
-
-            return result;
+            return new PTD(bag, vertices, outlet, inlet, children);
         }
+
+        #endregion
 
         /// <summary>
         /// tests whether this and the other PTD are PTDs that contain the same vertices within them
@@ -269,10 +324,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             for (int i = 0; i < children.Count; i++)
             {
                 Debug.Assert(children[i].inlet.IsDisjoint(outlet));
-                childrenCastings++;
                 for (int j = i + 1; j < children.Count; j++)
                 {
-                    childrenCastings ++;
                     if (!children[i].inlet.IsDisjoint(children[j].inlet))
                     {
                         return false;
@@ -280,7 +333,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     
                     BitSet verticesIntersection = new BitSet(children[i].vertices);
                     verticesIntersection.IntersectWith(children[j].vertices);
-                    if (!children[i].outlet.IsSuperset(verticesIntersection) || !children[j].outlet.IsSuperset(verticesIntersection))
+                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
                     {
                         return false;
                     }
@@ -302,7 +355,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         public bool IsNormalized_Daniela(PTD child)
         {
-            return !outlet.IsSuperset(child.outlet);
+            return !outlet.IsSupersetOf(child.outlet);
         }
 
         /// <summary>
@@ -327,7 +380,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             
             foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
             {
-                if (!graph.UnionOutlet(this, C_NC.Item1).IsSuperset(C_NC.Item2))
+                if (!graph.UnionOutlet(this, C_NC.Item1).IsSupersetOf(C_NC.Item2))
                 {
                     if (C_NC.Item1.First() > inlet.First())
                     {
@@ -337,17 +390,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return false;           
             
-        }
-
-
-        [Conditional("DEBUG")]
-        private void AssertVerticesCorrect()
-        {
-            Debug.Assert(inlet.IsDisjoint(outlet));
-
-            BitSet union = new BitSet(inlet);
-            union.UnionWith(outlet);
-            Debug.Assert(vertices.Equals(union));
         }
 
         /// <summary>
@@ -360,7 +402,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public PTD Reroot(BitSet rootSet)
         {
-            if (Bag.IsSuperset(rootSet))
+            if (Bag.IsSupersetOf(rootSet))
             {
                 return this;
             }
@@ -381,7 +423,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 visited[currentNode.Bag] = false;
 
                 // find a bag that can act as a root
-                if (!rootFound && currentNode.Bag.IsSuperset(rootSet))
+                if (!rootFound && currentNode.Bag.IsSupersetOf(rootSet))
                 {
                     rootFound = true;
                     rootSet = currentNode.Bag;
