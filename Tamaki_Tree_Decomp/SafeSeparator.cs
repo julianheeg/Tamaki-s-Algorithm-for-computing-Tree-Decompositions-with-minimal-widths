@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Tamaki_Tree_Decomp.Data_Structures;
 
 namespace Tamaki_Tree_Decomp
@@ -18,7 +19,7 @@ namespace Tamaki_Tree_Decomp
         readonly List<Graph> subGraphs;
         public int separatorSize;
 
-        readonly List<int[]> reconstructionMappings;            // mapping from reduced vertex id to original vertex id, by component
+        readonly List<int[]> reconstructionMappings;    // mapping from reduced vertex id to original vertex id, by component
 
         private readonly bool verbose;
 
@@ -52,26 +53,20 @@ namespace Tamaki_Tree_Decomp
                 return false;
             }
 
-            if (Size1Separate(new BitSet(vertexCount)))
+            if (FindSize1Separator() || FindSize2Separator() || FindSize3Separator())
             {
                 if (verbose)
                 {
-                    Console.WriteLine("size 1 separator found: {0}", separator.ToString());
+                    Console.WriteLine("safe separator found: {0}", separator.ToString());
                     PrintSeparation();
                 }
-                separatedGraphs = subGraphs;
-                if (minK < separatorSize)
+                List<int> separatorVertices = separator.Elements();
+                separatorSize = separatorVertices.Count;
+                CopyGraph(out List<int>[] adjacencyList, out BitSet[] neighborSetsWithout);
+                MakeSeparatorIntoClique(separatorVertices, adjacencyList, neighborSetsWithout);
+                foreach ((BitSet component, BitSet neighbor) in graph.ComponentsAndNeighbors(separator))
                 {
-                    minK = separatorSize;
-                }
-                return true;
-            }
-            if (Size2Separate())
-            {
-                if (verbose)
-                {
-                    Console.WriteLine("size 2 separator found: {0}", separator.ToString());
-                    PrintSeparation();
+                    BuildSubgraph(separatorVertices, adjacencyList, component);
                 }
                 separatedGraphs = subGraphs;
                 if (minK < separatorSize)
@@ -101,182 +96,204 @@ namespace Tamaki_Tree_Decomp
 
         #region exact safe separator search
 
+        // TODO: check if graph is connected, otherwise split immediately
+
+        /// <summary>
+        /// lists all articulation points of the graph
+        /// This method can also be used to test for separators of size n by passing a set of n-1 vertices as
+        /// ignoredVertices. and combining the result with the ignoredVertices.
+        /// Code adapated from https://slideplayer.com/slide/12811727/
+        /// </summary>
+        /// <param name="ignoredVertices">a list of vertices to treat as non-existent</param>
+        /// <returns>an iterator over all articulation points</returns>
+        public IEnumerable<int> ArticulationPoints(List<int> ignoredVertices = null)
+        {
+            if (graph.vertexCount == 0)
+            {
+                yield break;
+            }
+
+            ignoredVertices = ignoredVertices ?? new List<int>();   // create an empty list if the given one is null in order to prevent NullReferenceExceptions
+
+            int start = 0;
+            while (ignoredVertices.Contains(start))
+            {
+                start++;
+            }
+            int[] count = new int[vertexCount];                     // TODO: make member variable
+            int[] reachBack = new int[vertexCount];                 // TODO: make member variable
+            Queue<int>[] children = new Queue<int>[vertexCount];    // TODO: make member variable
+            for (int i = 0; i < vertexCount; i++)
+            {
+                count[i] = int.MaxValue;
+                reachBack[i] = int.MaxValue;
+                children[i] = new Queue<int>();
+            }
+            count[start] = 0;
+            int numSubtrees = 0;
+            
+            for (int i = 0; i < graph.adjacencyList[start].Length; i++)
+            {
+                int rootNeighbor = graph.adjacencyList[start][i];
+                if (count[rootNeighbor] == int.MaxValue && !ignoredVertices.Contains(rootNeighbor))
+                {
+                    Stack<(int, int, int)> stack = new Stack<(int, int, int)>();
+                    stack.Push((rootNeighbor, 1, start));
+                    while (stack.Count > 0)
+                    {
+                        (int node, int timer, int fromNode) = stack.Peek();
+                        if (count[node] == int.MaxValue)
+                        {
+                            count[node] = timer;
+                            reachBack[node] = timer;
+
+                            int[] neighbors = graph.adjacencyList[node];
+                            for (int j = 0; j < neighbors.Length; j++)
+                            {
+                                int neighbor = neighbors[j];
+                                if (neighbor != fromNode && !ignoredVertices.Contains(neighbor))
+                                {
+                                    children[node].Enqueue(neighbor);
+                                }
+                            }
+                        }
+                        else if (children[node].Count > 0)
+                        {
+                            int child = children[node].Dequeue();
+                            if (count[child] < int.MaxValue)
+                            {
+                                if (reachBack[node] > count[child])
+                                {
+                                    reachBack[node] = count[child];
+                                }
+                            }
+                            else
+                            {
+                                stack.Push((child, timer + 1, node));
+                            }
+                        }
+                        else
+                        {
+                            if (node != rootNeighbor)
+                            {
+                                if (reachBack[node] >= count[fromNode])
+                                {
+                                    yield return fromNode;
+                                }
+                                if (reachBack[fromNode] > reachBack[node])
+                                {
+                                    reachBack[fromNode] = reachBack[node];
+                                }
+                            }
+                            stack.Pop();
+                        }
+                    }
+
+                    numSubtrees++;
+                }
+            }
+            if (numSubtrees > 1)
+            {
+                yield return start;
+            }
+        }
+
         /// <summary>
         /// Tests if the graph can be separated with a separator of size 1. If so, the graph is split and the
         /// resulting subgraphs and the reconstruction mappings are saved in the corresponding member variables.
-        /// This method can also be used to test for separators of size n by passing a set of n-1 vertices as
-        /// ignoredVertices. Even in that case the graph is split.
-        /// Code ist adapted from https://cp-algorithms.com/graph/cutpoints.html.
         /// </summary>
-        /// <param name="ignoredVertices">vertices to ignore. The search skips these vertices entirely, thus allowing searches for separators of size larger than 1</param>
         /// <returns>true iff a size 1 separator exists</returns>
-        private bool Size1Separate(BitSet ignoredVertices)
+        private bool FindSize1Separator()
         {
-            int timer = 0;
-            BitSet visited = new BitSet(vertexCount);
-            int[] tin = new int[vertexCount];
-            int[] low = new int[vertexCount];
-            for (int i = 0; i < vertexCount; i++)
+            foreach (int a in ArticulationPoints())
             {
-                tin[i] = -1;
-                low[i] = -1;
-            }
-            CopyGraph(out List<int>[] adjacencyList, out BitSet[] neighborSetsWithout);
-
-            for (int i = 0; i < vertexCount; i++)
-            {
-                if (!visited[i] && !ignoredVertices[i])
-                {
-                    if (Size1Separate_Recursive(i, adjacencyList, ignoredVertices, ref timer, visited, tin, low, out int result))
-                    {
-                        separator = ignoredVertices;
-                        separator[result] = true;
-                        List<int> separatorVertices = separator.Elements();
-                        separatorSize = separatorVertices.Count;
-                        MakeSeparatorIntoClique(separatorVertices, adjacencyList, neighborSetsWithout);
-                        foreach ((BitSet component, BitSet neighbor) in graph.ComponentsAndNeighbors(separator))
-                        {
-                            BuildSubgraph(separatorVertices, adjacencyList, component);
-                        }
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// recursive helper function for Size1Separate. Code is adapted from https://cp-algorithms.com/graph/cutpoints.html.
-        /// </summary>
-        /// <param name="v"></param>
-        /// <param name="adjacencyList"></param>
-        /// <param name="removedVertices"></param>
-        /// <param name="timer"></param>
-        /// <param name="visited"></param>
-        /// <param name="tin"></param>
-        /// <param name="low"></param>
-        /// <param name="result"></param>
-        /// <param name="p"></param>
-        /// <returns></returns>
-        private bool Size1Separate_Recursive(int v, List<int>[] adjacencyList, BitSet removedVertices, ref int timer, BitSet visited, int[] tin, int[] low, out int result, int p = -1)
-        {
-            visited[v] = true;
-            tin[v] = timer;
-            low[v] = timer;
-            timer++;
-            int children = 0;
-            for (int i = 0; i < adjacencyList[v].Count; i++)
-            {
-                int to = adjacencyList[v][i];
-                if (to == p || removedVertices[to])
-                {
-                    continue;
-                }
-                if (visited[to])
-                {
-                    if (low[v] > tin[to])
-                    {
-                        low[v] = tin[to];
-                    }
-                }
-                else
-                {
-                    if (Size1Separate_Recursive(to, adjacencyList, removedVertices, ref timer, visited, tin, low, out result, v))
-                    {
-                        return true;
-                    }
-                    if (low[v] > low[to])
-                    {
-                        low[v] = low[to];
-                    }
-                    if (low[to] >= tin[v] && p != -1)
-                    {
-                        result = v;
-                        return true;
-                    }
-                    children++;
-                }
-            }
-            if (p == -1 && children > 1)
-            {
-                result = v;
+                separator = new BitSet(vertexCount);
+                separator[a] = true;
                 return true;
             }
-            result = -1;
             return false;
         }
 
         /// <summary>
-        /// Tests if the graph can be separated with a separator of size 2. If so, the graph is split and the
+        /// Tests if the graph can be separated with a safe separator of size 2. If so, the graph is split and the
         /// resulting subgraphs and the reconstruction mappings are saved in the corresponding member variables
         /// </summary>
         /// <returns>true iff a size 2 separator exists</returns>
-        public bool Size2Separate()
+        public bool FindSize2Separator()
         {
-            BitSet separator = new BitSet(vertexCount);
+            List<int> ignoredVertices = new List<int>(1) { -1 };
 
             // loop over every pair of vertices
             for (int u = 0; u < vertexCount; u++)
             {
-                separator[u] = true;
-                if (Size1Separate(separator))
+                ignoredVertices[0] = u;
+                foreach (int a in ArticulationPoints(ignoredVertices))
                 {
+                    separator = new BitSet(vertexCount);
+                    separator[u] = true;
+                    separator[a] = true;
                     return true;
                 }
-                // reset first vertex
-                separator[u] = false;
             }
             return false;
         }
 
-        /*
+        [ThreadStatic]
+        public static Stopwatch stopwatch = new Stopwatch();
+        [ThreadStatic]
+        public static int size3separators = 0;
+
         /// <summary>
-        /// Tests if the graph can be separated with a separator of size 2. If so, the graph is split and the
+        /// Tests if the graph can be separated with a safe separator of size 3. If so, the graph is split and the
         /// resulting subgraphs and the reconstruction mappings are saved in the corresponding member variables
-        /// TODO: Improve. This is a naive (n^3) implementation.
         /// </summary>
         /// <returns>true iff a size 2 separator exists</returns>
-        public bool Size2Separate()
+        public bool FindSize3Separator()
         {
-            BitSet separator = new BitSet(vertexCount);
+            stopwatch.Start();
+            List<int> ignoredVertices = new List<int>(2) { -1, -1 };
 
             // loop over every pair of vertices
             for (int u = 0; u < vertexCount; u++)
             {
-                separator[u] = true;
+                ignoredVertices[0] = u;
                 for (int v = u + 1; v < vertexCount; v++)
                 {
-                    separator[v] = true;
-
-                    // test if they are a minimal separator
-                    if (graph.IsMinimalSeparator_ReturnComponents(separator, out List<BitSet> components))
+                    ignoredVertices[1] = v;
+                    foreach (int a in ArticulationPoints(ignoredVertices))
                     {
-                        this.separator = separator;
-                        separatorSize = 2;
+                        // TODO: needs only have at least two vertices. Don't use the Components and neighbors function
+                        BitSet candidateSeparator = new BitSet(vertexCount);
+                        candidateSeparator[u] = true;
+                        candidateSeparator[v] = true;
+                        candidateSeparator[a] = true;
 
-                        CopyGraph(out List<int>[] adjacencyList, out BitSet[] neighborSetsWithout);
+                        bool safe = true;
 
-                        MakeSeparatorIntoClique(new List<int> { u, v }, adjacencyList, neighborSetsWithout);
-
-                        // divide the graph into subgraphs for each component
-                        foreach (BitSet component in components)
+                        foreach ((BitSet component, BitSet neighbors) in graph.ComponentsAndNeighbors(candidateSeparator))
                         {
-                            BuildSubgraph(new List<int> { u, v }, adjacencyList, component);
+                            Debug.Assert(component.Count() > 0);
+                            if (component.Count() == 1)
+                            {
+                                safe = false;
+                                break;
+                            }
                         }
 
-                        return true;
+                        if (safe)
+                        {
+                            separator = candidateSeparator;
+                            stopwatch.Stop();
+                            size3separators++;
+                            return true;
+                        }
                     }
-
-                    // reset second vertex
-                    separator[v] = false;
                 }
-
-                // reset first vertex
-                separator[u] = false;
             }
+            stopwatch.Stop();
             return false;
         }
-        */
+
 
         #endregion
 
@@ -292,7 +309,7 @@ namespace Tamaki_Tree_Decomp
             // consider all candidate separators
             foreach (BitSet candidateSeparator in CandidateSeparators())
             {
-                if (IsSafeSeparator(candidateSeparator))
+                if (IsSafeSeparator_Heuristic(candidateSeparator))
                 {
                     separator = candidateSeparator;
                     List<int> separatorVertices = separator.Elements();
@@ -323,7 +340,7 @@ namespace Tamaki_Tree_Decomp
         /// </summary>
         /// <param name="candidateSeparator">the candidate separator to test</param>
         /// <returns>true iff the used heuristic gives a guarantee that the candidate is a safe separator</returns>
-        public bool IsSafeSeparator(BitSet candidateSeparator)  // TODO: make private
+        public bool IsSafeSeparator_Heuristic(BitSet candidateSeparator)  // TODO: make private
         {
             bool isFirstComponent = true;
 

@@ -61,17 +61,25 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 edgeCount = Convert.ToInt32(tokens[3]);
 
                                 tempAdjacencyList = new List<int>[vertexCount];
+                                neighborSetsWithout = new BitSet[vertexCount];
                                 for (int i = 0; i < vertexCount; i++)
                                 {
                                     tempAdjacencyList[i] = new List<int>();
+                                    neighborSetsWithout[i] = new BitSet(vertexCount);
                                 }
                             }
                             else
                             {
                                 int u = Convert.ToInt32(tokens[0])-1;
                                 int v = Convert.ToInt32(tokens[1])-1;
-                                tempAdjacencyList[u].Add(v);
-                                tempAdjacencyList[v].Add(u);
+
+                                if (!neighborSetsWithout[u][v])
+                                {
+                                    tempAdjacencyList[u].Add(v);
+                                    tempAdjacencyList[v].Add(u);
+                                    neighborSetsWithout[u][v] = true;
+                                    neighborSetsWithout[v][u] = true;
+                                }
                             }
                         }
                     }
@@ -87,12 +95,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         degree = adjacencyList[i].Length;
                     }
                 }
-                neighborSetsWithout = new BitSet[vertexCount];
                 neighborSetsWith = new BitSet[vertexCount];
                 // fill neighbor sets
                 for (int i = 0; i < vertexCount; i++)
                 {
-                    neighborSetsWithout[i] = new BitSet(vertexCount, adjacencyList[i]);
                     neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
                     neighborSetsWith[i][i] = true;
                 }
@@ -102,6 +108,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 graphCount++;
 
                 // Console.WriteLine("Graph {0} has been imported.", graphID);
+
+                Debug.Assert(NoLoopsAndDoubleEdges());
             }
             catch (IOException e)
             {
@@ -144,6 +152,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             graphID = graphCount;
             graphCount++;
+
+            Debug.Assert(NoLoopsAndDoubleEdges());
         }
 
         #endregion
@@ -1155,6 +1165,29 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             return false;
                         }
                     }
+                }
+            }
+            return true;
+        }
+
+
+        private bool NoLoopsAndDoubleEdges()
+        {
+            for (int v = 0; v < vertexCount; v++)
+            {
+                BitSet neighbors = new BitSet(vertexCount);
+                for (int j = 0; j < adjacencyList[v].Length; j++)
+                {
+                    int neighbor = adjacencyList[v][j];
+                    if (neighbors[neighbor])
+                    {
+                        return false;
+                    }
+                    neighbors[neighbor] = true;
+                }
+                if (!neighbors.Equals(neighborSetsWithout[v]))
+                {
+                    return false;
                 }
             }
             return true;

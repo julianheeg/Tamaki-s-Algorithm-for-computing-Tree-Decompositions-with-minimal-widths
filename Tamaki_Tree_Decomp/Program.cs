@@ -81,7 +81,7 @@ namespace Tamaki_Tree_Decomp
 #pragma warning restore CS0414
 
         static int workerThreads = 1;
-        static int timePerInstance = 1800000;
+        static int timePerInstance = 180000;
         static int startingInstance = 0;
 
         static void Main(string[] args)
@@ -91,14 +91,16 @@ namespace Tamaki_Tree_Decomp
                 startingInstance =  start / 2;
             }
 
-            //string filepath = PACE2017(175);
-            string filepath = "Test Data\\graphs_MC2020\\bipartite_graphs\\track1_002.gr";
-            //string filepath = "30-06-2020 11-52-58\\444-.gr";
-            string directory = "Test Data\\graphs_MC2020\\";
+            //string filepath = PACE2017(45);
+            string filepath = "Test Data\\graphs_MC2020\\clique_graphs\\track1_002.gr";
+            //string filepath = "01-07-2020 14-27-50\\002-18.gr";
+            //string filepath = test_a0;
+            // string directory = "Test Data\\graphs_MC2020\\bipartite_graphs";
+            string directory = "Test Data\\graphs_MC2020\\clique_graphs";
             //string directory = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\";
 
             BitSet.plusOneInString = false;
-            //Graph.dumpSubgraphs = true;
+            // Graph.dumpSubgraphs = true;
             // Graph.old = false;
             // SafeSeparator.separate = false;
             // GraphReduction.reduce = false;
@@ -106,9 +108,18 @@ namespace Tamaki_Tree_Decomp
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
-            Run(filepath, true);
+            /*
+            Graph g = new Graph(filepath);
+            SafeSeparator ss = new SafeSeparator(g);
+            foreach(int i in ss.Size1Separators(new List<int>() { 1 }))
+            {
+                Console.WriteLine(i);
+            }
+            */
 
-            //RunAllParallel(directory);
+            //Run(filepath, true);
+
+            RunAllParallel(directory);
 
             // TestSpecificTreewidth(filepath, 16);
 
@@ -201,10 +212,12 @@ namespace Tamaki_Tree_Decomp
                 return -1;
             }
             Stopwatch stopwatch = new Stopwatch();
+            SafeSeparator.stopwatch = new Stopwatch();
+            SafeSeparator.size3separators = 0;
             stopwatch.Start();
             int treeWidth = g.TreeWidth(out PTD output, print);
             stopwatch.Stop();
-            Console.WriteLine("Tree decomposition of {0} found in {1}s", filepath, stopwatch.Elapsed);
+            Console.WriteLine("Tree decomposition of {0} found in {1}s. Treewidth is {2}.\nFound {3} size 3 separators in {4} total", filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.stopwatch.Elapsed);
             if (print)
             {
                 output.Print();

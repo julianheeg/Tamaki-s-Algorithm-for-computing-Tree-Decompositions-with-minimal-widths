@@ -93,19 +93,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             Bag = newBag;
         }
 
-        /// <summary>
-        /// calculates the outlet and inlet. Used for lazy evaluation
-        /// </summary>
-        /// <param name="graph">the underlying graph</param>
-        public void CalculateOutlet(Graph graph)
-        {
-            outlet = graph.Outlet(Bag, vertices);   // TODO: use already constructed, but not yet initialized members members
-            inlet = new BitSet(vertices);           // TODO: here also
-            inlet.ExceptWith(outlet);
-
-            // TODO: perhaps add a member variable that indicates whether outlet and inlet have been evaluated already?
-        }
-
         #region combination rules from algorithm
 
         /// <summary>
