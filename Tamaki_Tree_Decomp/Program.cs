@@ -91,12 +91,13 @@ namespace Tamaki_Tree_Decomp
                 startingInstance =  start / 2;
             }
 
-            //string filepath = PACE2017(45);
-            string filepath = "Test Data\\graphs_MC2020\\clique_graphs\\track1_002.gr";
+            string filepath = PACE2017(115);
+            //string filepath = "Test Data\\graphs_MC2020\\clique_graphs\\track1_002.gr";
             //string filepath = "01-07-2020 14-27-50\\002-18.gr";
-            //string filepath = test_a0;
+            //string filepath = test_e0;
             // string directory = "Test Data\\graphs_MC2020\\bipartite_graphs";
-            string directory = "Test Data\\graphs_MC2020\\clique_graphs";
+            //string directory = "Test Data\\graphs_MC2020\\clique_graphs";
+            string directory = "Test Data\\graphs_MC2020";
             //string directory = "Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\";
 
             BitSet.plusOneInString = false;
@@ -117,9 +118,9 @@ namespace Tamaki_Tree_Decomp
             }
             */
 
-            //Run(filepath, true);
+            Run(filepath, true);
 
-            RunAllParallel(directory);
+            //RunAllParallel(directory);
 
             // TestSpecificTreewidth(filepath, 16);
 
@@ -205,46 +206,36 @@ namespace Tamaki_Tree_Decomp
 
         private static int Run(string filepath, bool print)
         {
-            Graph g = new Graph(filepath);
+            ImmutableGraph g = new ImmutableGraph(filepath);
             if (g.vertexCount > 35000)
             {
                 Console.WriteLine("graph {0} has more than 35000 vertices. Skipping...", filepath);
                 return -1;
             }
             Stopwatch stopwatch = new Stopwatch();
-            SafeSeparator.stopwatch = new Stopwatch();
+            SafeSeparator.size3SeparationStopwatch = new Stopwatch();
             SafeSeparator.size3separators = 0;
             stopwatch.Start();
-            int treeWidth = g.TreeWidth(out PTD output, print);
+            int treeWidth = Treewidth.TreeWidth(g, out PTD output, print);
             stopwatch.Stop();
-            Console.WriteLine("Tree decomposition of {0} found in {1}s. Treewidth is {2}.\nFound {3} size 3 separators in {4} total", filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.stopwatch.Elapsed);
+            Console.WriteLine("Tree decomposition of {0} found in {1}s. Treewidth is {2}.\nFound {3} size 3 separators in {4} total", filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.size3SeparationStopwatch.Elapsed);
             if (print)
             {
                 output.Print();
             }
-            if (!g.IsValidTreeDecomposition(output))
-            {
-                Console.WriteLine("######################## tree decomposition is invalid #######################");
-            }
+            output.AssertValidTreeDecomposition(g);
             return treeWidth;
         }
 
 
         private static void TestSpecificTreewidth(string filepath, int actualTreewidth)
         {
-            Graph g = new Graph(filepath);
-            bool f = g.IsTreeWidthAtMost(actualTreewidth - 1, out PTD output);
-            bool t = g.IsTreeWidthAtMost(actualTreewidth, out output);
+            ImmutableGraph g = new ImmutableGraph(filepath);
+            bool f = Treewidth.IsTreeWidthAtMost(g, actualTreewidth - 1, out PTD output);
+            bool t = Treewidth.IsTreeWidthAtMost(g, actualTreewidth, out output);
             Console.WriteLine(f);
             Console.WriteLine(t);
-            if (!g.IsValidTreeDecomposition(output))
-            {
-                Console.WriteLine("######################## tree decomposition is invalid #######################");
-            }
-            else
-            {
-                Console.WriteLine("tree decomposition is valid");
-            }
+            output.AssertValidTreeDecomposition(g);
         }
 
         private static string PACE2017(int number)

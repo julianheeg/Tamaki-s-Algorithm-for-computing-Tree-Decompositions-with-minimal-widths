@@ -114,7 +114,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         // line 13
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PTD Line13(PTD Tau_prime, PTD Tau, Graph graph)
+        public static PTD Line13(PTD Tau_prime, PTD Tau, ImmutableGraph graph)
         {
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
@@ -132,7 +132,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         // line 13, but exit early if bag size is too big
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Line13_CheckBagSize(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
+        public static bool Line13_CheckBagSize(PTD Tau_prime, PTD Tau, ImmutableGraph graph, int k, out PTD result)
         {
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
@@ -157,7 +157,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         // line 13, but exit early if bag size is too big
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, Graph graph, int k, out PTD result)
+        public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, int k, out PTD result)
         {
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
@@ -182,7 +182,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="result"></param>
         /// <param name="bag"></param>
         /// <returns></returns>
-        private static bool Line13_CheckBagSize_CheckPossiblyUsable_FunctionTail(PTD Tau_prime, PTD Tau, Graph graph, out PTD result, BitSet bag)
+        private static bool Line13_CheckBagSize_CheckPossiblyUsable_FunctionTail(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result, BitSet bag)
         {
             List<PTD> children = new List<PTD>(Tau_prime.children);
             children.Add(Tau);
@@ -221,7 +221,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         // line 13, but exit early if bag size is too big
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, Graph graph, out PTD result)
+        public static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result)
         {
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
@@ -260,7 +260,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         // line 23
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PTD Line23(PTD Tau_wiggle, BitSet vNeighbors, Graph graph)
+        public static PTD Line23(PTD Tau_wiggle, BitSet vNeighbors, ImmutableGraph graph)
         {
             BitSet bag = new BitSet(vNeighbors);
             List<PTD> children = new List<PTD>(Tau_wiggle.children);
@@ -275,7 +275,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         // line 29
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PTD Line29(PTD Tau_wiggle, BitSet newRoot, Graph graph)
+        public static PTD Line29(PTD Tau_wiggle, BitSet newRoot, ImmutableGraph graph)
         {
             Debug.Assert(newRoot.IsSupersetOf(Tau_wiggle.Bag));
             BitSet bag = newRoot;
@@ -317,7 +317,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     {
                         return false;
                     }
-                    
+
                     BitSet verticesIntersection = new BitSet(children[i].vertices);
                     verticesIntersection.IntersectWith(children[j].vertices);
                     if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
@@ -334,7 +334,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// tests if this PTD is an incoming PTD
         /// </summary>
         /// <returns>true iff the PTD is incoming</returns>
-        public bool IsIncoming_Daniela(Graph graph)
+        public bool IsIncoming_Daniela(ImmutableGraph graph)
         {
             BitSet rest = vertices.Complement();
             return inlet.First() < rest.First();
@@ -349,7 +349,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// tests if this PTD is an incoming PTD
         /// </summary>
         /// <returns>true iff the PTD is incoming</returns>
-        public bool IsIncoming(Graph graph)
+        public bool IsIncoming(ImmutableGraph graph)
         {
             /*
             foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
@@ -364,7 +364,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
             return true;
             */
-            
+
             foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
             {
                 if (!graph.UnionOutlet(this, C_NC.Item1).IsSupersetOf(C_NC.Item2))
@@ -375,8 +375,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     }
                 }
             }
-            return false;           
-            
+            return false;
+
         }
 
         /// <summary>
@@ -415,7 +415,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     rootFound = true;
                     rootSet = currentNode.Bag;
                 }
-                
+
                 // add children to the adjacency list
                 foreach (PTD child in currentNode.children)
                 {
@@ -524,8 +524,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         /// <summary>
         /// constructor for one node of a PTD.
-        /// USE ONLY FOR IMPORTING FROM FILE!
-        /// variable bag is shared
+        /// USE ONLY FOR IMPORTING FROM FILE OR CONSTRUCTION OF A PTD WHOSE CHILDREN AND INLET/OUTLET DON'T MATTER!
+        /// variable bag is shared, not copied
         /// </summary>
         /// <param name="bag">the bag of this ptd node</param>
         public PTD(BitSet bag)
@@ -580,5 +580,169 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         #endregion printing
+
+
+        #region debug
+
+        /// <summary>
+        /// asserts that this ptd is consistent
+        /// </summary>
+        /// <param name="vertexCount">the number of vertices in the underlying graph</param>
+        [Conditional("DEBUG")]
+        internal void AssertConsistency(int vertexCount)
+        {
+            // create a list of all bags
+            List<BitSet> bagsList = new List<BitSet>();
+            List<int> parentBags = new List<int>();
+            Stack<PTD> childrenStack = new Stack<PTD>();
+            Stack<int> parentStack = new Stack<int>();
+            childrenStack.Push(this);
+            parentStack.Push(-1);
+            while (childrenStack.Count > 0)
+            {
+                PTD current = childrenStack.Pop();
+                int parent = parentStack.Pop();
+
+                bagsList.Add(current.Bag);
+                parentBags.Add(parent);
+                foreach (PTD child in current.children)
+                {
+                    childrenStack.Push(child);
+                    parentStack.Push(bagsList.Count - 1);
+                }
+            }
+
+            // check consistency
+            for (int i = 0; i < vertexCount; i++)
+            {
+                /*
+                 *  key insight: all bags containing i form a subtree.
+                 *  Therefore, in order for the tree decomposition to be consistent, there must be only one root for all subtrees containing i 
+                 */
+                HashSet<int> ancestors = new HashSet<int>();
+                for (int j = 0; j < bagsList.Count; j++)
+                {
+                    if (bagsList[j][i] == true)
+                    {
+                        int currentAncestor = j;
+                        int parentBag = parentBags[j];
+                        while (parentBag != -1 && bagsList[parentBag][i])
+                        {
+                            currentAncestor = parentBag;
+                            parentBag = parentBags[currentAncestor];
+                            ;
+                        }
+                        ancestors.Add(currentAncestor);
+                        if (ancestors.Count == 2)
+                        {
+                            Print();
+                            Debug.Fail(String.Format("The printed ptd is not consistent. There are at least two subtrees containing vertex {0}.", i.ToString()));
+                        }
+                    }
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// asserts that this ptd is actually a tree decomposition for the given graph
+        /// </summary>
+        /// <param name="graph">the graph that this ptd is supposed to be a tree decomposition of</param>
+        public void AssertValidTreeDecomposition(ImmutableGraph graph)
+        {
+            // create a list of all bags
+            List<BitSet> bagsList = new List<BitSet>();
+            List<int> parentBags = new List<int>();
+            Stack<PTD> childrenStack = new Stack<PTD>();
+            Stack<int> parentStack = new Stack<int>();
+            childrenStack.Push(this);
+            parentStack.Push(-1);
+            while (childrenStack.Count > 0)
+            {
+                PTD current = childrenStack.Pop();
+                int parent = parentStack.Pop();
+
+                bagsList.Add(current.Bag);
+                parentBags.Add(parent);
+                foreach (PTD child in current.children)
+                {
+                    childrenStack.Push(child);
+                    parentStack.Push(bagsList.Count - 1);
+                }
+            }
+
+            // check vertex cover
+            for (int i = 0; i < graph.vertexCount; i++)
+            {
+                bool isCovered = false;
+                foreach (BitSet bag in bagsList)
+                {
+                    if (bag[i])
+                    {
+                        isCovered = true;
+                        break;
+                    }
+                }
+                if (!isCovered)
+                {
+                    Print();
+                    Debug.Fail(String.Format("The printed ptd does not cover all of the graph's vertices. Vertex {0} is not covered.", i));
+                }
+            }
+
+            // check edge cover
+            for (int u = 0; u < graph.vertexCount; u++)
+            {
+                foreach (int v in graph.adjacencyList[u])
+                {
+                    bool isCovered = false;
+                    foreach (BitSet bag in bagsList)
+                    {
+                        if (bag[u] && bag[v])
+                        {
+                            isCovered = true;
+                            break;
+                        }
+                    }
+                    if (!isCovered)
+                    {
+                        Print();
+                        Debug.Fail(String.Format("The printed ptd does not cover all of the graph's edges. Edge ({0},{1}) is not covered.", u, v));
+                    }
+                }
+            }
+
+            // check consistency
+            for (int i = 0; i < graph.vertexCount; i++)
+            {
+                /*
+                 *  key insight: all bags containing i form a subtree.
+                 *  Therefore, in order for the tree decomposition to be consistent, there must be only one root for all subtrees containing i 
+                 */
+                HashSet<int> ancestors = new HashSet<int>();
+                for (int j = 0; j < bagsList.Count; j++)
+                {
+                    if (bagsList[j][i] == true)
+                    {
+                        int currentAncestor = j;
+                        int parentBag = parentBags[j];
+                        while (parentBag != -1 && bagsList[parentBag][i])
+                        {
+                            currentAncestor = parentBag;
+                            parentBag = parentBags[currentAncestor];
+                            ;
+                        }
+                        ancestors.Add(currentAncestor);
+                        if (ancestors.Count == 2)
+                        {
+                            Print();
+                            Debug.Fail(String.Format("The printed ptd is not consistent. There are at least two subtrees containing vertex {0}.", i.ToString()));
+                        }
+                    }
+                }
+            }
+        }
+
+        #endregion
     }
 }

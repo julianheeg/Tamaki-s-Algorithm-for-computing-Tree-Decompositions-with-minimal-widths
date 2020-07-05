@@ -53,7 +53,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// overwrites the contents of this bit set with the contents of another bit set
+        /// overwrites the contents of this bit set with the contents of another bit set.
+        /// You can use this if there is an already allocated BitSet that you can reuse, in order to reduce garbage.
         /// </summary>
         /// <param name="from">the bit set to copy</param>
         public void CopyFrom(BitSet from)

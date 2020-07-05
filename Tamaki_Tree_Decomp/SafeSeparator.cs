@@ -10,13 +10,13 @@ namespace Tamaki_Tree_Decomp
     /// <summary>
     /// a class for finding safe separators and handling the reconstruction of partial tree decompositions
     /// </summary>
-    class SafeSeparator
+    public class SafeSeparator
     {
         readonly int vertexCount;
-        readonly Graph graph;
+        readonly ImmutableGraph graph;
 
         BitSet separator;
-        readonly List<Graph> subGraphs;
+        readonly List<ImmutableGraph> subGraphs;
         public int separatorSize;
 
         readonly List<int[]> reconstructionMappings;    // mapping from reduced vertex id to original vertex id, by component
@@ -25,14 +25,15 @@ namespace Tamaki_Tree_Decomp
 
         public static bool separate = true; // this can be set to false in order to easily disable
                                             // the search for safe separators for debugging reasons
+        public static bool size3Separate = true;
 
-        public SafeSeparator(Graph graph, bool verbose = true)
+        public SafeSeparator(ImmutableGraph graph, bool verbose = true)
         {
             vertexCount = graph.vertexCount;
             this.graph = graph;
             
 
-            subGraphs = new List<Graph>();
+            subGraphs = new List<ImmutableGraph>();
 
             reconstructionMappings = new List<int[]>();
 
@@ -45,7 +46,7 @@ namespace Tamaki_Tree_Decomp
         /// <param name="separatedGraphs">a list of the separated graphs, if a separator exists, else null</param>
         /// <param name="minK">the minimum tree width parameter. If a separator is found that is greater than minK, it is set to the separator size</param>
         /// <returns>true iff a separation has been performed</returns>
-        public bool Separate(out List<Graph> separatedGraphs, ref int minK)
+        public bool Separate(out List<ImmutableGraph> separatedGraphs, ref int minK)
         {
             if (!separate)
             {
@@ -239,7 +240,7 @@ namespace Tamaki_Tree_Decomp
         }
 
         [ThreadStatic]
-        public static Stopwatch stopwatch = new Stopwatch();
+        public static Stopwatch size3SeparationStopwatch;
         [ThreadStatic]
         public static int size3separators = 0;
 
@@ -250,7 +251,15 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true iff a size 2 separator exists</returns>
         public bool FindSize3Separator()
         {
-            stopwatch.Start();
+            if (!size3Separate)
+            {
+                return false;
+            }
+            if (size3SeparationStopwatch == null)
+            {
+                size3SeparationStopwatch = new Stopwatch();
+            }
+            size3SeparationStopwatch.Start();
             List<int> ignoredVertices = new List<int>(2) { -1, -1 };
 
             // loop over every pair of vertices
@@ -283,15 +292,205 @@ namespace Tamaki_Tree_Decomp
                         if (safe)
                         {
                             separator = candidateSeparator;
-                            stopwatch.Stop();
+                            size3SeparationStopwatch.Stop();
                             size3separators++;
                             return true;
                         }
                     }
                 }
             }
-            stopwatch.Stop();
+            size3SeparationStopwatch.Stop();
             return false;
+        }
+
+        [ThreadStatic]
+        public static Stopwatch cliqueSeparatorStopwatch = new Stopwatch();
+        [ThreadStatic]
+        public static int cliqueSeparators = 0;
+
+        public bool FindCliqueSeparator(int ignoredVertex)
+        {
+            cliqueSeparatorStopwatch.Start();
+
+            MCS_M_Plus(out int[] alpha, out ImmutableGraph H, out BitSet X);
+
+            //Atoms(alpha, H, X, out List<Graph> atoms, out List<BitSet> minSeps, out List<BitSet> cliqueSeps);
+
+            cliqueSeparatorStopwatch.Stop();
+            throw new NotImplementedException();
+        }
+
+        /*
+        private void Atoms(int[] alpha, Graph H, BitSet X, out List<Graph> atoms, out List<BitSet> S_H, out List<BitSet> S_c)
+        {
+            CopyGraph(out List<int>[] G_adjacencyList, out BitSet[] G_neighbors);
+            CopyGraph(out List<int>[] H_adjacencyList, out BitSet[] H_neighbors, out BitSet[] H_neighborsWith);   // TODO: do we need to copy at all? Isn't the graph thrown away afterwards?
+
+            atoms = new List<Graph>();
+            S_H = new List<BitSet>();
+            S_c = new List<BitSet>();
+
+            for (int i = 0; i < vertexCount; i++)
+            {
+                int x = alpha[i];
+                if (X[x])
+                {
+                    S_H.Add(H_neighbors[x]);    // TODO: copy?
+                    List<int> S = H_adjacencyList[x];
+
+                    // test if S is clique
+                    // (intersect the neighbors of x with the neighbors' neighbors and test if that is equal to x' neighbors)
+                    BitSet intersection = new BitSet(H_neighborsWith[x]);
+                    for (int j = 0; j < S.Count; j++)
+                    {
+                        intersection.IntersectWith(H_neighborsWith[S[j]]);  // TODO: possibly test for early exit
+                    }
+                    if (intersection.Equals(H_neighborsWith[x]))
+                    {
+                        S_c.Add(H_neighbors[x]);
+                        BitSet C = null;    // TODO: connected component of G'-S containing x
+                        atoms.Add(null);    // TODO: add G'(S union C)
+                        // TODO: removed vertices in G' <- removed vertices in G' union C
+                    }
+                }
+
+                // remove x from H'
+                // TODO: use removed vertices Bitset instead
+                for (int j = 0; j < H_adjacencyList[x].Count; j++)
+                {
+                    int neighbor = H_adjacencyList[x][j];
+                    H_adjacencyList[neighbor].Remove(x);
+                }
+                H_adjacencyList[x].Clear();
+            }
+
+            atoms.Add(null); // G'
+
+            throw new NotImplementedException();
+        }
+        */
+
+        /// <summary>
+        /// An Introduction to Clique Minimal Separator Decomposition
+        /// Anne Berry, Romain Pogorelcnik, Geneviève Simonet
+        /// </summary>
+        /// <param name="alpha"></param>
+        /// <param name="H"></param>
+        /// <param name="x"></param>
+        private void MCS_M_Plus(out int[] alpha, out ImmutableGraph H, out BitSet X)
+        {
+            // init
+            alpha = new int[vertexCount];
+            HashSet<(int, int)> F = new HashSet<(int, int)>();
+            CopyGraph(out List<int>[] adjacencyList, out BitSet[] _);
+            bool[] reached = new bool[vertexCount];
+            BitSet[] reach = new BitSet[vertexCount];   // TODO: HashSet
+            int[] labels = new int[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                labels[i] = 0;
+            }
+            int s = -1;
+            X = new BitSet(vertexCount);
+
+            for (int i = vertexCount - 1; i >= 0; i--)
+            {
+                int x = -1; // TODO: use priority queue?
+                int maxLabel = -1;
+                for (int j = 0; j < vertexCount; j++)
+                {
+                    if (maxLabel < labels[j])
+                    {
+                        maxLabel = labels[j];
+                        x = j;
+                    }
+                }
+                List<int> Y = adjacencyList[x];
+
+                if (labels[x] <= s)
+                {
+                    X[x] = true;
+                }
+
+                s = labels[x];
+
+                Array.Clear(reached, 0, vertexCount);
+                reached[x] = true;
+
+                for (int j = 0; j < vertexCount; j++)   // for j=0 to n-1   <---- n-1 kann evtl auch die Größe des verbleibenden Graphen sein
+                {
+                    reach[j] = new BitSet(vertexCount);
+                }
+
+                int y;
+                for (int j = 0; j < Y.Count; j++)
+                {
+                    y = Y[j];
+                    reached[y] = true;
+                    reach[labels[y]][y] = true;
+                }
+
+                for (int j = 0; j < vertexCount; j++)
+                {
+                    while (!reach[j].IsEmpty())
+                    {
+                        y = reach[j].First();
+                        reach[j][y] = false;
+
+                        int z;
+                        for (int k = 0; k < adjacencyList[y].Count; k++)
+                        {
+                            z = adjacencyList[y][k];
+
+                            if (!reached[z])
+                            {
+                                reached[z] = true;
+                                if (labels[z] > j)
+                                {
+                                    Y.Add(z);
+                                    reach[labels[z]][z] = true;
+                                }
+                                else
+                                {
+                                    reach[j][z] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                for (int j = 0; j < Y.Count; j++)
+                {
+                    y = Y[j];
+                    if (!F.Contains((y, x)))
+                    {
+                        F.Add((x, y));
+                    }
+                    labels[y]++;
+                }
+
+                alpha[i] = x;
+
+                // remove x from G'
+                // TODO: use removed vertices Bitset instead
+                for (int j = 0; j < adjacencyList[x].Count; j++)
+                {
+                    int neighbor = adjacencyList[x][j];
+                    adjacencyList[neighbor].Remove(x);
+                }
+                adjacencyList[x].Clear();
+            }
+
+            // build H = (V, E+F)
+            adjacencyList = null;
+            CopyGraph(out adjacencyList, out _);
+            foreach((int u, int v) in F)
+            {
+                adjacencyList[u].Add(v);
+                adjacencyList[v].Add(u);
+            }
+
+            H = new ImmutableGraph(adjacencyList);
         }
 
 
@@ -418,7 +617,7 @@ namespace Tamaki_Tree_Decomp
             /// <param name="graph">the underlying graph</param>
             /// <param name="coveringPair">a covering pair of right nodes if one exists, else null</param>
             /// <returns>true, iff a covering pair could be found</returns>
-            internal bool FindCoveringPair(List<RightNode> rightNodes, BitSet available, Graph graph, out (RightNode, RightNode) coveringPair)
+            internal bool FindCoveringPair(List<RightNode> rightNodes, BitSet available, ImmutableGraph graph, out (RightNode, RightNode) coveringPair)
             {
                 foreach (RightNode right1 in rightNodes)
                 {
@@ -777,7 +976,7 @@ namespace Tamaki_Tree_Decomp
         /// <param name="rightNodes">the list of right nodes</param>
         /// <param name="available">the list of available nodes</param>
         /// <param name="graph">the underlying graph</param>
-        private void MergeRightNodes((RightNode, RightNode) coveringPair, List<RightNode> rightNodes, BitSet available, Graph graph)
+        private void MergeRightNodes((RightNode, RightNode) coveringPair, List<RightNode> rightNodes, BitSet available, ImmutableGraph graph)
         {
             // ----- lines 523 to 558 -----
 
@@ -1293,7 +1492,7 @@ namespace Tamaki_Tree_Decomp
             // SaveGraph(subAdjacencyList);
 
             // create graph
-            subGraphs.Add(new Graph(subAdjacencyList));
+            subGraphs.Add(new ImmutableGraph(subAdjacencyList));
         }
 
         #endregion
@@ -1308,7 +1507,7 @@ namespace Tamaki_Tree_Decomp
         {
             int maxVertices = 0;
             int maxEdges = 0;
-            foreach (Graph subgraph in subGraphs)
+            foreach (ImmutableGraph subgraph in subGraphs)
             {
                 if (subgraph.vertexCount > maxVertices)
                 {

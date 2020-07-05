@@ -28,7 +28,7 @@ namespace Tamaki_Tree_Decomp
         public static bool reduce = true;   // this can be set to false in order to easily disable
                                             // the graph reduction for debugging reasons
 
-        public GraphReduction(Graph graph, int low = 0, bool verbose = true)
+        public GraphReduction(ImmutableGraph graph, int low = 0, bool verbose = true)
         {
             this.low = low;
             vertexCount = graph.vertexCount;
@@ -52,7 +52,7 @@ namespace Tamaki_Tree_Decomp
         /// reconstructs a graph after reduction
         /// </summary>
         /// <returns>the reduced graph</returns>
-        public Graph ToGraph()
+        public ImmutableGraph ToGraph()
         {
             // build a mapping from old graph vertices to new graph vertices and vice versa
             Dictionary<int, int> reductionMapping = new Dictionary<int, int>();
@@ -95,7 +95,7 @@ namespace Tamaki_Tree_Decomp
             {
                 Console.WriteLine("Graph reduced to {0} nodes and {1} edges", reducedAdjacencyList.Length, edgeCount);
             }
-            return new Graph(reducedAdjacencyList);
+            return new ImmutableGraph(reducedAdjacencyList);
         }
 
         /// <summary>
@@ -461,94 +461,6 @@ namespace Tamaki_Tree_Decomp
 
             return isReduced;
         }
-
-        /*
-        /// <summary>
-        /// turns a tree decomposition of the reduced graph into a tree decomposition of the original input graph
-        /// </summary>
-        /// <param name="td">the tree decomposition of the reduced graph</param>
-        public void RebuildTreeDecomposition(ref PTD td)
-        {
-            // return if there is no bag to append
-            if (reconstructionBagsToAppend.Count == 0)
-            {
-                return;
-            }
-
-            Stack<PTD> nodeStack = new Stack<PTD>();
-            List<PTD> reconstructedNodes = new List<PTD>();
-            if (td == null)
-            {
-                int lastIndex = reconstructionBagsToAppend.Count - 1;
-                td = new PTD(reconstructionBagsToAppend[lastIndex]);
-                reconstructedNodes.Add(td);
-                reconstructionBagsToAppendTo.RemoveAt(lastIndex);
-                reconstructionBagsToAppend.RemoveAt(lastIndex);
-            }
-            else
-            {
-                nodeStack.Push(td);
-            }
-
-            while (nodeStack.Count > 0)
-            {
-                PTD currentNode = nodeStack.Pop();
-                BitSet reducedBag = currentNode.Bag;
-
-                // reindex bag
-                BitSet reconstructedBag = new BitSet(vertexCount);
-                foreach (int i in reducedBag.Elements())
-                {
-                    reconstructedBag[reconstructionMapping[i]] = true;
-                }
-                currentNode.SetBag(reconstructedBag);
-                
-                // push children onto stack
-                for (int i = 0; i < currentNode.children.Count; i++)
-                {
-                    nodeStack.Push(currentNode.children[i]);
-                }
-
-                // reconstruct remaining child nodes of the current node and add them to a second list (we need to handle those differently because their bags don't need to be reconstructed)
-                for (int i = 0; i < reconstructionBagsToAppendTo.Count; i++)
-                {
-                    if (reconstructedBag.IsSuperset(reconstructionBagsToAppendTo[i]))
-                    {
-                        PTD child = new PTD(reconstructionBagsToAppend[i]);
-                        currentNode.children.Add(child);
-                        reconstructedNodes.Add(child);
-
-                        reconstructionBagsToAppendTo.RemoveAt(i);
-                        reconstructionBagsToAppend.RemoveAt(i);
-                        i--;
-                    }
-                }
-            }
-
-            // reconstruct children of reconstructed children
-            for (int i = 0; i < reconstructedNodes.Count; i++)
-            {
-                PTD currentNode = reconstructedNodes[i];
-                for (int j = 0; j < reconstructionBagsToAppendTo.Count; j++)
-                {
-                    if (currentNode.Bag.IsSuperset(reconstructionBagsToAppendTo[j]))
-                    {
-                        PTD child = new PTD(reconstructionBagsToAppend[j]);
-                        currentNode.children.Add(child);
-                        reconstructedNodes.Add(child);
-
-                        reconstructionBagsToAppendTo.RemoveAt(j);
-                        reconstructionBagsToAppend.RemoveAt(j);
-                        j--;
-                    }
-                }
-            }
-
-            Debug.Assert(reconstructionBagsToAppend.Count == 0);
-
-            CheckVertexCover(td);
-        }
-        */
         
         /// <summary>
         /// turns a tree decomposition of the reduced graph into a tree decomposition of the original input graph
