@@ -9,7 +9,7 @@ using System.IO;
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
     /// <summary>
-    /// a class for representing an immutable graph, i. e. a graph that an algorithm can run on. It is not suited for preprocessing. Use the MutableGraph class for that instead
+    /// a class for representing an immutable graph, i. e. a graph that an algorithm can run on. It is not suited for preprocessing. Use the regular Graph class for that.
     /// </summary>
     public class ImmutableGraph
     {
@@ -21,127 +21,34 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly BitSet[] neighborSetsWith;      // contains N[v]
         public readonly BitSet allVertices;             // used for easy testing if a ptd covers all vertices
         
-        internal readonly int graphID;
-        private static int graphCount = 0;
+        public readonly int graphID;
 
         public static bool verbose = true;
         
         #region constructors
 
         /// <summary>
-        /// constructs a graph from a .gr file
-        /// </summary>
-        /// <param name="filepath">the path to that file</param>
-        public ImmutableGraph(string filepath)
-        {
-            try
-            {
-                // temporary because we use arrays later instead of lists
-                List<int>[] tempAdjacencyList = null;
-
-                using (StreamReader sr = new StreamReader(filepath))
-                {
-                    while (!sr.EndOfStream)
-                    {
-                        String line = sr.ReadLine();
-                        if (line.StartsWith("c"))
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            String[] tokens = line.Split(' ');
-                            if (tokens[0] == "p")
-                            {
-                                vertexCount = Convert.ToInt32(tokens[2]);
-                                edgeCount = Convert.ToInt32(tokens[3]);
-
-                                tempAdjacencyList = new List<int>[vertexCount];
-                                neighborSetsWithout = new BitSet[vertexCount];
-                                for (int i = 0; i < vertexCount; i++)
-                                {
-                                    tempAdjacencyList[i] = new List<int>();
-                                    neighborSetsWithout[i] = new BitSet(vertexCount);
-                                }
-                            }
-                            else
-                            {
-                                int u = Convert.ToInt32(tokens[0]) - 1;
-                                int v = Convert.ToInt32(tokens[1]) - 1;
-
-                                if (!neighborSetsWithout[u][v])
-                                {
-                                    tempAdjacencyList[u].Add(v);
-                                    tempAdjacencyList[v].Add(u);
-                                    neighborSetsWithout[u][v] = true;
-                                    neighborSetsWithout[v][u] = true;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // copy lists to arrays
-                adjacencyList = new int[vertexCount][];
-                for (int i = 0; i < vertexCount; i++)
-                {
-                    adjacencyList[i] = tempAdjacencyList[i].ToArray();
-                }
-                neighborSetsWith = new BitSet[vertexCount];
-                // fill neighbor sets
-                for (int i = 0; i < vertexCount; i++)
-                {
-                    neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
-                    neighborSetsWith[i][i] = true;
-                }
-
-                allVertices = BitSet.All(vertexCount);
-
-                graphID = graphCount;
-                graphCount++;
-
-                if (verbose)
-                {
-                    Console.WriteLine("Graph {0} has been imported.", graphID);
-                }
-            }
-            catch (IOException e)
-            {
-                Console.WriteLine("The file could not be read:");
-                Console.WriteLine(e.Message);
-                throw e;
-            }
-        }
-
-        /// <summary>
         /// constructs a graph from an adjacency list
         /// </summary>
-        /// <param name="adjacencyList">the adjacecy list for this graph</param>
-        public ImmutableGraph(List<int>[] adjacencyList)
+        /// <param name="graph">the adjacecy list for this graph</param>
+        public ImmutableGraph(Graph graph)
         {
-            vertexCount = adjacencyList.Length;
-            this.adjacencyList = new int[vertexCount][];
+            vertexCount = graph.vertexCount;
+            adjacencyList = new int[vertexCount][];
             for (int i = 0; i < vertexCount; i++)
             {
-                this.adjacencyList[i] = adjacencyList[i].ToArray();
-                edgeCount += this.adjacencyList[i].Length;
+                adjacencyList[i] = graph.adjacencyList[i].ToArray();
+                edgeCount += adjacencyList[i].Length;
             }
             edgeCount /= 2;
 
             // fill neighbor sets
-            neighborSetsWithout = new BitSet[vertexCount];
-            neighborSetsWith = new BitSet[vertexCount];
-            for (int i = 0; i < vertexCount; i++)
-            {
-                neighborSetsWithout[i] = new BitSet(vertexCount, this.adjacencyList[i]);
-                neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
-                neighborSetsWith[i][i] = true;
-            }
+            neighborSetsWithout = graph.neighborSetsWithout;
+            neighborSetsWith = graph.neighborSetsWith;
 
             allVertices = BitSet.All(vertexCount);
 
-            graphID = graphCount;
-            graphCount++;
+            graphID = graph.graphID;
         }
 
         #endregion
@@ -187,7 +94,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             // find components as long as they exist
             int startingVertex = -1;
-            while ((startingVertex = unvisited.NextElement(startingVertex, getsReduced: true)) != -1)
+            while ((startingVertex = unvisited.NextElement(startingVertex, isConsumed: true)) != -1)
             {
                 BitSet currentIterationFrontier = new BitSet(vertexCount);
                 currentIterationFrontier[startingVertex] = true;
@@ -200,7 +107,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     nextIterationFromtier.Clear();
 
                     int redElement = -1;
-                    while ((redElement = currentIterationFrontier.NextElement(redElement, getsReduced: false)) != -1)
+                    while ((redElement = currentIterationFrontier.NextElement(redElement, isConsumed: false)) != -1)
                     {
                         nextIterationFromtier.UnionWith(neighborSetsWithout[redElement]);
                     }
@@ -493,7 +400,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // create neighbor set            
             BitSet neighbors = new BitSet(vertexCount);
             int pos = -1;
-            while((pos = bag.NextElement(pos, getsReduced: false)) != -1)
+            while((pos = bag.NextElement(pos, isConsumed: false)) != -1)
             {
                 neighbors.UnionWith(neighborSetsWithout[pos]);
             }
@@ -503,7 +410,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = new BitSet(vertexCount);
             pos = -1;
 
-            while ((pos = neighbors.NextElement(pos, getsReduced: false)) != -1)
+            while ((pos = neighbors.NextElement(pos, isConsumed: false)) != -1)
             {
                 outlet.UnionWith(neighborSetsWithout[pos]);
             }

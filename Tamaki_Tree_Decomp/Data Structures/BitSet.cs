@@ -39,6 +39,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
+        /// constructs a BitSet of the given length and sets the bits given by the indices
+        /// </summary>
+        /// <param name="length">the number of entries</param>
+        /// <param name="indices">the indices of the set bits</param>
+        public BitSet(int length, List<int> indices)
+        {
+            bytes = new uint[(length + 31) / 32];
+            for (int i = 0; i < indices.Count; i++)
+            {
+                this[indices[i]] = true;
+            }
+        }
+
+        /// <summary>
         /// constructs a BitSet that is a copy of another BitSet
         /// </summary>
         /// <param name="from">the bit set from where to copy</param>
@@ -206,13 +220,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         ///     while((pos = NextElement(pos, true/false)) != -1) { ... }
         /// </summary>
         /// <param name="pos">the starting element index</param>
-        /// <param name="getsReduced">pass true if elements are taken out of this set during an iteration. pass false otherwise</param>
+        /// <param name="isConsumed">pass true if elements are taken out of this set during an iteration. pass false otherwise</param>
         /// <returns>the position of the next set element if there is one, and -1 otherwise</returns>
-        public int NextElement(int pos, bool getsReduced)
+        public int NextElement(int pos, bool isConsumed = false)
         {
             for (int i = pos / 32; i < bytes.Length; i++)
             {
-                if (pos == -1 || currentPos / 32 < i || getsReduced)
+                if (pos == -1 || currentPos / 32 < i || isConsumed)
                 {
                     currentByte = bytes[i];
                 }

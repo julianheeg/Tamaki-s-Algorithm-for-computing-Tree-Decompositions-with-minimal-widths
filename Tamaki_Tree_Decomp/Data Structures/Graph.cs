@@ -1,0 +1,468 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.CompilerServices;
+
+namespace Tamaki_Tree_Decomp.Data_Structures
+{
+    /// <summary>
+    /// a class for representing a mutable graph, i. e. a graph that is suited for preprocessing.
+    /// Such a graph is not suited to run expensive algorithms on. Use the ImmutableGraph class for that.
+    /// </summary>
+    public class Graph
+    {
+        public List<int>[] adjacencyList;
+        public BitSet[] neighborSetsWithout;   // contains N(v)
+        public BitSet[] neighborSetsWith;      // contains N[v]
+        public BitSet notRemovedVertices;
+        public int vertexCount;
+        int notRemovedVertexCount;
+        public int edgeCount;
+
+        private bool isReduced = false;
+
+        public readonly int graphID;
+        private static int graphCount = 0;
+
+        public static bool verbose = true;
+
+        public Graph(string filepath)
+        {
+
+            try
+            {
+                using (StreamReader sr = new StreamReader(filepath))
+                {
+                    while (!sr.EndOfStream)
+                    {
+                        string line = sr.ReadLine();
+                        if (line.StartsWith("c"))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            string[] tokens = line.Split(' ');
+                            if (tokens[0] == "p")
+                            {
+                                vertexCount = Convert.ToInt32(tokens[2]);
+                                notRemovedVertexCount = vertexCount;
+                                edgeCount = Convert.ToInt32(tokens[3]);
+
+                                adjacencyList = new List<int>[vertexCount];
+                                for (int i = 0; i < vertexCount; i++)
+                                {
+                                    adjacencyList[i] = new List<int>();
+                                }
+                                neighborSetsWithout = new BitSet[vertexCount];
+                                for (int i = 0; i < vertexCount; i++)
+                                {
+                                    neighborSetsWithout[i] = new BitSet(vertexCount);
+                                }
+                            }
+                            else
+                            {
+                                int u = Convert.ToInt32(tokens[0]) - 1;
+                                int v = Convert.ToInt32(tokens[1]) - 1;
+
+                                if (!neighborSetsWithout[u][v])
+                                {
+                                    adjacencyList[u].Add(v);
+                                    adjacencyList[v].Add(u);
+                                    neighborSetsWithout[u][v] = true;
+                                    neighborSetsWithout[v][u] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                neighborSetsWith = new BitSet[vertexCount];
+                for (int i = 0; i < vertexCount; i++)
+                {
+                    neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
+                    neighborSetsWith[i][i] = true;
+                }
+
+                notRemovedVertices = BitSet.All(vertexCount);
+
+                graphID = graphCount;
+                graphCount++;
+
+                if (verbose)
+                {
+                    Console.WriteLine("Imported graph {0} with {1} vertices and {2} edges from file {3}", graphID, vertexCount, edgeCount, filepath);
+                }
+            }
+            catch (IOException e)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(e.Message);
+                throw e;
+            }
+        }
+
+        /// <summary>
+        /// creates a graph from an adjacency list. (The adjacency list is shared, not copied.)
+        /// </summary>
+        /// <param name="adjacencyList">the graph's adjacency list</param>
+        public Graph(List<int>[] adjacencyList)
+        {
+            vertexCount = adjacencyList.Length;
+            edgeCount = 0;
+
+            this.adjacencyList = adjacencyList;
+            neighborSetsWithout = new BitSet[vertexCount];
+            neighborSetsWith = new BitSet[vertexCount];
+            for (int u = 0; u < vertexCount; u++)
+            {
+                edgeCount += adjacencyList[u].Count;
+                neighborSetsWithout[u] = new BitSet(vertexCount);
+                for (int j = 0; j < adjacencyList[u].Count; j++)
+                {
+                    int v = adjacencyList[u][j];
+                    neighborSetsWithout[u][v] = true;
+                }
+                neighborSetsWith[u] = new BitSet(neighborSetsWithout[u]);
+                neighborSetsWith[u][u] = true;
+            }
+            edgeCount /= 2;
+
+            notRemovedVertices = BitSet.All(vertexCount);
+            notRemovedVertexCount = vertexCount;
+
+            graphID = graphCount;
+            graphCount++;
+        }
+
+        /// <summary>
+        /// copy constructor. Constructs a deep copy of the given graph
+        /// </summary>
+        /// <param name="graph">the graph to copy from</param>
+        public Graph(Graph graph)
+        {
+            vertexCount = graph.vertexCount;
+            edgeCount = graph.edgeCount;
+            notRemovedVertices = new BitSet(graph.notRemovedVertices);
+            adjacencyList = new List<int>[vertexCount];
+            neighborSetsWithout = new BitSet[vertexCount];
+            neighborSetsWith = new BitSet[vertexCount];
+            for (int i = 0; i < graph.adjacencyList.Length; i++)
+            {
+                adjacencyList[i] = new List<int>(graph.adjacencyList[i]);
+                neighborSetsWithout[i] = new BitSet(graph.neighborSetsWithout[i]);
+                neighborSetsWith[i] = new BitSet(graph.neighborSetsWith[i]);
+            }
+
+            graphID = graphCount;
+            graphCount++;
+        }
+
+        /// <summary>
+        /// separates the graph at a given safe separator into subgraphs.
+        /// </summary>
+        /// <param name="separator">the safe separator</param>
+        /// <param name="reconstructionIndexationMappings">the corresponding mapping for reindexing the vertices in the subgraphs back to their old indices within this graph</param>
+        /// <returns></returns>
+        public List<Graph> Separate(BitSet separator, out List<ReindecationMapping> reconstructionIndexationMappings)
+        {
+            List<Graph> subGraphs = new List<Graph>();
+            List<int> separatorVertices = separator.Elements();
+            reconstructionIndexationMappings = new List<ReindecationMapping>();
+            foreach ((BitSet component, BitSet neighbor) in ComponentsAndNeighbors(separator))
+            {
+                List<int> vertices = component.Elements();
+                component.UnionWith(separator);
+
+                // map vertices from this graph to the new subgraph and vice versa
+                Dictionary<int, int> reductionMapping = new Dictionary<int, int>(vertexCount + separatorVertices.Count);
+                ReindecationMapping reconstructionIndexationMapping = new ReindecationMapping(vertexCount);
+                reconstructionIndexationMappings.Add(reconstructionIndexationMapping);
+                for (int i = 0; i < vertices.Count; i++)
+                {
+                    reductionMapping[vertices[i]] = i;
+                    reconstructionIndexationMapping.Add(vertices[i]);
+                }
+
+                // don't forget the separator
+                for (int i = 0; i < separatorVertices.Count; i++)
+                {
+                    int u = separatorVertices[i];
+                    reductionMapping[u] = vertices.Count + i;
+                    reconstructionIndexationMapping.Add(u);
+                }
+
+                // create new adjacency list
+                List<int>[] subAdjacencyList = new List<int>[vertices.Count + separatorVertices.Count];
+                for (int i = 0; i < vertices.Count; i++)
+                {
+                    int oldVertex = vertices[i];
+                    int newVertex = reductionMapping[oldVertex];
+                    subAdjacencyList[newVertex] = new List<int>(adjacencyList[oldVertex].Count);
+                    foreach (int oldNeighbor in adjacencyList[oldVertex])
+                    {
+                        int newNeighbor = reductionMapping[oldNeighbor];
+                        subAdjacencyList[newVertex].Add(newNeighbor);
+                    }
+                }
+
+                // also for the separator
+                for (int i = 0; i < separatorVertices.Count; i++)
+                {
+                    int u = separatorVertices[i];
+                    subAdjacencyList[vertices.Count + i] = new List<int>();
+                    foreach (int oldNeighbor in adjacencyList[u])
+                    {
+                        if (component[oldNeighbor])
+                        {
+                            int newNeighbor = reductionMapping[oldNeighbor];
+                            subAdjacencyList[vertices.Count + i].Add(newNeighbor);
+                        }
+                    }
+                }
+
+                Graph subGraph = new Graph(subAdjacencyList);
+                subGraphs.Add(subGraph);
+            }
+
+            // print some stats
+            if (verbose)
+            {
+                Console.WriteLine("splitted graph {0} with {1} vertices and {2} edges into {3} smaller graphs:", graphID, vertexCount, edgeCount, subGraphs.Count);
+                foreach (Graph subGraph in subGraphs)
+                {
+                    Console.WriteLine("        graph {0} with {1} vertices and {2} edges", subGraph.graphID, subGraph.vertexCount, subGraph.edgeCount);
+                }
+            }
+
+            return subGraphs;
+        }
+
+        /// <summary>
+        /// removes a vertex and all its incident edges from this graph
+        /// </summary>
+        /// <param name="vertex">the vertex to remove</param>
+        public void Remove(int vertex)
+        {
+            for (int i = 0; i < adjacencyList[vertex].Count; i++)
+            {
+                int neighbor = adjacencyList[vertex][i];
+                adjacencyList[neighbor].Remove(vertex);
+                neighborSetsWithout[neighbor][vertex] = false;
+                neighborSetsWith[neighbor][vertex] = false;
+            }
+
+            notRemovedVertices[vertex] = false;
+            notRemovedVertexCount--;
+            isReduced = true;
+        }
+
+        public void Insert(int u, int v)
+        {
+            Debug.Assert(!neighborSetsWith[u][v]);
+            adjacencyList[u].Add(v);
+            adjacencyList[v].Add(u);
+            neighborSetsWithout[u][v] = true;
+            neighborSetsWithout[v][u] = true;
+            neighborSetsWith[u][v] = true;
+            neighborSetsWith[v][u] = true;
+        }
+
+        /// <summary>
+        /// completes the given vertex list into a clique
+        /// </summary>
+        /// <param name="cliqueToBe">the vertices that shall be made into a clique</param>
+        public void MakeIntoClique(List<int> cliqueToBe)
+        {
+            for (int i = 0; i < cliqueToBe.Count; i++)
+            {
+                int u = cliqueToBe[i];
+                for (int j = i + 1; j < cliqueToBe.Count; j++)
+                {
+                    int v = cliqueToBe[j];
+                    if (!neighborSetsWithout[u][v])
+                    {
+                        adjacencyList[u].Add(v);
+                        adjacencyList[v].Add(u);
+                        neighborSetsWithout[u][v] = true;
+                        neighborSetsWithout[v][u] = true;
+                        neighborSetsWith[u][v] = true;
+                        neighborSetsWith[v][u] = true;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// replaces the old adjacency list with a new one where all removed vertices no longer occupy a spot in the list. A mapping that maps the new vertices back to the old ones is returned.
+        /// </summary>
+        /// <param name="reconstructionIndexationMapping"></param>
+        public void Reduce(out ReindecationMapping reconstructionIndexationMapping)
+        {
+            if (!isReduced)
+            {
+                reconstructionIndexationMapping = null;
+                return;
+            }
+
+            BuildReindexationMappings(out reconstructionIndexationMapping, out Dictionary<int, int> reductionMapping);
+
+            vertexCount = 0;
+            edgeCount = 0;
+
+            // use that mapping to reduce the adjacency list for this graph
+            List<int>[] reducedAdjacencyList = new List<int>[reductionMapping.Count];
+            int vertex = -1;
+            while ((vertex = notRemovedVertices.NextElement(vertex)) != -1)
+            {
+                vertexCount++;
+
+                List<int> currentVertexAdjacencies = new List<int>(adjacencyList[vertex].Count);
+                for (int j = 0; j < adjacencyList[vertex].Count; j++)
+                {
+                    int neighbor = adjacencyList[vertex][j];
+                    currentVertexAdjacencies.Add(reductionMapping[neighbor]);
+                }
+                reducedAdjacencyList[reductionMapping[vertex]] = currentVertexAdjacencies;
+                edgeCount += currentVertexAdjacencies.Count;
+            }
+            edgeCount /= 2;
+            notRemovedVertexCount = vertexCount;
+
+            adjacencyList = reducedAdjacencyList;
+            notRemovedVertices = BitSet.All(vertexCount);
+            neighborSetsWithout = new BitSet[vertexCount];
+            neighborSetsWith = new BitSet[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                neighborSetsWithout[i] = new BitSet(vertexCount, adjacencyList[i]);
+                neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
+                neighborSetsWith[i][i] = true;
+            }
+
+            isReduced = false;
+
+            if (verbose)
+            {
+                Console.WriteLine("reduced graph {0} to {1} nodes and {2} edges", graphID, reducedAdjacencyList.Length, edgeCount);
+            }
+        }
+
+        /// <summary>
+        /// determines the components associated with a separator and also which of the vertices in the separator
+        /// are neighbors of vertices in those components (which are a subset of the separator)
+        /// </summary>
+        /// <param name="separator">the separator</param>
+        /// <returns>an enumerable consisting of tuples of i) component C and ii) neighbors N(C)</returns>
+        public IEnumerable<(BitSet, BitSet)> ComponentsAndNeighbors(BitSet separator)
+        {
+            BitSet unvisited = new BitSet(separator);
+            unvisited.Flip(vertexCount);
+            if (isReduced)
+            {
+                unvisited.IntersectWith(notRemovedVertices);
+            }
+
+            // find components as long as they exist
+            int startingVertex = -1;
+            while ((startingVertex = unvisited.NextElement(startingVertex, isConsumed: true)) != -1)
+            {
+                BitSet currentIterationFrontier = new BitSet(vertexCount);
+                currentIterationFrontier[startingVertex] = true;
+                BitSet nextIterationFromtier = new BitSet(vertexCount);
+                BitSet component = new BitSet(vertexCount);
+                BitSet neighbors = Neighbors(component);
+
+                while (!currentIterationFrontier.IsEmpty())
+                {
+                    nextIterationFromtier.Clear();
+
+                    int redElement = -1;
+                    while ((redElement = currentIterationFrontier.NextElement(redElement, isConsumed: false)) != -1)
+                    {
+                        nextIterationFromtier.UnionWith(neighborSetsWithout[redElement]);
+                    }
+
+                    component.UnionWith(currentIterationFrontier);
+                    neighbors.UnionWith(nextIterationFromtier);
+                    nextIterationFromtier.ExceptWith(separator);
+                    nextIterationFromtier.ExceptWith(component);
+
+                    currentIterationFrontier.CopyFrom(nextIterationFromtier);
+                }
+
+                unvisited.ExceptWith(component);
+                neighbors.IntersectWith(separator);
+                Debug.Assert(neighbors.Equals(Neighbors(component)));
+                yield return (component, neighbors);
+            }
+        }
+
+        /// <summary>
+        /// determines the neighbor set of a set of vertices
+        /// </summary>
+        /// <param name="vertexSet">the set of vertices</param>
+        /// <returns>the neighbor set of that set of vertices</returns>
+        public BitSet Neighbors(BitSet vertexSet)
+        {
+            BitSet result = new BitSet(vertexCount);
+            List<int> vertices = vertexSet.Elements();
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                result.UnionWith(neighborSetsWithout[vertices[i]]);
+            }
+            result.ExceptWith(vertexSet);
+            return result;
+        }
+
+        private void BuildReindexationMappings(out ReindecationMapping reindexationMapping, out Dictionary<int, int> reductionMapping)
+        {
+            reindexationMapping = new ReindecationMapping(vertexCount);
+
+            // build a mapping from old graph vertices to new graph vertices and vice versa
+            reductionMapping = new Dictionary<int, int>();
+            int counter = 0;
+            int vertex = -1;
+            while ((vertex = notRemovedVertices.NextElement(vertex)) != -1)
+            {
+                reductionMapping.Add(vertex, counter);
+                reindexationMapping.Add(vertex);
+                counter++;
+            }
+        }
+
+        /// <summary>
+        /// a class for reconstructing 
+        /// </summary>
+        public class ReindecationMapping
+        {
+            public readonly List<int> map;
+            public readonly int vertexCount;
+
+            internal ReindecationMapping(int vertexCount)
+            {
+                map = new List<int>();
+                this.vertexCount = vertexCount;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal void Add(int originalVertex)
+            {
+                map.Add(originalVertex);
+            }
+
+            public int this[int key]
+            {
+                get
+                {
+                    return map[key];
+                }
+                set
+                {
+                    map[key] = value;
+                }
+            }
+        }
+    }
+}

@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Data Structures\BitSet.cs" />
+    <Compile Include="Data Structures\ImmutableGraph.cs" />
     <Compile Include="Data Structures\Graph.cs" />
     <Compile Include="GraphReduction.cs" />
     <Compile Include="Data Structures\PTD.cs" />

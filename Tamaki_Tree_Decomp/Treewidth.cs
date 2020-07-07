@@ -18,12 +18,136 @@ namespace Tamaki_Tree_Decomp
         /// <param name="graph">the graph</param>
         /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph</param>
         /// <returns>the graph's tree width</returns>
-        public static int TreeWidth(ImmutableGraph graph, out PTD treeDecomp, bool verbose = true)
+        public static int TreeWidth(Graph graph, out PTD treeDecomp, bool verbose = true)
         {
+            Graph.verbose = verbose;
             ImmutableGraph.verbose = verbose;
             return TreeWidth(graph, 0, out treeDecomp);
         }
 
+        private static int TreeWidth(Graph graph, int minK, out PTD treeDecomp)
+        {
+            // edges cases
+            if (graph.vertexCount == 0)
+            {
+                treeDecomp = new PTD(new BitSet(0));
+                return minK;
+            }
+            else if (graph.vertexCount == 1)
+            {
+                BitSet onlyBag = new BitSet(1);
+                onlyBag[0] = true;
+                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
+                return minK;
+            }
+
+            List<Graph> subGraphs = new List<Graph>();                        // index i corresponds to the i-th subgraph created
+            List<List<GraphReduction>> graphReductions = new List<List<GraphReduction>>();  // index i corresponds to the list of graph reductions made to subgraph i
+            List<SafeSeparator> safeSeparators = new List<SafeSeparator>();                 // index j corresponds to the j-th safe separator found
+            List<int> safeSeparatorSubgraphIndices = new List<int>();                       // index j contains the index i of the subgraph where a safe separator has been found
+            List<List<int>> childrenLists = new List<List<int>>();                          // index j contains the indices of the subgraphs for the safe separator object j
+            List<PTD> ptds = new List<PTD>();   // the ptds for each subgraph. If the subgraph has a safe separator, that position is set to null at first and the correct ptd is inserted later
+
+            subGraphs.Add(graph);
+            
+            // loop over all subgraphs
+            for (int i = 0; i < subGraphs.Count; i++)
+            {
+                graph = subGraphs[i];
+                subGraphs[i] = null;
+                bool firstIterationOnGraph = true;
+                graphReductions.Add(new List<GraphReduction>());
+
+                // loop over all possible tree widths for the current graph
+                while(minK < graph.vertexCount - 1)
+                {
+                    // perform graph reduction
+                    GraphReduction graphReduction = new GraphReduction(graph, minK);
+                    bool reduced = graphReduction.Reduce(ref minK);
+                    if (reduced)
+                    {
+                        graphReductions[graphReductions.Count - 1].Add(graphReduction);
+                    }
+
+                    // only try to find safe separators if the graph has been reduced in this iteration or if this iteration is the first one.
+                    // Else there is no chance that a new safe separator can be found
+                    bool separated = false;
+                    if (reduced || firstIterationOnGraph) {
+                        firstIterationOnGraph = false;
+                        // try to find safe separator
+                        SafeSeparator safeSeparator = new SafeSeparator(graph);
+                        if (safeSeparator.Separate(out List<Graph> separatedGraphs, ref minK))
+                        {
+                            separated = true;
+                            List<int> children = new List<int>();
+                            // if there is one, put the children in the list to be processed
+                            for (int j = 0; j < separatedGraphs.Count; j++)
+                            {
+                                children.Add(subGraphs.Count + j);
+                            }
+                            subGraphs.AddRange(separatedGraphs);
+                            safeSeparators.Add(safeSeparator);
+                            safeSeparatorSubgraphIndices.Add(i);
+                            childrenLists.Add(children);                            
+                            ptds.Add(null);
+                            
+                            // continue with the next graph
+                            break;
+                        }
+                    }
+
+                    // only check tree width if the graph has not been separated. If it has, the tree decomposition is built later from the subgraphs
+                    if (!separated)
+                    {
+                        ImmutableGraph immutableGraph = new ImmutableGraph(graph);
+                        if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp))
+                        {
+#if DEBUG
+                            subGraphTreeDecomp.AssertValidTreeDecomposition(immutableGraph);
+#endif
+                            for (int j = graphReductions[i].Count - 1; j >= 0; j--)
+                            {
+                                graphReductions[i][j].RebuildTreeDecomposition(ref subGraphTreeDecomp);
+                            }
+                            ptds.Add(subGraphTreeDecomp);
+                            break;
+                        }
+                    }
+                    minK++;
+                }
+
+                if (ptds.Count == i)    // if graph is smaller than the minimum bound for tree width
+                {
+                    ptds.Add(new PTD(BitSet.All(graph.vertexCount)));   // TODO: correct?
+                }
+            }
+
+            Debug.Assert(safeSeparators.Count == childrenLists.Count);
+
+            // recombine subgraphs that have been safe separated
+            for (int j = safeSeparators.Count - 1; j >= 0;  j--)
+            {
+                List<PTD> childrenPTDs = new List<PTD>();
+                List<int> childrenSubgraphIndices = childrenLists[j];
+                for (int i = 0; i < childrenSubgraphIndices.Count; i++)
+                {
+                    childrenPTDs.Add(ptds[childrenSubgraphIndices[i]]);
+                }
+                int parentIndex = safeSeparatorSubgraphIndices[j];
+                ptds[parentIndex] = safeSeparators[j].RecombineTreeDecompositions(childrenPTDs);
+                PTD ptd = ptds[parentIndex];
+                for (int i = graphReductions[parentIndex].Count - 1; i >= 0; i--)
+                {
+                    graphReductions[parentIndex][i].RebuildTreeDecomposition(ref ptd);
+                }
+                ptds[parentIndex] = ptd;
+            }
+
+            treeDecomp = ptds[0];
+            return minK;
+        }
+
+        /*
         /// <summary>
         /// determines the tree width of a graph while taking a known lower bound into account
         /// </summary>
@@ -31,7 +155,7 @@ namespace Tamaki_Tree_Decomp
         /// <param name="minK">the lower bound. Pass 0 if none is known.</param>
         /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph</param>
         /// <returns>the graph's tree width</returns>
-        private static int TreeWidth(ImmutableGraph graph, int minK, out PTD treeDecomp)
+        private static int TreeWidth2(MutableGraph graph, int minK, out PTD treeDecomp)
         {
             if (graph.vertexCount == 0)
             {
@@ -49,7 +173,7 @@ namespace Tamaki_Tree_Decomp
             // TODO: use previous reductions, not make an entirely new one each time
             // TODO: when finding all clique/almost-clique separators, only do that once
             List<GraphReduction> reductions = new List<GraphReduction>();
-            ImmutableGraph reducedGraph = graph;
+            MutableGraph reducedGraph = graph;
             while (minK < graph.vertexCount - 1)
             {
                 // reduce graph
@@ -61,7 +185,7 @@ namespace Tamaki_Tree_Decomp
                     reductions.Add(red);
                 }
                 SafeSeparator safeSep = new SafeSeparator(reducedGraph, verbose);
-                if (safeSep.Separate(out List<ImmutableGraph> separatedGraphs, ref minK))
+                if (safeSep.Separate(out List<MutableGraph> separatedGraphs, ref minK))
                 {
                     PTD[] subTreeDecompositions = new PTD[separatedGraphs.Count];
                     for (int i = 0; i < subTreeDecompositions.Length; i++)
@@ -109,6 +233,7 @@ namespace Tamaki_Tree_Decomp
             treeDecomp = new PTD(BitSet.All(graph.vertexCount));
             return graph.vertexCount - 1;
         }
+        */
 
         /// <summary>
         /// determines whether the tree width of a graph is at most a given value.
@@ -118,8 +243,150 @@ namespace Tamaki_Tree_Decomp
         /// <param name="k">the upper bound</param>
         /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph, iff the tree width is at most k, else null</param>
         /// <returns>true, iff the tree width is at most k</returns>
-        public static bool IsTreeWidthAtMost(ImmutableGraph graph, int k, out PTD treeDecomp)
+        public static bool IsTreeWidthAtMost(Graph graph, int k, out PTD treeDecomp)
         {
+            // edges cases
+            if (graph.vertexCount == 0)
+            {
+                treeDecomp = new PTD(new BitSet(0));
+                return k == -1;
+            }
+            else if (graph.vertexCount == 1)
+            {
+                BitSet onlyBag = new BitSet(1);
+                onlyBag[0] = true;
+                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
+                return k == 0;
+            }
+
+            int minK = k;   // check equality with k after reduction and safe separation
+
+            List<Graph> subGraphs = new List<Graph>();                        // index i corresponds to the i-th subgraph created
+            List<List<GraphReduction>> graphReductions = new List<List<GraphReduction>>();  // index i corresponds to the list of graph reductions made to subgraph i
+            List<SafeSeparator> safeSeparators = new List<SafeSeparator>();                 // index j corresponds to the j-th safe separator found
+            List<int> safeSeparatorSubgraphIndices = new List<int>();                       // index j contains the index i of the subgraph where a safe separator has been found
+            List<List<int>> childrenLists = new List<List<int>>();                          // index j contains the indices of the subgraphs for the safe separator object j
+            List<PTD> ptds = new List<PTD>();   // the ptds for each subgraph. If the subgraph has a safe separator, that position is set to null at first and the correct ptd is inserted later
+
+            subGraphs.Add(graph);
+
+            // loop over all subgraphs
+            for (int i = 0; i < subGraphs.Count; i++)
+            {
+                graph = subGraphs[i];
+                subGraphs[i] = null;
+                graphReductions.Add(new List<GraphReduction>());
+
+                // perform graph reduction
+                GraphReduction graphReduction = new GraphReduction(graph, k);
+                bool reduced = graphReduction.Reduce(ref minK);
+                if (minK > k)
+                {
+                    treeDecomp = null;
+                    return false;
+                }
+                if (reduced)
+                {
+                    graphReductions[graphReductions.Count - 1].Add(graphReduction);
+                }
+
+                // only try to find safe separators if the graph has been reduced in this iteration or if this iteration is the first one.
+                // Else there is no chance that a new safe separator can be found
+                bool separated = false;
+
+                // try to find safe separator
+                SafeSeparator safeSeparator = new SafeSeparator(graph);
+                if (safeSeparator.Separate(out List<Graph> separatedGraphs, ref minK))
+                {
+                    if (minK > k)
+                    {
+                        treeDecomp = null;
+                        return false;
+                    }
+                    separated = true;
+                    List<int> children = new List<int>();
+                    // if there is one, put the children in the list to be processed
+                    for (int j = 0; j < separatedGraphs.Count; j++)
+                    {
+                        children.Add(subGraphs.Count + j);
+                    }
+                    subGraphs.AddRange(separatedGraphs);
+                    safeSeparators.Add(safeSeparator);
+                    safeSeparatorSubgraphIndices.Add(i);
+                    childrenLists.Add(children);
+                    ptds.Add(null);
+
+                    // continue with the next graph
+                    continue;
+                }                
+
+                // only check tree width if the graph has not been separated. If it has, the tree decomposition is built later from the subgraphs
+                if (!separated)
+                {
+                    ImmutableGraph immutableGraph = new ImmutableGraph(graph);
+                    if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp))
+                    {
+#if DEBUG
+                        subGraphTreeDecomp.AssertValidTreeDecomposition(immutableGraph);
+#endif
+                        for (int j = graphReductions[i].Count - 1; j >= 0; j--)
+                        {
+                            graphReductions[i][j].RebuildTreeDecomposition(ref subGraphTreeDecomp);
+                        }
+                        ptds.Add(subGraphTreeDecomp);
+                        continue;
+                    }
+                    else
+                    {
+                        treeDecomp = null;
+                        return false;
+                    }
+                }
+                minK++;
+
+                if (ptds.Count == i)    // if the vertex set is smaller than the minimum bound for tree width, make a bag that contains all vertices
+                {
+                    ptds.Add(new PTD(BitSet.All(graph.vertexCount)));   // TODO: correct?
+                }
+            }
+
+            Debug.Assert(safeSeparators.Count == childrenLists.Count);
+
+            // recombine subgraphs that have been safe separated
+            for (int j = safeSeparators.Count - 1; j >= 0; j--)
+            {
+                List<PTD> childrenPTDs = new List<PTD>();
+                List<int> childrenSubgraphIndices = childrenLists[j];
+                for (int i = 0; i < childrenSubgraphIndices.Count; i++)
+                {
+                    childrenPTDs.Add(ptds[childrenSubgraphIndices[i]]);
+                }
+                int parentIndex = safeSeparatorSubgraphIndices[j];
+                ptds[parentIndex] = safeSeparators[j].RecombineTreeDecompositions(childrenPTDs);
+                PTD ptd = ptds[parentIndex];
+                for (int i = graphReductions[parentIndex].Count - 1; i >= 0; i--)
+                {
+                    graphReductions[parentIndex][i].RebuildTreeDecomposition(ref ptd);
+                }
+                ptds[parentIndex] = ptd;
+            }
+
+            treeDecomp = ptds[0];
+            return true;
+        }
+
+        /// <summary>
+        /// determines whether the tree width of a graph is at most a given value.
+        /// (Really only used for faster testing. Will be obsolete when the idea to reuse the ptds and ptdurs during later iterations is implemented.)
+        /// </summary>
+        /// <param name="g">the graph</param>
+        /// <param name="k">the upper bound</param>
+        /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph, iff the tree width is at most k, else null</param>
+        /// <returns>true, iff the tree width is at most k</returns>
+        public static bool IsTreeWidthAtMost2(Graph graph, int k, out PTD treeDecomp)
+        {
+            throw new NotImplementedException();
+            /*
             // TODO: return root with empty bag instead
             if (graph.vertexCount == 0)
             {
@@ -198,6 +465,7 @@ namespace Tamaki_Tree_Decomp
             }
 
             return false;
+            */
         }
 
         /// <summary>
@@ -210,7 +478,7 @@ namespace Tamaki_Tree_Decomp
         {
             if (graph.vertexCount == 0)
             {
-                treeDecomp = null;
+                treeDecomp = new PTD(new BitSet(0));
                 return true;
             }
 

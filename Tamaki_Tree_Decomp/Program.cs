@@ -91,10 +91,9 @@ namespace Tamaki_Tree_Decomp
                 startingInstance =  start / 2;
             }
 
-            string filepath = PACE2017(115);
+            string filepath = PACE2017(33);
             //string filepath = "Test Data\\graphs_MC2020\\clique_graphs\\track1_002.gr";
             //string filepath = "01-07-2020 14-27-50\\002-18.gr";
-            //string filepath = test_e0;
             // string directory = "Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "Test Data\\graphs_MC2020\\clique_graphs";
             string directory = "Test Data\\graphs_MC2020";
@@ -117,6 +116,8 @@ namespace Tamaki_Tree_Decomp
                 Console.WriteLine(i);
             }
             */
+
+            // TestSpecificTreewidth(filepath, 7);
 
             Run(filepath, true);
 
@@ -206,7 +207,7 @@ namespace Tamaki_Tree_Decomp
 
         private static int Run(string filepath, bool print)
         {
-            ImmutableGraph g = new ImmutableGraph(filepath);
+            Graph g = new Graph(filepath);
             if (g.vertexCount > 35000)
             {
                 Console.WriteLine("graph {0} has more than 35000 vertices. Skipping...", filepath);
@@ -223,19 +224,23 @@ namespace Tamaki_Tree_Decomp
             {
                 output.Print();
             }
-            output.AssertValidTreeDecomposition(g);
+
+            g = new Graph(filepath);
+            output.AssertValidTreeDecomposition(new ImmutableGraph(g));
             return treeWidth;
         }
 
 
         private static void TestSpecificTreewidth(string filepath, int actualTreewidth)
         {
-            ImmutableGraph g = new ImmutableGraph(filepath);
+            Graph g = new Graph(filepath);
             bool f = Treewidth.IsTreeWidthAtMost(g, actualTreewidth - 1, out PTD output);
+            g = new Graph(filepath);
             bool t = Treewidth.IsTreeWidthAtMost(g, actualTreewidth, out output);
             Console.WriteLine(f);
             Console.WriteLine(t);
-            output.AssertValidTreeDecomposition(g);
+            g = new Graph(filepath);
+            output.AssertValidTreeDecomposition(new ImmutableGraph(g));
         }
 
         private static string PACE2017(int number)

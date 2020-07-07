@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using Tamaki_Tree_Decomp.Data_Structures;
+using static Tamaki_Tree_Decomp.Data_Structures.Graph;
 
 namespace Tamaki_Tree_Decomp
 {
@@ -13,89 +14,29 @@ namespace Tamaki_Tree_Decomp
     /// </summary>
     public class GraphReduction
     {
-        readonly int vertexCount;
-        List<int>[] adjacencyList;
-        BitSet[] neighborSetsWithout;
-        BitSet removedVertices;
         int low; // TODO: heuristic for setting low is given in the paper
-        readonly Dictionary<int, int> reconstructionMapping;    // mapping from reduced vertex id to original vertex id
+        Graph graph;
+        ReindecationMapping reconstructionIndexationMapping;
         readonly List<(BitSet, BitSet)> reconstructionBagsToAppend;     // a list of (bag, parentbag) for reconstructing the correct tree decomposition // TODO: HashSet instead?
 
         readonly List<String> reconstructionBagsDebug;  // TODO: remove
+        readonly int originalVertexCount;   // for debugging only
 
         private readonly bool verbose;
 
         public static bool reduce = true;   // this can be set to false in order to easily disable
                                             // the graph reduction for debugging reasons
 
-        public GraphReduction(ImmutableGraph graph, int low = 0, bool verbose = true)
+        public GraphReduction(Graph graph, int low = 0, bool verbose = true)
         {
             this.low = low;
-            vertexCount = graph.vertexCount;
-            adjacencyList = new List<int>[vertexCount];
-            neighborSetsWithout = new BitSet[vertexCount];
-            for (int i = 0; i < vertexCount; i++)
-            {
-                adjacencyList[i] = new List<int>(graph.adjacencyList[i]);
-                neighborSetsWithout[i] = new BitSet(graph.neighborSetsWithout[i]);
-            }
-            removedVertices = new BitSet(vertexCount);
-            reconstructionMapping = new Dictionary<int, int>();
+            this.graph = graph;
             reconstructionBagsToAppend = new List<(BitSet, BitSet)>();
 
             reconstructionBagsDebug = new List<string>();
+            originalVertexCount = graph.vertexCount;
 
             this.verbose = verbose;
-        }
-
-        /// <summary>
-        /// reconstructs a graph after reduction
-        /// </summary>
-        /// <returns>the reduced graph</returns>
-        public ImmutableGraph ToGraph()
-        {
-            // build a mapping from old graph vertices to new graph vertices and vice versa
-            Dictionary<int, int> reductionMapping = new Dictionary<int, int>();
-            int counter = 0;
-            for (int i = 0; i < vertexCount; i++)
-            {
-                if (!removedVertices[i])
-                {
-                    reductionMapping.Add(i, counter);
-                    reconstructionMapping.Add(counter, i);
-                    counter++;
-                }
-            }
-
-            int edgeCount = 0;
-            // use that mapping to construct an adjacency list for this graph
-            List<int>[] reducedAdjacencyList = new List<int>[reductionMapping.Count];
-            for (int i = 0; i < vertexCount; i++)
-            {
-                if (!removedVertices[i])
-                {
-                    List<int> currentVertexAdjacencies = new List<int>(adjacencyList[i].Count);
-                    for (int j = 0; j < adjacencyList[i].Count; j++)
-                    {
-                        int neighbor = adjacencyList[i][j];
-                        currentVertexAdjacencies.Add(reductionMapping[neighbor]);
-                    }
-                    reducedAdjacencyList[reductionMapping[i]] = currentVertexAdjacencies;
-                    edgeCount += currentVertexAdjacencies.Count;
-                }
-            }
-
-            adjacencyList = null;
-            neighborSetsWithout = null;
-            removedVertices = null;
-
-
-            edgeCount /= 2;
-            if (verbose)
-            {
-                Console.WriteLine("Graph reduced to {0} nodes and {1} edges", reducedAdjacencyList.Length, edgeCount);
-            }
-            return new ImmutableGraph(reducedAdjacencyList);
         }
 
         /// <summary>
@@ -107,6 +48,7 @@ namespace Tamaki_Tree_Decomp
         {
             if (!reduce)
             {
+                graph = null;   // remove reference to the graph so that its ressources can be freed
                 return false;
             }
 
@@ -116,6 +58,9 @@ namespace Tamaki_Tree_Decomp
                 reduced = true;
             }
 
+            graph.Reduce(out reconstructionIndexationMapping);
+
+            graph = null;   // remove reference to the graph so that its ressources can be freed
             out_low = low;
             return reduced;
         }
@@ -130,20 +75,20 @@ namespace Tamaki_Tree_Decomp
             bool isReduced = false;
 
             // loop over each vertex ...
-            for (int i = 0; i < vertexCount && !isReduced; i++)
+            for (int i = 0; i < graph.vertexCount && !isReduced; i++)
             {
                 // ... that is not yet removed ...
-                if (!removedVertices[i])
+                if (graph.notRemovedVertices[i])
                 {
                     // ... and check if its neighbors form a clique
                     bool neighborsFormClique = true;
-                    for (int j = 0; j < adjacencyList[i].Count && neighborsFormClique; j++)
+                    for (int j = 0; j < graph.adjacencyList[i].Count && neighborsFormClique; j++)
                     {
-                        int u = adjacencyList[i][j];
-                        for (int k = j + 1; k < adjacencyList[i].Count; k++)
+                        int u = graph.adjacencyList[i][j];
+                        for (int k = j + 1; k < graph.adjacencyList[i].Count; k++)
                         {
-                            int v = adjacencyList[i][k];
-                            if (!neighborSetsWithout[u][v])
+                            int v = graph.adjacencyList[i][k];
+                            if (!graph.neighborSetsWithout[u][v])
                             {
                                 neighborsFormClique = false;
                                 break;
@@ -153,6 +98,10 @@ namespace Tamaki_Tree_Decomp
                     if (neighborsFormClique)
                     {
                         isReduced = true;
+
+                        graph.Remove(i);
+                        /*
+                        isReduced = true;
                         removedVertices[i] = true;
                         for (int j = 0; j < adjacencyList[i].Count; j++)
                         {
@@ -160,15 +109,16 @@ namespace Tamaki_Tree_Decomp
                             adjacencyList[neighbor].Remove(i);
                             neighborSetsWithout[neighbor][i] = false;
                         }
-                        if (adjacencyList[i].Count > low)
+                        */
+                        if (graph.adjacencyList[i].Count > low)
                         {
-                            low = adjacencyList[i].Count;
+                            low = graph.adjacencyList[i].Count;
                         }
 
                         // remember bag for reconstruction
-                        BitSet bag = new BitSet(neighborSetsWithout[i]);
+                        BitSet bag = new BitSet(graph.neighborSetsWithout[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppend.Add((bag, new BitSet(neighborSetsWithout[i])));
+                        reconstructionBagsToAppend.Add((bag, new BitSet(graph.neighborSetsWithout[i])));
                         reconstructionBagsDebug.Add("simplicial");
                     }
                 }
@@ -186,23 +136,23 @@ namespace Tamaki_Tree_Decomp
             bool isReduced = false;
 
             // loop over each vertex ...
-            for (int i = 0; i < vertexCount && !isReduced; i++)
+            for (int i = 0; i < graph.vertexCount && !isReduced; i++)
             {
                 // ... that is not yet removed and whose degree is smaller than low ...
-                if (!removedVertices[i] && low >= adjacencyList[i].Count)
+                if (graph.notRemovedVertices[i] && low >= graph.adjacencyList[i].Count)
                 {
                     // ... and check if all of its neighbors except one form a clique
                     bool neighborsFormAlmostClique = true;
                     int edgeUNotIn = -1;
                     int edgeVNotIn = -1;
                     int vertexNotIn = -1;
-                    for (int j = 0; j < adjacencyList[i].Count && neighborsFormAlmostClique; j++)
+                    for (int j = 0; j < graph.adjacencyList[i].Count && neighborsFormAlmostClique; j++)
                     {
-                        int u = adjacencyList[i][j];
-                        for (int k = j + 1; k < adjacencyList[i].Count; k++)
+                        int u = graph.adjacencyList[i][j];
+                        for (int k = j + 1; k < graph.adjacencyList[i].Count; k++)
                         {
-                            int v = adjacencyList[i][k];
-                            if (!neighborSetsWithout[u][v])
+                            int v = graph.adjacencyList[i][k];
+                            if (!graph.neighborSetsWithout[u][v])
                             {
                                 if (vertexNotIn == u || vertexNotIn == v)
                                 {
@@ -230,32 +180,18 @@ namespace Tamaki_Tree_Decomp
                             }
                         }
                     }
+                    // remove i and make all of its neighbors a clique
                     if (neighborsFormAlmostClique)
                     {
                         isReduced = true;
-                        removedVertices[i] = true;
-                        for (int j = 0; j < adjacencyList[i].Count; j++)
-                        {
-                            int u = adjacencyList[i][j];
-                            adjacencyList[u].Remove(i);
-                            neighborSetsWithout[u][i] = false;
-                            for (int k = j + 1; k < adjacencyList[i].Count; k++)
-                            {
-                                int v = adjacencyList[i][k];
-                                if (!neighborSetsWithout[u][v])
-                                {
-                                    adjacencyList[u].Add(v);
-                                    neighborSetsWithout[u][v] = true;
-                                    adjacencyList[v].Add(u);
-                                    neighborSetsWithout[v][u] = true;
-                                }
-                            }
-                        }
 
+                        graph.Remove(i);
+                        graph.MakeIntoClique(graph.adjacencyList[i]);
+                        
                         // remember bag for reconstruction
-                        BitSet bag = new BitSet(neighborSetsWithout[i]);
+                        BitSet bag = new BitSet(graph.neighborSetsWithout[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppend.Add((bag, new BitSet(neighborSetsWithout[i])));
+                        reconstructionBagsToAppend.Add((bag, new BitSet(graph.neighborSetsWithout[i])));
                         reconstructionBagsDebug.Add("almost simplicial");
                     }
                 }
@@ -280,58 +216,35 @@ namespace Tamaki_Tree_Decomp
             bool isReduced = false;
 
             // for each vertex i ...
-            for (int i = 0; i < vertexCount && !isReduced; i++)
+            for (int i = 0; i < graph.vertexCount && !isReduced; i++)
             {
                 // ... that is not yet removed and has three neighbors ...
-                if (!removedVertices[i] && adjacencyList[i].Count == 3)
+                if (graph.notRemovedVertices[i] && graph.adjacencyList[i].Count == 3)
                 {
-                    List<int> neighbors = adjacencyList[i];
+                    List<int> neighbors = graph.adjacencyList[i];
                     // ... test if a neighbor's ...
                     for (int j = 0; j < 3; j++)
                     {
                         int neighbor = neighbors[j];
                         // ... neighbor ...
-                        for (int k = 0; k < adjacencyList[neighbor].Count; k++)
+                        for (int k = 0; k < graph.adjacencyList[neighbor].Count; k++)
                         {
                             // ... is a buddy
-                            int buddy = adjacencyList[neighbor][k];
-                            if (buddy != i && neighborSetsWithout[i].Equals(neighborSetsWithout[buddy]))
+                            int buddy = graph.adjacencyList[neighbor][k];
+                            if (buddy != i && graph.neighborSetsWithout[i].Equals(graph.neighborSetsWithout[buddy]))
                             {
                                 isReduced = true;
 
-                                // if so, remove i and buddy from the graph ...
-                                removedVertices[i] = true;
-                                removedVertices[buddy] = true;
+                                graph.Remove(i);
+                                graph.Remove(buddy);
 
-                                for (int l = 0; l < 3; l++)
-                                {
-                                    int u = neighbors[l];
-                                    adjacencyList[u].Remove(i);
-                                    adjacencyList[u].Remove(buddy);
-                                    neighborSetsWithout[u][i] = false;
-                                    neighborSetsWithout[u][buddy] = false;
-
-                                    // ... and turn the neighbors into a clique
-                                    for (int m = l + 1; m < 3; m++)
-                                    {
-                                        int v = neighbors[m];
-                                        if (!neighborSetsWithout[u][v])
-                                        {
-                                            adjacencyList[u].Add(v);
-                                            adjacencyList[v].Add(u);
-                                            neighborSetsWithout[u][v] = true;
-                                            neighborSetsWithout[v][u] = true;
-                                        }
-                                    }
-                                }
+                                graph.MakeIntoClique(neighbors);                                
 
                                 // remember bags for reconstruction
-                                BitSet bag1 = new BitSet(neighborSetsWithout[i]);
-                                bag1[i] = true;
-                                reconstructionBagsToAppend.Add((bag1, new BitSet(neighborSetsWithout[i])));
-                                BitSet bag2 = new BitSet(neighborSetsWithout[buddy]);
-                                bag2[buddy] = true;
-                                reconstructionBagsToAppend.Add((bag2, new BitSet(neighborSetsWithout[buddy])));
+                                BitSet bag1 = new BitSet(graph.neighborSetsWith[i]);                                // TODO: all of them don't need to be copied (?)
+                                reconstructionBagsToAppend.Add((bag1, new BitSet(graph.neighborSetsWithout[i])));   
+                                BitSet bag2 = new BitSet(graph.neighborSetsWith[buddy]);
+                                reconstructionBagsToAppend.Add((bag2, new BitSet(graph.neighborSetsWithout[buddy])));
                                 reconstructionBagsDebug.Add("buddy 1");
                                 reconstructionBagsDebug.Add("buddy 2");
                                 break;
@@ -357,12 +270,12 @@ namespace Tamaki_Tree_Decomp
             bool isReduced = false;
 
             // for each vertex i ...
-            for (int i = 0; i < vertexCount && !isReduced; i++)
+            for (int i = 0; i < graph.vertexCount && !isReduced; i++)
             {
-                if (!removedVertices[i] && adjacencyList[i].Count == 3)
+                if (graph.notRemovedVertices[i] && graph.adjacencyList[i].Count == 3)
                 {
-                    List<int> neighbors = adjacencyList[i];
-                    if (adjacencyList[neighbors[0]].Count == 3 && adjacencyList[neighbors[1]].Count == 3 && adjacencyList[neighbors[2]].Count == 3)
+                    List<int> neighbors = graph.adjacencyList[i];
+                    if (graph.adjacencyList[neighbors[0]].Count == 3 && graph.adjacencyList[neighbors[1]].Count == 3 && graph.adjacencyList[neighbors[2]].Count == 3)
                     {
                         /*
                          *  idea: the conditions for the cube rule are fulfilled, iff the neighbors of the three neighbors are neighbors of
@@ -375,7 +288,7 @@ namespace Tamaki_Tree_Decomp
                         {
                             for (int k = 0; k < 3; k++)
                             {
-                                int neighborsNeighbor = adjacencyList[neighbors[j]][k];
+                                int neighborsNeighbor = graph.adjacencyList[neighbors[j]][k];
                                 if (neighborsNeighbor != i)
                                 {
                                     if (neighborsNeighborsCount.ContainsKey(neighborsNeighbor))
@@ -414,46 +327,29 @@ namespace Tamaki_Tree_Decomp
                                 low = 3;
                             }
 
-                            // alter graph
-                            removedVertices[i] = true;
-                            removedVertices[neighbors[0]] = true;
-                            removedVertices[neighbors[1]] = true;
-                            removedVertices[neighbors[2]] = true;
-                            foreach (int node in uvw)
-                            {
-                                adjacencyList[node].Remove(neighbors[0]);
-                                adjacencyList[node].Remove(neighbors[1]);
-                                adjacencyList[node].Remove(neighbors[2]);
-                                neighborSetsWithout[node][neighbors[0]] = false;
-                                neighborSetsWithout[node][neighbors[1]] = false;
-                                neighborSetsWithout[node][neighbors[2]] = false;
-                                for (int j = 0; j < 3; j++)
-                                {
-                                    if (node != uvw[j] && !adjacencyList[node].Contains(uvw[j]))
-                                    {
-                                        adjacencyList[node].Add(uvw[j]);
-                                        neighborSetsWithout[node][uvw[j]] = true;
-                                    }
-                                }
-                            }
+                            graph.MakeIntoClique(uvw);
 
                             // remember bags for reconstruction
-                            BitSet appendTo = new BitSet(vertexCount);
+                            BitSet appendTo = new BitSet(graph.vertexCount);
                             appendTo[uvw[0]] = true;
                             appendTo[uvw[1]] = true;
                             appendTo[uvw[2]] = true;
-                            BitSet append = new BitSet(appendTo);
-                            append[i] = true;
-                            reconstructionBagsToAppend.Add((append, appendTo));
+                            BitSet append_center = new BitSet(appendTo);
+                            append_center[i] = true;
+                            reconstructionBagsToAppend.Add((append_center, appendTo));
                             reconstructionBagsDebug.Add("cube i");
 
                             for (int j = 0; j < 3; j++)
                             {
-                                appendTo = new BitSet(neighborSetsWithout[neighbors[j]]);
-                                appendTo[neighbors[j]] = true;
-                                reconstructionBagsToAppend.Add((appendTo, append));
+                                BitSet append_corner = new BitSet(graph.neighborSetsWith[neighbors[j]]);
+                                reconstructionBagsToAppend.Add((append_corner, append_center));
                                 reconstructionBagsDebug.Add("cube neighbor " + j);
                             }
+
+                            graph.Remove(i);
+                            graph.Remove(neighbors[0]);
+                            graph.Remove(neighbors[1]);
+                            graph.Remove(neighbors[2]);
                         }
                     }
                 }
@@ -474,34 +370,24 @@ namespace Tamaki_Tree_Decomp
                 return;
             }
 
-            // initialize a stack of nodes
-            Stack<PTD> nodeStack = new Stack<PTD>();
-            List<PTD> reconstructedNodes = new List<PTD>();
-            if (td == null)         // case where the graph has been reduced to 0 vertices and 0 edges
+            td.Reindex(reconstructionIndexationMapping);
+
+            if (td == null || td.Bag.IsEmpty()) // TODO: correct?
             {
                 int lastIndex = reconstructionBagsToAppend.Count - 1;
                 td = new PTD(reconstructionBagsToAppend[lastIndex].Item1);
-                reconstructedNodes.Add(td);
                 reconstructionBagsToAppend.RemoveAt(lastIndex);
             }
-            else                    // the other case
-            {
-                nodeStack.Push(td);
-            }
 
-            // re-index all bags with the vertices they had before reduction
+            // initialize a stack of nodes
+            Stack<PTD> nodeStack = new Stack<PTD>();
+            nodeStack.Push(td);
+            List<PTD> reconstructedNodes = new List<PTD>();
+
+            // put all bags in the tree into a list
             while (nodeStack.Count > 0)
             {
-                PTD currentNode = nodeStack.Pop();
-                BitSet reducedBag = currentNode.Bag;
-
-                // re-index bag
-                BitSet reconstructedBag = new BitSet(vertexCount);
-                foreach (int i in reducedBag.Elements())
-                {
-                    reconstructedBag[reconstructionMapping[i]] = true;
-                }
-                currentNode.SetBag(reconstructedBag);
+                PTD currentNode = nodeStack.Pop();                
                 reconstructedNodes.Add(currentNode);
 
                 // push children onto stack
@@ -510,6 +396,9 @@ namespace Tamaki_Tree_Decomp
                     nodeStack.Push(currentNode.children[i]);
                 }
             }
+
+
+            BitSet debug1 = originalVertexCount == 363? new BitSet(originalVertexCount, new int[] { 51, 105, 166, 168 }) : null;
 
             // add the bags with the vertices that have been removed during reduction
             while (reconstructionBagsToAppend.Count > 0)
@@ -523,6 +412,11 @@ namespace Tamaki_Tree_Decomp
                     {
                         if (node.Bag.IsSupersetOf(parent))
                         {
+                            if (originalVertexCount == 363 && (child.IsSupersetOf(debug1) || node.Bag.IsSupersetOf(debug1)))
+                            {
+                                ;
+                            }
+
                             PTD childNode = new PTD(child);
                             node.children.Add(childNode);
                             reconstructedNodes.Add(childNode);
@@ -573,7 +467,6 @@ namespace Tamaki_Tree_Decomp
                     }
                 }
             }
-
 
             // remove the nodes where a node is the subset of its child (this occurs
             // because the simplicial vertex rule is also applied to vertices in cliques)
@@ -631,7 +524,7 @@ namespace Tamaki_Tree_Decomp
         [Conditional("DEBUG")]
         private void CheckVertexCover(PTD td)
         {
-            BitSet covered = new BitSet(vertexCount);
+            BitSet covered = new BitSet(originalVertexCount);
 
             Stack<PTD> nodeStack = new Stack<PTD>();
             nodeStack.Push(td);
@@ -646,9 +539,7 @@ namespace Tamaki_Tree_Decomp
                 }
             }
 
-            Debug.Assert(covered.Equals(BitSet.All(vertexCount)));
+            Debug.Assert(covered.Equals(BitSet.All(originalVertexCount)));
         }
-        
-
     }
 }

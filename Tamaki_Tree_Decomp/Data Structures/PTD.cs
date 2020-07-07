@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using static Tamaki_Tree_Decomp.Data_Structures.Graph;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
@@ -111,51 +112,16 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             children.Add(Tau);
             return new PTD(bag, vertices, outlet, inlet, children);
         }
-
-        // line 13
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PTD Line13(PTD Tau_prime, PTD Tau, ImmutableGraph graph)
-        {
-            BitSet bag = new BitSet(Tau_prime.Bag);
-            bag.UnionWith(Tau.outlet);
-
-            List<PTD> children = new List<PTD>(Tau_prime.children);
-            children.Add(Tau);
-            BitSet vertices = new BitSet(Tau_prime.vertices);
-            vertices.UnionWith(Tau.vertices);
-
-            BitSet outlet = graph.Outlet(bag, vertices);
-            BitSet inlet = new BitSet(vertices);
-            inlet.ExceptWith(outlet);
-            return new PTD(bag, vertices, outlet, inlet, children);
-        }
-
-        // line 13, but exit early if bag size is too big
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Line13_CheckBagSize(PTD Tau_prime, PTD Tau, ImmutableGraph graph, int k, out PTD result)
-        {
-            BitSet bag = new BitSet(Tau_prime.Bag);
-            bag.UnionWith(Tau.outlet);
-            if (bag.Count() > k + 1)
-            {
-                result = null;
-                return false;
-            }
-
-            List<PTD> children = new List<PTD>(Tau_prime.children);
-            children.Add(Tau);
-            BitSet vertices = new BitSet(Tau_prime.vertices);
-            vertices.UnionWith(Tau.vertices);
-
-            BitSet outlet = graph.Outlet(bag, vertices);
-            BitSet inlet = new BitSet(vertices);
-            inlet.ExceptWith(outlet);
-            result = new PTD(bag, vertices, outlet, inlet, children);
-
-            return true;
-        }
-
-        // line 13, but exit early if bag size is too big
+        
+        /// <summary>
+        /// line 13 (combining a ptd and ptdur to form a new ptdur), but exit early if bag size is too big or if the ptd is not possibly usable
+        /// </summary>
+        /// <param name="Tau_prime">the ptdur to be combined</param>
+        /// <param name="Tau">the ptd</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <param name="k">the treewidth currently being tested</param>
+        /// <param name="result">the resulting ptd, or null, if the return value is false</param>
+        /// <returns>true, iff the resulting ptd is possibly usable and its bag is small enough for treewidth k</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, int k, out PTD result)
         {
@@ -169,20 +135,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 return false;
             }
 
-            return Line13_CheckBagSize_CheckPossiblyUsable_FunctionTail(Tau_prime, Tau, graph, out result, bag);
+            return Line13_CheckPossiblyUsable(Tau_prime, Tau, graph, out result, bag);
         }
 
         /// <summary>
-        /// a method extracted from the method above. Doing it this way improves performance probably
-        /// because the function code would be very large otherwise and not fit into the cache as easily.
+        /// a method extracted from the method above due to performance reasons. Read it as if the body of the method above would just continue here.
         /// </summary>
-        /// <param name="Tau_prime"></param>
-        /// <param name="Tau"></param>
-        /// <param name="graph"></param>
-        /// <param name="result"></param>
-        /// <param name="bag"></param>
-        /// <returns></returns>
-        private static bool Line13_CheckBagSize_CheckPossiblyUsable_FunctionTail(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result, BitSet bag)
+        /// <param name="Tau_prime">the ptdur</param>
+        /// <param name="Tau">the ptd</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <param name="result">the resulting ptd, or null if the return value is false</param>
+        /// <param name="bag">the bag of the ptd to be</param>
+        /// <returns>true, iff the resulting ptd is possibly usable</returns>
+        private static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result, BitSet bag)
         {
             List<PTD> children = new List<PTD>(Tau_prime.children);
             children.Add(Tau);
@@ -208,9 +173,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
+            // usability is established, so we build the ptd
             BitSet vertices = new BitSet(Tau_prime.vertices);
             vertices.UnionWith(Tau.vertices);
-
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
@@ -219,46 +184,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
-        // line 13, but exit early if bag size is too big
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result)
-        {
-            BitSet bag = new BitSet(Tau_prime.Bag);
-            bag.UnionWith(Tau.outlet);
-
-            List<PTD> children = new List<PTD>(Tau_prime.children);
-            children.Add(Tau);
-
-            // exit early if not possibly usable
-            for (int i = 0; i < children.Count; i++)
-            {
-                for (int j = i + 1; j < children.Count; j++)
-                {
-                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
-                    {
-                        result = null;
-                        return false;
-                    }
-
-                    BitSet verticesIntersection = new BitSet(children[i].vertices);
-                    verticesIntersection.IntersectWith(children[j].vertices);
-                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
-                    {
-                        result = null;
-                        return false;
-                    }
-                }
-            }
-
-            BitSet vertices = new BitSet(Tau_prime.vertices);
-            vertices.UnionWith(Tau.vertices);
-
-            result = new PTD(bag, vertices, children);
-
-            return true;
-        }
-
-        // line 23
+        /// <summary>
+        /// the case where the bag of the ptd is a subset of the inclusive neighborhood of a vertex. Returns a new ptd with that type of bag. 
+        /// </summary>
+        /// <param name="Tau_wiggle">the ptdur whose root is to be extended</param>
+        /// <param name="vNeighbors">the (inclusive) neighborhood of the vertex</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <returns>a ptd where the bag is the bag of the ptdur unioned with the neighborhood</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line23(PTD Tau_wiggle, BitSet vNeighbors, ImmutableGraph graph)
         {
@@ -273,7 +205,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return new PTD(bag, vertices, outlet, inlet, children);
         }
 
-        // line 29
+        /// <summary>
+        /// the case where the bag of the ptd covers those edges incident to a vertex that are not covered in its children. Returns a new ptd with that type of bag.
+        /// </summary>
+        /// <param name="Tau_wiggle">the underlying ptdur</param>
+        /// <param name="newRoot">the root for the resulting ptd (must be a superset of the root of the ptdur)</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <returns>a ptd where the bag covers those edges incident to a vertex that are not covered in its children</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PTD Line29(PTD Tau_wiggle, BitSet newRoot, ImmutableGraph graph)
         {
@@ -448,6 +386,39 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             while (childrenStack.Count > 0);
 
             return rootNode;
+        }
+
+        /// <summary>
+        /// reindexes the vertices of this ptd that is a ptd of a reduced graph, so that they correctly represent the same vertices in the not-reduced graph. (GraphReduction needs this.)
+        /// </summary>
+        /// <param name="reindexationMapping">the mapping from the vertices in the current ptd to their original vertex indices within the original graph.</param>
+        public void Reindex(ReindecationMapping reindexationMapping)
+        {
+            // initialize a stack of nodes
+            Stack<PTD> nodeStack = new Stack<PTD>();
+
+            nodeStack.Push(this);
+
+            // re-index all bags with the vertices they had before reduction
+            while (nodeStack.Count > 0)
+            {
+                PTD currentNode = nodeStack.Pop();
+                BitSet reducedBag = currentNode.Bag;
+
+                // re-index bag
+                BitSet reconstructedBag = new BitSet(reindexationMapping.vertexCount);
+                foreach (int i in reducedBag.Elements())
+                {
+                    reconstructedBag[reindexationMapping[i]] = true;
+                }
+                currentNode.SetBag(reconstructedBag);
+
+                // push children onto stack
+                for (int i = 0; i < currentNode.children.Count; i++)
+                {
+                    nodeStack.Push(currentNode.children[i]);
+                }
+            }
         }
 
         #region import from file
@@ -686,7 +657,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 if (!isCovered)
                 {
                     Print();
-                    Debug.Fail(String.Format("The printed ptd does not cover all of the graph's vertices. Vertex {0} is not covered.", i));
+                    Debug.Fail(String.Format("The printed ptd for graph {0} does not cover all of the graph's vertices. Vertex {1} is not covered.", graph.graphID, i));
                 }
             }
 
@@ -707,7 +678,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     if (!isCovered)
                     {
                         Print();
-                        Debug.Fail(String.Format("The printed ptd does not cover all of the graph's edges. Edge ({0},{1}) is not covered.", u, v));
+                        Debug.Fail(String.Format("The printed ptd for graph {0} does not cover all of the graph's edges. Edge ({1},{2}) is not covered.", graph.graphID, u, v));
                     }
                 }
             }
@@ -736,7 +707,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         if (ancestors.Count == 2)
                         {
                             Print();
-                            Debug.Fail(String.Format("The printed ptd is not consistent. There are at least two subtrees containing vertex {0}.", i.ToString()));
+                            Debug.Fail(String.Format("The printed ptd for graph {0} is not consistent. There are at least two subtrees containing vertex {1}.", graph.graphID, i));
                         }
                     }
                 }
