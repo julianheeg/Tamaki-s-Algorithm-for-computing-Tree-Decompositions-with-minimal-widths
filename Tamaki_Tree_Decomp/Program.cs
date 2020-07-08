@@ -91,7 +91,9 @@ namespace Tamaki_Tree_Decomp
                 startingInstance =  start / 2;
             }
 
-            string filepath = PACE2017(33);
+            //string filepath = "Test Data\\small_clique_separator.gr";
+            //string filepath = "Test Data\\smaller_clique_separator.gr";
+            string filepath = PACE2017(25);
             //string filepath = "Test Data\\graphs_MC2020\\clique_graphs\\track1_002.gr";
             //string filepath = "01-07-2020 14-27-50\\002-18.gr";
             // string directory = "Test Data\\graphs_MC2020\\bipartite_graphs";
@@ -103,7 +105,7 @@ namespace Tamaki_Tree_Decomp
             // Graph.dumpSubgraphs = true;
             // Graph.old = false;
             // SafeSeparator.separate = false;
-            // GraphReduction.reduce = false;
+            GraphReduction.reduce = false;
 
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
@@ -216,10 +218,22 @@ namespace Tamaki_Tree_Decomp
             Stopwatch stopwatch = new Stopwatch();
             SafeSeparator.size3SeparationStopwatch = new Stopwatch();
             SafeSeparator.size3separators = 0;
+            SafeSeparator.cliqueSeparatorStopwatch = new Stopwatch();
+            SafeSeparator.cliqueSeparators = 0;
+            SafeSeparator.almostCliqueSeparatorStopwatch = new Stopwatch();
+            SafeSeparator.almostCliqueSeparators = 0;
             stopwatch.Start();
             int treeWidth = Treewidth.TreeWidth(g, out PTD output, print);
             stopwatch.Stop();
-            Console.WriteLine("Tree decomposition of {0} found in {1}s. Treewidth is {2}.\nFound {3} size 3 separators in {4} total", filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.size3SeparationStopwatch.Elapsed);
+
+            Console.WriteLine("Tree decomposition of {0} found in {1} time. Treewidth is {2}.\n" +
+                    "Found {3} size 3 separators in {4} total time.\n" +
+                    "Found {5} clique Separators in {6} total time.\n" +
+                    "Found {7} almost clique separators in {8} total time.",
+                    filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.size3SeparationStopwatch.Elapsed,
+                    SafeSeparator.cliqueSeparators - SafeSeparator.almostCliqueSeparators, SafeSeparator.cliqueSeparatorStopwatch.Elapsed - SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed,
+                    SafeSeparator.almostCliqueSeparators, SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed);
+
             if (print)
             {
                 output.Print();

@@ -389,10 +389,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// reindexes the vertices of this ptd that is a ptd of a reduced graph, so that they correctly represent the same vertices in the not-reduced graph. (GraphReduction needs this.)
+        /// reindexes the vertices of this ptd that is a ptd of a reduced graph, so that they correctly represent the same vertices in the non-reduced graph.
         /// </summary>
-        /// <param name="reindexationMapping">the mapping from the vertices in the current ptd to their original vertex indices within the original graph.</param>
-        public void Reindex(ReindecationMapping reindexationMapping)
+        /// <param name="reindexationMapping">the mapping from the vertex indices in the current ptd to their original vertex indices within the original graph.</param>
+        public void Reindex(ReindexationMapping reindexationMapping)
         {
             // initialize a stack of nodes
             Stack<PTD> nodeStack = new Stack<PTD>();
@@ -405,12 +405,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 PTD currentNode = nodeStack.Pop();
                 BitSet reducedBag = currentNode.Bag;
 
-                // re-index bag
-                BitSet reconstructedBag = new BitSet(reindexationMapping.vertexCount);
-                foreach (int i in reducedBag.Elements())
-                {
-                    reconstructedBag[reindexationMapping[i]] = true;
-                }
+                BitSet reconstructedBag = reindexationMapping.Reindex(reducedBag);
                 currentNode.SetBag(reconstructedBag);
 
                 // push children onto stack

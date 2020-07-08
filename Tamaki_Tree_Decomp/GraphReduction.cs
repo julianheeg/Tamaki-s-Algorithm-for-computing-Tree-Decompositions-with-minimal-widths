@@ -16,7 +16,7 @@ namespace Tamaki_Tree_Decomp
     {
         int low; // TODO: heuristic for setting low is given in the paper
         Graph graph;
-        ReindecationMapping reconstructionIndexationMapping;
+        ReindexationMapping reconstructionIndexationMapping;
         readonly List<(BitSet, BitSet)> reconstructionBagsToAppend;     // a list of (bag, parentbag) for reconstructing the correct tree decomposition // TODO: HashSet instead?
 
         readonly List<String> reconstructionBagsDebug;  // TODO: remove

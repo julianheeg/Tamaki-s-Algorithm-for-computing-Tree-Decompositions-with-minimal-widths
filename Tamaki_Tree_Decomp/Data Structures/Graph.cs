@@ -165,11 +165,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="separator">the safe separator</param>
         /// <param name="reconstructionIndexationMappings">the corresponding mapping for reindexing the vertices in the subgraphs back to their old indices within this graph</param>
         /// <returns></returns>
-        public List<Graph> Separate(BitSet separator, out List<ReindecationMapping> reconstructionIndexationMappings)
+        public List<Graph> Separate(BitSet separator, out List<ReindexationMapping> reconstructionIndexationMappings)
         {
             List<Graph> subGraphs = new List<Graph>();
             List<int> separatorVertices = separator.Elements();
-            reconstructionIndexationMappings = new List<ReindecationMapping>();
+            reconstructionIndexationMappings = new List<ReindexationMapping>();
             foreach ((BitSet component, BitSet neighbor) in ComponentsAndNeighbors(separator))
             {
                 List<int> vertices = component.Elements();
@@ -177,7 +177,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 // map vertices from this graph to the new subgraph and vice versa
                 Dictionary<int, int> reductionMapping = new Dictionary<int, int>(vertexCount + separatorVertices.Count);
-                ReindecationMapping reconstructionIndexationMapping = new ReindecationMapping(vertexCount);
+                ReindexationMapping reconstructionIndexationMapping = new ReindexationMapping(vertexCount);
                 reconstructionIndexationMappings.Add(reconstructionIndexationMapping);
                 for (int i = 0; i < vertices.Count; i++)
                 {
@@ -258,6 +258,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             isReduced = true;
         }
 
+        /// <summary>
+        /// Inserts an edge into the graph
+        /// </summary>
+        /// <param name="u">one endpoint of the edge to be inserted</param>
+        /// <param name="v">the other endpoint of the edge to be inserted</param>
         public void Insert(int u, int v)
         {
             Debug.Assert(!neighborSetsWith[u][v]);
@@ -298,7 +303,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// replaces the old adjacency list with a new one where all removed vertices no longer occupy a spot in the list. A mapping that maps the new vertices back to the old ones is returned.
         /// </summary>
         /// <param name="reconstructionIndexationMapping"></param>
-        public void Reduce(out ReindecationMapping reconstructionIndexationMapping)
+        public void Reduce(out ReindexationMapping reconstructionIndexationMapping)
         {
             if (!isReduced)
             {
@@ -416,11 +421,15 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return result;
         }
 
-        private void BuildReindexationMappings(out ReindecationMapping reindexationMapping, out Dictionary<int, int> reductionMapping)
+        /// <summary>
+        /// Constructs both a forward and a backward mapping between reduced vertex indices and original vertex indices.
+        /// </summary>
+        /// <param name="reindexationMapping">the mapping from reduced vertex indices back to original vertex indices</param>
+        /// <param name="reductionMapping">the mapping from original vertex indices to reduced vertex indices</param>
+        private void BuildReindexationMappings(out ReindexationMapping reindexationMapping, out Dictionary<int, int> reductionMapping)
         {
-            reindexationMapping = new ReindecationMapping(vertexCount);
-
-            // build a mapping from old graph vertices to new graph vertices and vice versa
+            reindexationMapping = new ReindexationMapping(vertexCount);
+            
             reductionMapping = new Dictionary<int, int>();
             int counter = 0;
             int vertex = -1;
@@ -433,36 +442,52 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// a class for reconstructing 
+        /// A class for converting the indices from a reduced graph back to the original (non-reduced) graph (i. e. to the indices they had before Graph.Reduce() has been called).
+        /// This is necessary for turning the PTDs that are built using the reduced graph back into PTDs that are valid for the original (non-reduced) graph.
         /// </summary>
-        public class ReindecationMapping
+        public class ReindexationMapping
         {
+            // a mapping from reduced vertex to original vertex
             public readonly List<int> map;
-            public readonly int vertexCount;
 
-            internal ReindecationMapping(int vertexCount)
+            // the vertex count that the original graph had (necessary for reconstructing the BitSets)
+            public readonly int originalVertexCount;
+
+            /// <summary>
+            /// creates a new mapping from reduced vertices to original vertices
+            /// </summary>
+            /// <param name="originalVertexCount">the vertex count of the original graph</param>
+            internal ReindexationMapping(int originalVertexCount)
             {
                 map = new List<int>();
-                this.vertexCount = vertexCount;
+                this.originalVertexCount = originalVertexCount;
             }
 
+            /// <summary>
+            /// adds an original vertex index to the map as the next element
+            /// </summary>
+            /// <param name="originalVertex">the vertex that the next index has in the original graph</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void Add(int originalVertex)
             {
                 map.Add(originalVertex);
             }
 
-            public int this[int key]
+            /// <summary>
+            /// turns a set of vertices in a reduced graph into a set of vertices in the original graph 
+            /// </summary>
+            /// <param name="reducedBag">the bag to reindex</param>
+            /// <returns>the reindexed bag</returns>
+            public BitSet Reindex(BitSet reducedBag)
             {
-                get
+                // re-index bag
+                BitSet reindexedBag = new BitSet(originalVertexCount);
+                foreach (int i in reducedBag.Elements())
                 {
-                    return map[key];
+                    reindexedBag[map[i]] = true;
                 }
-                set
-                {
-                    map[key] = value;
-                }
-            }
+                return reindexedBag;
+            } 
         }
     }
 }
