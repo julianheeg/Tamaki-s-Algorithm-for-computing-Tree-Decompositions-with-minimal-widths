@@ -16,32 +16,40 @@ namespace Tamaki_Tree_Decomp
         /// determines the tree width of a graph
         /// </summary>
         /// <param name="graph">the graph</param>
-        /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph</param>
+        /// <param name="treeDecomp">a tree decomposition for the graph</param>
         /// <returns>the graph's tree width</returns>
         public static int TreeWidth(Graph graph, out PTD treeDecomp, bool verbose = true)
         {
             Graph.verbose = verbose;
             ImmutableGraph.verbose = verbose;
-            return TreeWidth(graph, 0, out treeDecomp);
-        }
 
-        private static int TreeWidth(Graph graph, int minK, out PTD treeDecomp)
-        {
             // edges cases
             if (graph.vertexCount == 0)
             {
                 treeDecomp = new PTD(new BitSet(0));
-                return minK;
+                return 0;
             }
             else if (graph.vertexCount == 1)
             {
                 BitSet onlyBag = new BitSet(1);
                 onlyBag[0] = true;
                 treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
-                return minK;
+                return 0;
             }
 
+            return TreeWidth_Computation(graph, out treeDecomp);
+        }
 
+        /// <summary>
+        /// performs graph reduction and graph splitting until no further graph simplification is possible.
+        /// Then the treewidth and tree decompositions for the simplified graphs are computed and put back together to
+        /// give a treewidth and tree decomposition for the original graph. 
+        /// </summary>
+        /// <param name="graph">the original graph</param>
+        /// <param name="treeDecomp">a tree decomposition for the original graph</param>
+        /// <returns>the original graph's tree width</returns>
+        private static int TreeWidth_Computation(Graph graph, out PTD treeDecomp)
+        {
             /*
              * 
              *  What is going on here:
@@ -83,6 +91,8 @@ namespace Tamaki_Tree_Decomp
              *      3. The tree decomposition for the input graph is in ptds[0]
              * 
              */
+
+            int minK = 0;
 
             List<Graph> subGraphs = new List<Graph>();                        // index i corresponds to the i-th subgraph created
             List<List<GraphReduction>> graphReductions = new List<List<GraphReduction>>();  // index i corresponds to the list of graph reductions made to subgraph i
@@ -335,99 +345,6 @@ namespace Tamaki_Tree_Decomp
 
             treeDecomp = ptds[0];
             return true;
-        }
-
-        /// <summary>
-        /// determines whether the tree width of a graph is at most a given value.
-        /// (Really only used for faster testing. Will be obsolete when the idea to reuse the ptds and ptdurs during later iterations is implemented.)
-        /// </summary>
-        /// <param name="g">the graph</param>
-        /// <param name="k">the upper bound</param>
-        /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph, iff the tree width is at most k, else null</param>
-        /// <returns>true, iff the tree width is at most k</returns>
-        public static bool IsTreeWidthAtMost2(Graph graph, int k, out PTD treeDecomp)
-        {
-            throw new NotImplementedException();
-            /*
-            // TODO: return root with empty bag instead
-            if (graph.vertexCount == 0)
-            {
-                treeDecomp = null;
-                return k == -1;
-            }
-            else if (graph.vertexCount == 1)
-            {
-                BitSet onlyBag = new BitSet(1);
-                onlyBag[0] = true;
-                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
-                return k == 0;
-            }
-
-            int minK = k;
-
-            // TODO: use previous reductions, not make an entirely new one each time
-            // TODO: when finding all clique/almost-clique separators, only do that once
-            List<GraphReduction> reductions = new List<GraphReduction>();
-            ImmutableGraph reducedGraph = graph;
-
-            // reduce graph
-            GraphReduction red = new GraphReduction(reducedGraph, k);
-            bool reduced = red.Reduce(ref minK);
-            if (minK > k)
-            {
-                treeDecomp = null;
-                return false;
-            }
-            if (reduced)
-            {
-                reducedGraph = red.ToGraph();
-                reductions.Add(red);
-            }
-            SafeSeparator safeSep = new SafeSeparator(reducedGraph);
-            if (safeSep.Separate(out List<ImmutableGraph> separatedGraphs, ref minK))
-            {
-                if (minK > k)
-                {
-                    treeDecomp = null;
-                    return false;
-                }
-
-                PTD[] subTreeDecompositions = new PTD[separatedGraphs.Count];
-                for (int i = 0; i < subTreeDecompositions.Length; i++)
-                {
-                    if (IsTreeWidthAtMost(separatedGraphs[i], k, out subTreeDecompositions[i]))
-                    {
-#if DEBUG
-                        subTreeDecompositions[i].AssertValidTreeDecomposition(separatedGraphs[i]);
-#endif
-                    }
-                    else
-                    {
-                        treeDecomp = null;
-                        return false;
-                    }
-                }
-                treeDecomp = safeSep.RecombineTreeDecompositions(subTreeDecompositions);
-
-                for (int i = reductions.Count - 1; i >= 0; i--)
-                {
-                    reductions[i].RebuildTreeDecomposition(ref treeDecomp);
-                }
-                return true;
-            }
-
-            if (HasTreeWidth(reducedGraph, minK, out treeDecomp))
-            {
-                Console.WriteLine("graph has tree width " + minK);
-                for (int i = reductions.Count - 1; i >= 0; i--)
-                {
-                    reductions[i].RebuildTreeDecomposition(ref treeDecomp);
-                }
-                return true;
-            }
-
-            return false;
-            */
         }
 
         /// <summary>
