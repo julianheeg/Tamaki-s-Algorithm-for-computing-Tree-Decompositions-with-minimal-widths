@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
@@ -255,6 +256,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             notRemovedVertices[vertex] = false;
             notRemovedVertexCount--;
+            edgeCount -= adjacencyList[vertex].Count;
             isReduced = true;
         }
 
@@ -272,6 +274,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             neighborSetsWithout[v][u] = true;
             neighborSetsWith[u][v] = true;
             neighborSetsWith[v][u] = true;
+            edgeCount++;
         }
 
         /// <summary>
@@ -294,6 +297,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         neighborSetsWithout[v][u] = true;
                         neighborSetsWith[u][v] = true;
                         neighborSetsWith[v][u] = true;
+
+                        edgeCount++;
                     }
                 }
             }
@@ -487,7 +492,71 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     reindexedBag[map[i]] = true;
                 }
                 return reindexedBag;
-            } 
+            }
+
+            /// <summary>
+            /// creates a string that contains the reindexed indices
+            /// </summary>
+            /// <returns>a string that contains the reindexed indices</returns>
+            public override string ToString()
+            {
+                StringBuilder sb = new StringBuilder();
+
+                // fill in elements
+                for (int i = 0; i < map.Count; i++)
+                {
+                    sb.Append(map[i] + ",");
+                }
+
+                // remove trailing comma if there is one
+                if (sb.Length > 1)
+                {
+                    sb.Length--;
+                }
+
+                // show a placeholder for the empty set
+                if (sb.Length == 0)
+                {
+                    sb.Append("_");
+                }
+
+                return sb.ToString();
+            }
+        }
+
+        public static bool dumpSubgraphs = false;
+
+        /// <summary>
+        /// writes the graph to disk
+        /// </summary>
+        [Conditional("DEBUG")]
+        public void Dump()
+        {
+            if (dumpSubgraphs)
+            {
+                // TODO: doesn't work in all languages/cultures
+                Directory.CreateDirectory(Program.date_time_string);
+                using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0:D6}-.gr", graphID)))
+                {
+                    sw.WriteLine(String.Format("p tw {0} {1}", notRemovedVertexCount, edgeCount));
+                    Console.WriteLine("Dumped graph {0} with {1} vertices and {2} edges", graphID, notRemovedVertexCount, edgeCount);
+
+                    for (int u = 0; u < vertexCount; u++)
+                    {
+                        if (notRemovedVertices[u])
+                        {
+                            for (int j = 0; j < adjacencyList[u].Count; j++)
+                            {
+                                int v = adjacencyList[u][j];
+                                if (u < v)
+                                {
+                                    sw.WriteLine(String.Format("{0} {1}", u + 1, v + 1));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

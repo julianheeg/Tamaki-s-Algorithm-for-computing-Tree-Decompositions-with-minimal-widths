@@ -501,7 +501,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             Console.WriteLine(sb.ToString());
         }
 
-        public static bool plusOneInString = true;
+        public static bool plusOneInString = false;
 
         public override string ToString()
         {

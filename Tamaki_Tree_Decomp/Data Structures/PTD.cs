@@ -332,6 +332,55 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 return this;
             }
 
+            Dictionary<PTD, PTD> parents = new Dictionary<PTD, PTD>();
+            parents[this] = null;
+
+            // find root node (its bag is a superset of the root set)
+            PTD rootNode = null;
+            Stack<PTD> nodeStack = new Stack<PTD>();
+            nodeStack.Push(this);
+            PTD currentNode;
+
+            while(nodeStack.Count > 0)
+            {
+                currentNode = nodeStack.Pop();
+
+                for (int i = 0; i < currentNode.children.Count; i++)
+                {
+                    PTD child = currentNode.children[i];
+
+                    parents[child] = currentNode;
+
+                    if (child.Bag.IsSupersetOf(rootSet))
+                    {
+                        rootNode = child;
+                        break;
+                    }
+
+                    nodeStack.Push(child);
+                }
+            }
+
+            Debug.Assert(rootNode != null);
+
+            // reroot (swap parent-child relationship between all nodes that lie between the former root and the future root)
+            currentNode = rootNode;
+            PTD formerParentNode;
+            while ((formerParentNode = parents[currentNode]) != null)
+            {
+                currentNode.children.Add(formerParentNode);
+                formerParentNode.children.Remove(currentNode);
+                currentNode = formerParentNode;
+            }
+
+            return rootNode;
+
+            /*
+            if (Bag.IsSupersetOf(rootSet))
+            {
+                return this;
+            }
+
             // ---- 1 ----
             // build undirected tree as an adjacency list
             Dictionary<BitSet, List<BitSet>> adjacencyList = new Dictionary<BitSet, List<BitSet>>();
@@ -386,6 +435,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             while (childrenStack.Count > 0);
 
             return rootNode;
+            */
         }
 
         /// <summary>
@@ -602,7 +652,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         if (ancestors.Count == 2)
                         {
                             Print();
-                            Debug.Fail(String.Format("The printed ptd is not consistent. There are at least two subtrees containing vertex {0}.", i.ToString()));
+                            Trace.Fail(String.Format("The printed ptd is not consistent. There are at least two subtrees containing vertex {0}.", i.ToString()));
                         }
                     }
                 }
@@ -652,7 +702,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 if (!isCovered)
                 {
                     Print();
-                    Debug.Fail(String.Format("The printed ptd for graph {0} does not cover all of the graph's vertices. Vertex {1} is not covered.", graph.graphID, i));
+                    Trace.Fail(String.Format("The printed ptd for graph {0} does not cover all of the graph's vertices. Vertex {1} is not covered.", graph.graphID, i));
                 }
             }
 
@@ -673,7 +723,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     if (!isCovered)
                     {
                         Print();
-                        Debug.Fail(String.Format("The printed ptd for graph {0} does not cover all of the graph's edges. Edge ({1},{2}) is not covered.", graph.graphID, u, v));
+                        Trace.Fail(String.Format("The printed ptd for graph {0} does not cover all of the graph's edges. Edge ({1},{2}) is not covered.", graph.graphID, u, v));
                     }
                 }
             }
@@ -702,7 +752,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         if (ancestors.Count == 2)
                         {
                             Print();
-                            Debug.Fail(String.Format("The printed ptd for graph {0} is not consistent. There are at least two subtrees containing vertex {1}.", graph.graphID, i));
+                            Trace.Fail(String.Format("The printed ptd for graph {0} is not consistent. There are at least two subtrees containing vertex {1}.", graph.graphID, i));
                         }
                     }
                 }

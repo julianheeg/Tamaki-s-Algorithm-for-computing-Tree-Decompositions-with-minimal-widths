@@ -21,10 +21,11 @@ namespace Tamaki_Tree_Decomp
 
         enum SeparatorType
         {
-            Size1, Size2, Size3, Clique, AlmostClique, CliqueMinor
+            NotConnected, Size1, Size2, Size3, Clique, AlmostClique, CliqueMinor
         }
 
-        List<ReindexationMapping> reconstructionIndexationMappings; // mapping from reduced vertex id to original vertex id, by component
+        // TODO: make private
+        public List<ReindexationMapping> reconstructionIndexationMappings; // mapping from reduced vertex id to original vertex id, by component
 
         private readonly bool verbose;
 
@@ -55,7 +56,7 @@ namespace Tamaki_Tree_Decomp
                 return false;
             }
 
-            if (FindSize1Separator() || FindSize2Separator() || HeuristicDecomposition() || FindSize3Separator() || FindCliqueSeparator() || FindAlmostCliqueSeparator())
+            if (TestNotConnected() || FindSize1Separator() || FindSize2Separator() || HeuristicDecomposition() || FindSize3Separator() || FindCliqueSeparator() || FindAlmostCliqueSeparator())
             {
                 if (verbose)
                 {
@@ -188,6 +189,28 @@ namespace Tamaki_Tree_Decomp
         }
 
         /// <summary>
+        /// Tests if the graph is not connected. In that case the empty set is a separator of size 0 and it is saved in the "separator" member variable
+        /// </summary>
+        /// <returns>true iff the graph is not connected</returns>
+        private bool TestNotConnected()
+        {
+            int componentCount = 0;
+            BitSet nothing = new BitSet(graph.vertexCount);
+            foreach ((BitSet, BitSet) _ in graph.ComponentsAndNeighbors(nothing))
+            {
+                componentCount++;
+                if (componentCount >= 2)
+                {
+                    separator = nothing;
+                    separatorType = SeparatorType.NotConnected;
+                    return true;
+
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Tests if the graph can be separated with a separator of size 1. If so, the separator is saved in the "separator" member variable
         /// </summary>
         /// <returns>true iff a size 1 separator exists</returns>
@@ -238,7 +261,7 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true iff a size 2 separator exists</returns>
         public bool FindSize3Separator()
         {
-            if (!size3Separate)
+            if (!size3Separate || graph.vertexCount < 3)
             {
                 return false;
             }

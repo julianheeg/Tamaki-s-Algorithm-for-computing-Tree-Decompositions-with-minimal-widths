@@ -122,13 +122,24 @@ namespace Tamaki_Tree_Decomp
                         graphReductions[graphReductions.Count - 1].Add(graphReduction);
                     }
 
+                    if (graph.vertexCount == 0)
+                    {
+                        PTD subGraphTreeDecomp = new PTD(new BitSet(0));
+                        for (int j = graphReductions[i].Count - 1; j >= 0; j--)
+                        {
+                            graphReductions[i][j].RebuildTreeDecomposition(ref subGraphTreeDecomp);
+                        }
+                        ptds.Add(subGraphTreeDecomp);
+                        break;
+                    }
+
                     // only try to find safe separators if the graph has been reduced in this iteration or if this iteration is the first one.
                     // Else there is no chance that a new safe separator can be found
                     bool separated = false;
                     if (reduced || firstIterationOnGraph) {
                         firstIterationOnGraph = false;
                         // try to find safe separator
-                        SafeSeparator safeSeparator = new SafeSeparator(graph);
+                        SafeSeparator safeSeparator = new SafeSeparator(graph, verbose);
                         if (safeSeparator.Separate(out List<Graph> separatedGraphs, ref minK))
                         {
                             separated = true;
@@ -139,6 +150,7 @@ namespace Tamaki_Tree_Decomp
                                 children.Add(subGraphs.Count + j);
                             }
                             subGraphs.AddRange(separatedGraphs);
+
                             safeSeparators.Add(safeSeparator);
                             safeSeparatorSubgraphIndices.Add(i);
                             childrenLists.Add(children);                            
@@ -172,7 +184,10 @@ namespace Tamaki_Tree_Decomp
                             break;
                         }
                     }
-                    Console.WriteLine("graph {0} has treewidth larger than {1}.", graph.graphID, minK);
+                    if (verbose)
+                    {
+                        Console.WriteLine("graph {0} has treewidth larger than {1}.", graph.graphID, minK);
+                    }
                     minK++;
                 }
 
@@ -196,6 +211,9 @@ namespace Tamaki_Tree_Decomp
                 int parentIndex = safeSeparatorSubgraphIndices[j];
                 ptds[parentIndex] = safeSeparators[j].RecombineTreeDecompositions(childrenPTDs);
                 PTD ptd = ptds[parentIndex];
+#if DEBUG
+                ptd.AssertValidTreeDecomposition(new ImmutableGraph(subGraphs[parentIndex]));
+#endif
                 for (int i = graphReductions[parentIndex].Count - 1; i >= 0; i--)
                 {
                     graphReductions[parentIndex][i].RebuildTreeDecomposition(ref ptd);
@@ -262,6 +280,17 @@ namespace Tamaki_Tree_Decomp
                     graphReductions[graphReductions.Count - 1].Add(graphReduction);
                 }
 
+                if (graph.vertexCount == 0)
+                {
+                    PTD subGraphTreeDecomp = new PTD(new BitSet(0));
+                    for (int j = graphReductions[i].Count - 1; j >= 0; j--)
+                    {
+                        graphReductions[i][j].RebuildTreeDecomposition(ref subGraphTreeDecomp);
+                    }
+                    ptds.Add(subGraphTreeDecomp);
+                    continue;
+                }
+
                 // only try to find safe separators if the graph has been reduced in this iteration or if this iteration is the first one.
                 // Else there is no chance that a new safe separator can be found
                 bool separated = false;
@@ -318,7 +347,7 @@ namespace Tamaki_Tree_Decomp
 
                 if (ptds.Count == i)    // if the vertex set is smaller than the minimum bound for tree width, make a bag that contains all vertices
                 {
-                    ptds.Add(new PTD(BitSet.All(graph.vertexCount)));   // TODO: correct?
+                    ptds.Add(new PTD(BitSet.All(graph.vertexCount)));
                 }
             }
 

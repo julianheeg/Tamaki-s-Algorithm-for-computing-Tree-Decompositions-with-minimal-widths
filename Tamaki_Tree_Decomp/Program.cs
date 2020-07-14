@@ -81,7 +81,7 @@ namespace Tamaki_Tree_Decomp
 #pragma warning restore CS0414
 
         static int workerThreads = 1;
-        static int timePerInstance = 180000;
+        static int timePerInstance = 1800000;
         static int startingInstance = 0;
 
         static void Main(string[] args)
@@ -91,11 +91,24 @@ namespace Tamaki_Tree_Decomp
                 startingInstance =  start / 2;
             }
 
-            //string filepath = "Test Data\\small_clique_separator.gr";
-            //string filepath = "Test Data\\smaller_clique_separator.gr";
-            string filepath = PACE2017(25);
-            //string filepath = "Test Data\\graphs_MC2020\\clique_graphs\\track1_002.gr";
-            //string filepath = "01-07-2020 14-27-50\\002-18.gr";
+            /*
+             *  9622 ja
+             * 10223 ja 674
+             * 10499 ja 397
+             * 10643 ja 247
+             * 10715 ja 247
+             * 10801 nein
+             * 
+             */
+
+            string filepath = test_h1;
+
+            //TestSpecificTreewidth(filepath, 6);
+
+
+            //string filepath = PACE2017(119);
+            //string filepath = "Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
+            //string filepath = "13-07-2020 13-21-53\\010715-.gr";
             // string directory = "Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "Test Data\\graphs_MC2020\\clique_graphs";
             string directory = "Test Data\\graphs_MC2020";
@@ -105,28 +118,15 @@ namespace Tamaki_Tree_Decomp
             // Graph.dumpSubgraphs = true;
             // Graph.old = false;
             // SafeSeparator.separate = false;
-            GraphReduction.reduce = false;
+            // GraphReduction.reduce = false;
 
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
-            /*
-            Graph g = new Graph(filepath);
-            SafeSeparator ss = new SafeSeparator(g);
-            foreach(int i in ss.Size1Separators(new List<int>() { 1 }))
-            {
-                Console.WriteLine(i);
-            }
-            */
+            //Run(filepath, true);
 
-            // TestSpecificTreewidth(filepath, 7);
-
-            Run(filepath, true);
-
-            //RunAllParallel(directory);
-
-            // TestSpecificTreewidth(filepath, 16);
-
+            RunAllParallel(directory);
+            
             Console.Read();
         }
 
@@ -207,14 +207,9 @@ namespace Tamaki_Tree_Decomp
             }
         }
 
-        private static int Run(string filepath, bool print)
+        private static int Run(string filepath, bool print=true)
         {
             Graph g = new Graph(filepath);
-            if (g.vertexCount > 35000)
-            {
-                Console.WriteLine("graph {0} has more than 35000 vertices. Skipping...", filepath);
-                return -1;
-            }
             Stopwatch stopwatch = new Stopwatch();
             SafeSeparator.size3SeparationStopwatch = new Stopwatch();
             SafeSeparator.size3separators = 0;
@@ -226,18 +221,18 @@ namespace Tamaki_Tree_Decomp
             int treeWidth = Treewidth.TreeWidth(g, out PTD output, print);
             stopwatch.Stop();
 
-            Console.WriteLine("Tree decomposition of {0} found in {1} time. Treewidth is {2}.\n" +
-                    "Found {3} size 3 separators in {4} total time.\n" +
-                    "Found {5} clique Separators in {6} total time.\n" +
-                    "Found {7} almost clique separators in {8} total time.",
-                    filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.size3SeparationStopwatch.Elapsed,
-                    SafeSeparator.cliqueSeparators - SafeSeparator.almostCliqueSeparators, SafeSeparator.cliqueSeparatorStopwatch.Elapsed - SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed,
-                    SafeSeparator.almostCliqueSeparators, SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed);
-
             if (print)
             {
                 output.Print();
             }
+
+            Console.WriteLine("Tree decomposition of {0} found in {1} time. Treewidth is {2}.\n" +
+                    "Found {3} size 3 separators in {4} total time.\n" +
+                    "Found {5} clique Separators in {6} total time.\n" +
+                    "Found {7} almost clique separators in {8} total time.\n",
+                    filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.size3SeparationStopwatch.Elapsed,
+                    SafeSeparator.cliqueSeparators - SafeSeparator.almostCliqueSeparators, SafeSeparator.cliqueSeparatorStopwatch.Elapsed - SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed,
+                    SafeSeparator.almostCliqueSeparators, SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed);
 
             g = new Graph(filepath);
             output.AssertValidTreeDecomposition(new ImmutableGraph(g));

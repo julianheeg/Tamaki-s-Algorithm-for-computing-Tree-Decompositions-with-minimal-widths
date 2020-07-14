@@ -663,8 +663,6 @@ namespace Tamaki_Tree_Decomp
                 remaining[vmin] = false;
             }
 
-            // TODO: CRITICAL???? set width  ###########################################################################################################################################
-
             return separators;
         }
 
@@ -698,8 +696,8 @@ namespace Tamaki_Tree_Decomp
         /// </summary>
         enum Heuristic
         {
-            min_fill,
-            min_degree
+            min_degree,
+            min_fill
         }
 
         /// <summary>
