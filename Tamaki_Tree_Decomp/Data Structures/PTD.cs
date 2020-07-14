@@ -374,68 +374,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
 
             return rootNode;
-
-            /*
-            if (Bag.IsSupersetOf(rootSet))
-            {
-                return this;
-            }
-
-            // ---- 1 ----
-            // build undirected tree as an adjacency list
-            Dictionary<BitSet, List<BitSet>> adjacencyList = new Dictionary<BitSet, List<BitSet>>();
-            Stack<PTD> childrenStack = new Stack<PTD>();
-            adjacencyList[Bag] = new List<BitSet>();
-            childrenStack.Push(this);
-            // while we're at it, might as well already create the visited array
-            Dictionary<BitSet, bool> visited = new Dictionary<BitSet, bool> { [Bag] = false };
-            bool rootFound = false;
-
-            while (childrenStack.Count > 0)
-            {
-                PTD currentNode = childrenStack.Pop();
-                visited[currentNode.Bag] = false;
-
-                // find a bag that can act as a root
-                if (!rootFound && currentNode.Bag.IsSupersetOf(rootSet))
-                {
-                    rootFound = true;
-                    rootSet = currentNode.Bag;
-                }
-
-                // add children to the adjacency list
-                foreach (PTD child in currentNode.children)
-                {
-                    adjacencyList[child.Bag] = new List<BitSet>();
-                    adjacencyList[child.Bag].Add(currentNode.Bag);
-                    adjacencyList[currentNode.Bag].Add(child.Bag);
-                    childrenStack.Push(child);
-                }
-            }
-
-            // ---- 2 ----
-            // rebuild tree with different root
-            PTD rootNode = new PTD(rootSet);
-            childrenStack.Push(rootNode);
-
-            do
-            {
-                PTD currentNode = childrenStack.Pop();
-                visited[currentNode.Bag] = true;
-                foreach (BitSet adjacentNode in adjacencyList[currentNode.Bag])
-                {
-                    if (!visited[adjacentNode])
-                    {
-                        PTD childNode = new PTD(adjacentNode);
-                        currentNode.children.Add(childNode);
-                        childrenStack.Push(childNode);
-                    }
-                }
-            }
-            while (childrenStack.Count > 0);
-
-            return rootNode;
-            */
         }
 
         /// <summary>
