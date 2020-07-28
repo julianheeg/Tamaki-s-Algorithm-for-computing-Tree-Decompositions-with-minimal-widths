@@ -13,7 +13,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         [TestMethod]
         public void IsPotMaxClique_PotMaxClique()
         {
-            string testFile1 = "Test Data\\test1.gr";
+            string testFile1 = "..\\..\\Test Data\\test1.gr";
             Graph g = new Graph(testFile1);
             ImmutableGraph graph = new ImmutableGraph(g);
 
@@ -29,7 +29,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         [TestMethod]
         public void IsPotMaxClique_NotPotMaxClique()
         {
-            string testFile1 = "Test Data\\test1.gr";
+            string testFile1 = "..\\..\\Test Data\\test1.gr";
             Graph g = new Graph(testFile1);
             ImmutableGraph graph = new ImmutableGraph(g);
 

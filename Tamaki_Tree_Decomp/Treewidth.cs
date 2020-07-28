@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Tamaki_Tree_Decomp.Data_Structures;
 using System.IO;
+using Tamaki_Tree_Decomp.Safe_Separators;
 
 namespace Tamaki_Tree_Decomp
 {

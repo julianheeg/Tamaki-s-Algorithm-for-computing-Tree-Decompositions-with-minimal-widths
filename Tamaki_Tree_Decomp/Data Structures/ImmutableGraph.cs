@@ -1,9 +1,7 @@
 ﻿#define statistics
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 
 
 namespace Tamaki_Tree_Decomp.Data_Structures
@@ -375,28 +373,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="vertices">the PTD's vertex set</param>
         /// <returns>the outlet of the PTD</returns>
         public BitSet Outlet(BitSet bag, BitSet vertices)
-        {
-            /*
-            // create neighbor set
-            List<int> elements = bag.Elements();
-            BitSet bitSet = new BitSet(vertexCount);
-            for (int i = 0; i < elements.Count; i++)
-            {
-                bitSet.UnionWith(neighborSetsWithout[elements[i]]);
-            }
-            bitSet.ExceptWith(vertices);
-
-            // create outlet
-            elements = bitSet.Elements();
-            bitSet.Clear();
-            for (int i = 0; i < elements.Count; i++)
-            {
-                bitSet.UnionWith(neighborSetsWithout[elements[i]]);
-            }
-            bitSet.IntersectWith(vertices);
-            return bitSet;
-            */
-            
+        {          
             // create neighbor set            
             BitSet neighbors = new BitSet(vertexCount);
             int pos = -1;

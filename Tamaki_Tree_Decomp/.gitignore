@@ -131,3 +131,7 @@ $RECYCLE.BIN/
 .DS_Store
 
 _NCrunch*
+
+# too larget test data
+Test Data/graphs_MC2020/bipartite_graphs/track1_036.gr
+Test Data/graphs_MC2020/clique_graphs/track1_036.gr

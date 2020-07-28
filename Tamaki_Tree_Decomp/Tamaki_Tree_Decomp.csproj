@@ -47,10 +47,12 @@
     <Compile Include="Data Structures\Graph.cs" />
     <Compile Include="GraphReduction.cs" />
     <Compile Include="Data Structures\PTD.cs" />
-    <Compile Include="HeuristicSafeSeparator.cs" />
+    <Compile Include="Safe Separators\Clique_AlmostCliqueSeparator.cs" />
+    <Compile Include="Safe Separators\HeuristicSafeSeparator.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SafeSeparator.cs" />
+    <Compile Include="Safe Separators\SafeSeparator.cs" />
+    <Compile Include="Safe Separators\Size3SafeSeparator.cs" />
     <Compile Include="Treewidth.cs" />
   </ItemGroup>
   <ItemGroup>
