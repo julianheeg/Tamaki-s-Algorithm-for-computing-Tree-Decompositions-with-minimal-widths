@@ -655,7 +655,6 @@ namespace Tamaki_Tree_Decomp
             }
 
             
-            //################################ TODO: REMOVE ###############################
             if (dumpOutlets)
             {
                 Dump_P_outlets(graph, P_inlets, prematureReturn: false);
@@ -666,8 +665,17 @@ namespace Tamaki_Tree_Decomp
             return false;
         }
 
+
+
         public static bool dumpOutlets = false;
 
+        /// <summary>
+        /// writes the outlets of the trees in P onto the disk
+        /// </summary>
+        /// <param name="graph">the graph</param>
+        /// <param name="P_inlets">the set of inlets of the trees in P</param>
+        /// <param name="prematureReturn">set to true if P_inlets does not contain all possible inlets, i. e. if a tree decomposition is found.
+        ///                               This way, outlets from the previous iteration aren't overridden</param>
         private static void Dump_P_outlets(ImmutableGraph graph, HashSet<BitSet> P_inlets, bool prematureReturn)
         {
             // list of inlets by size

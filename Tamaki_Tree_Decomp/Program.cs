@@ -114,7 +114,11 @@ namespace Tamaki_Tree_Decomp
         }
 
 
-
+        /// <summary>
+        /// tests for an entire folder of graph files which of the outlets of the ptds generated during the treewidth calculation of a graph are a
+        /// clique minor of a subgraph of a graph, using the clique minor heuristic.
+        /// </summary>
+        /// <param name="folder"></param>
         private static void TestOutletsSafeSeparators_Folder(string folder)
         {
             Directory.CreateDirectory(date_time_string);
@@ -126,6 +130,10 @@ namespace Tamaki_Tree_Decomp
             Directory.Delete(date_time_string);
         }
 
+        /// <summary>
+        /// tests which of the outlets of the ptds generated during the treewidth calculation of a graph are a clique minor of a subgraph of that graph, using the clique minor heuristic.
+        /// </summary>
+        /// <param name="filepath">the file path to the graph</param>
         private static void TestOutletsSafeSeparators_Graph(string filepath)
         {
             // dump subgraphs and outlets onto disk
@@ -162,6 +170,12 @@ namespace Tamaki_Tree_Decomp
             Console.WriteLine("outlet testing for graph {0} complete", filepath);
         }
 
+        /// <summary>
+        /// tests which of the outlets of the ptds generated during the treewidth calculation of a subgraph are a clique minor of the subgraph, using the clique minor heuristic.
+        /// </summary>
+        /// <param name="subGraphFilepath">the file path of the subgraph</param>
+        /// <param name="outletFolder">the folder containing the outlets of the ptds</param>
+        /// <param name="originalGraphFilePath">the file path of the original graph (used only for logging)</param>
         private static void TestOutletsSafeSeparators_SubGraph(string subGraphFilepath, string outletFolder, string originalGraphFilePath)
         {
             Graph g = new Graph(subGraphFilepath);
