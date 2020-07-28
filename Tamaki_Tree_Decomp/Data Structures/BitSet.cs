@@ -418,24 +418,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true, iff an element exists that is in both sets</returns>
         public bool Intersects(BitSet vs2)
         {
-            return IsDisjoint(vs2) && !IsEmpty() && !vs2.IsEmpty();
+            return !IsDisjoint(vs2) && !IsEmpty() && !vs2.IsEmpty();
         }
 
         #endregion
-
-        /*
-        /// <summary>
-        /// adds the vertices in the array to the set
-        /// </summary>
-        /// <param name="indices">the vertices to add</param>
-        public void Add(int[] indices)
-        {
-            for (int i = 0; i < indices.Length; i++)
-            {
-                this[indices[i]] = true;
-            }
-        }
-        */
 
         #region printing
 

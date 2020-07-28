@@ -8,7 +8,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
     public class Treewidth_UnitTest
     {
         // test timeout in milliseconds
-        private const int timeout = 180000;
+        private const int timeout = 1800000;
 
         /// <summary>
         /// asserts that the treewidth that the algorithm finds is the graph's actual treewidth

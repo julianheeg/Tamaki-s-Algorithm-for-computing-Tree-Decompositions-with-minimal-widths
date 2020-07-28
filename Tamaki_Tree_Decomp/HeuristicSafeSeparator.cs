@@ -34,7 +34,7 @@ namespace Tamaki_Tree_Decomp
         private static readonly int MAX_STEPS = 1000000;
 
         /// <summary>
-        /// tests heuristically if a candidate separator is a safe separator. If this method returns true then the separator is guaranteed to be safe. False negatives are possible, however.
+        /// tests heuristically if a candidate separator is a safe separator. If this method returns true then the separator is guaranteed to be safe. False negatives are however possible.
         /// </summary>
         /// <param name="candidateSeparator">the candidate separator to test</param>
         /// <returns>true iff the used heuristic gives a guarantee that the candidate is a safe separator</returns>
@@ -128,8 +128,8 @@ namespace Tamaki_Tree_Decomp
                             {
                                 // ----- lines 508 to 519 -----
 
-                                BitSet vs1 = right1.neighborSet;
-                                BitSet vs2 = right2.neighborSet;
+                                BitSet vs1 = right1.vertexSet;
+                                BitSet vs2 = right2.vertexSet;
                                 BitSet vs = new BitSet(vs1);
 
                                 while (true)
@@ -493,7 +493,7 @@ namespace Tamaki_Tree_Decomp
             {
                 // TODO: remove debug stuff
                 counter++;
-                if (counter > 50)
+                if (counter > 5000)
                 {
                     throw new Exception("Possibly infinite loop in MergeRightNodes detected.");
                 }

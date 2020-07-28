@@ -100,16 +100,7 @@ namespace Tamaki_Tree_Decomp
                         isReduced = true;
 
                         graph.Remove(i);
-                        /*
-                        isReduced = true;
-                        removedVertices[i] = true;
-                        for (int j = 0; j < adjacencyList[i].Count; j++)
-                        {
-                            int neighbor = adjacencyList[i][j];
-                            adjacencyList[neighbor].Remove(i);
-                            neighborSetsWithout[neighbor][i] = false;
-                        }
-                        */
+
                         if (graph.adjacencyList[i].Count > low)
                         {
                             low = graph.adjacencyList[i].Count;

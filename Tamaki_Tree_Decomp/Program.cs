@@ -81,7 +81,7 @@ namespace Tamaki_Tree_Decomp
 #pragma warning restore CS0414
 
         static int workerThreads = 1;
-        static int timePerInstance = 1800000;
+        static int timePerInstance = 2000000;
         static int startingInstance = 0;
 
         static void Main(string[] args)
@@ -91,24 +91,13 @@ namespace Tamaki_Tree_Decomp
                 startingInstance =  start / 2;
             }
 
-            /*
-             *  9622 ja
-             * 10223 ja 674
-             * 10499 ja 397
-             * 10643 ja 247
-             * 10715 ja 247
-             * 10801 nein
-             * 
-             */
+            // used for naming files when something needs to be written onto disk
+            date_time_string = DateTime.Now.ToString();
+            date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
-            string filepath = test_h1;
-
-            //TestSpecificTreewidth(filepath, 6);
-
-
-            //string filepath = PACE2017(119);
+            //string filepath = test_h4;
+            string filepath = PACE2017(151);
             //string filepath = "Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
-            //string filepath = "13-07-2020 13-21-53\\010715-.gr";
             // string directory = "Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "Test Data\\graphs_MC2020\\clique_graphs";
             string directory = "Test Data\\graphs_MC2020";
@@ -120,14 +109,92 @@ namespace Tamaki_Tree_Decomp
             // SafeSeparator.separate = false;
             // GraphReduction.reduce = false;
 
-            date_time_string = DateTime.Now.ToString();
-            date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
-
             //Run(filepath, true);
 
-            RunAllParallel(directory);
-            
+            RunAll_Parallel(directory);
+
+            //TestOutletsSafeSeparators_Folder("Test Data\\ex-instances-PACE2017-public");
+            //TestOutletsSafeSeparators_Graph(filepath);
+
             Console.Read();
+        }
+
+
+
+        private static void TestOutletsSafeSeparators_Folder(string folder)
+        {
+            Directory.CreateDirectory(date_time_string);
+            foreach(string filepath in Directory.GetFiles(folder, "*.gr", SearchOption.AllDirectories))
+            {
+                Graph.ResetGraphIDs();
+                TestOutletsSafeSeparators_Graph(filepath);
+            }
+            Directory.Delete(date_time_string);
+        }
+
+        private static void TestOutletsSafeSeparators_Graph(string filepath)
+        {
+            // dump subgraphs and outlets onto disk
+            Graph.dumpSubgraphs = true;
+            Treewidth.dumpOutlets = true;
+            Graph g = new Graph(filepath);
+            if (g.vertexCount == 92 && g.edgeCount == 2113) // if we have ex 003 from PACE 2017, return because it takes forever
+            {
+                return;
+            }
+            Treewidth.TreeWidth(g, out _, verbose: false);
+
+            // test heuristically for each subgraph if any of the ptd outlets have a clique minor
+            foreach (string subGraphFilepath in Directory.GetFiles(date_time_string, "*.gr", SearchOption.AllDirectories))
+            {
+                string outletFolder = subGraphFilepath.Remove(subGraphFilepath.Length - 3); // outlet folder name differs in that it doesn't contain the file extension
+                if (Directory.Exists(outletFolder))
+                {
+                    TestOutletsSafeSeparators_SubGraph(subGraphFilepath, outletFolder, filepath);
+                }
+            }
+
+            // delete the graphs and folders again
+            string[] folders = Directory.GetDirectories(date_time_string);
+            foreach (string folder in folders)
+            {
+                string[] files = Directory.GetFiles(folder);
+                foreach (string file in files)
+                {
+                    File.Delete(file);
+                }
+                Directory.Delete(folder);
+            }
+            Console.WriteLine("outlet testing for graph {0} complete", filepath);
+        }
+
+        private static void TestOutletsSafeSeparators_SubGraph(string subGraphFilepath, string outletFolder, string originalGraphFilePath)
+        {
+            Graph g = new Graph(subGraphFilepath);
+            SafeSeparator ss = new SafeSeparator(g);
+            foreach (string outletFile in Directory.GetFiles(outletFolder))
+            {
+                using(StreamReader sr = new StreamReader(outletFile))
+                {
+                    while (!sr.EndOfStream)
+                    {
+                        string line = sr.ReadLine();
+                        string[] tokens = line.Split(',');
+                        int[] elements = new int[tokens.Length];
+                        for (int i = 0; i < tokens.Length; i++)
+                        {
+                            int.TryParse(tokens[i], out int j);
+                            elements[i] = j;
+                        }
+                        BitSet outlet = new BitSet(g.vertexCount, elements);
+
+                        if (ss.IsSafeSeparator_Heuristic(outlet))
+                        {
+                            Console.WriteLine("subgraph {0} of graph {1} has outlet {2} as a heuristically determined safe separator", subGraphFilepath, originalGraphFilePath, outlet);
+                        }
+                    }
+                }
+            }
         }
 
         public static string date_time_string;
@@ -142,7 +209,7 @@ namespace Tamaki_Tree_Decomp
         /// runs the algorithm for all graphs in the directory (and subdirectories) in "workerThreads" many threads.
         /// </summary>
         /// <param name="directory"></param>
-        private static void RunAllParallel(string directory)
+        private static void RunAll_Parallel(string directory)
         {
             filepaths = Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories);
             threads = new Thread[workerThreads];
@@ -157,8 +224,14 @@ namespace Tamaki_Tree_Decomp
                     threads[copy] = new Thread(() =>
                         {
                             currentlyRunning[copy] = filepaths[startingInstance + copy];
-                            Run(filepaths[startingInstance + copy], false);
-                            // TODO: result
+                            try
+                            {
+                                Run(filepaths[startingInstance + copy], false);
+                            }
+                            catch(OutOfMemoryException)
+                            {
+                                Console.WriteLine("program ran out of memory while executing algorithm for {0}.", currentlyRunning[copy]);
+                            }
                             lock (timerCallbackLock)
                             {
                                 threads[copy] = null;
@@ -166,8 +239,8 @@ namespace Tamaki_Tree_Decomp
                             AbortThread(copy);
                         }
                     );
-                    threads[i].Start();
-                    timers[i] = new Timer(new TimerCallback(AbortThread), i, timePerInstance, Timeout.Infinite);
+                    threads[copy].Start();
+                    timers[copy] = new Timer(new TimerCallback(AbortThread), copy, timePerInstance, Timeout.Infinite);
                     started++;
                 }
             }
@@ -191,8 +264,14 @@ namespace Tamaki_Tree_Decomp
                     threads[threadIndex] = new Thread(() =>
                         {
                             currentlyRunning[threadIndex] = filepaths[copy];
-                            Run(filepaths[copy], false);
-                            // TODO: result
+                            try
+                            {
+                                Run(filepaths[copy], false);
+                            }
+                            catch (OutOfMemoryException)
+                            {
+                                Console.WriteLine("program ran out of memory while executing algorithm for {0}.", currentlyRunning[copy]);
+                            }
                             lock (timerCallbackLock)
                             {
                                 threads[threadIndex] = null;

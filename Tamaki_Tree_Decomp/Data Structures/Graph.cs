@@ -16,10 +16,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public List<int>[] adjacencyList;
         public BitSet[] neighborSetsWithout;   // contains N(v)
         public BitSet[] neighborSetsWith;      // contains N[v]
-        public BitSet notRemovedVertices;
-        public int vertexCount;
-        int notRemovedVertexCount;
-        public int edgeCount;
+        public BitSet notRemovedVertices    { get; private set; }
+        public int vertexCount              { get; private set; }
+        public int notRemovedVertexCount    { get; private set; } 
+        public int edgeCount                { get; private set; }
 
         private bool isReduced = false;
 
@@ -265,7 +265,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// </summary>
         /// <param name="u">one endpoint of the edge to be inserted</param>
         /// <param name="v">the other endpoint of the edge to be inserted</param>
-        public void Insert(int u, int v)
+        public void AddEdge(int u, int v)
         {
             Debug.Assert(!neighborSetsWith[u][v]);
             adjacencyList[u].Add(v);
@@ -275,6 +275,48 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             neighborSetsWith[u][v] = true;
             neighborSetsWith[v][u] = true;
             edgeCount++;
+        }
+
+        /// <summary>
+        /// contracts an edge
+        /// </summary>
+        /// <param name="u">the end vertex that 'absorbs' v</param>
+        /// <param name="v">the end vertex that is contracted into u</param>
+        public void Contract(int u, int v)
+        {
+            // assert that u and v are indeed neighbors and also not equal to each other
+            Debug.Assert(neighborSetsWithout[u][v]);
+
+            for (int i = 0; i < adjacencyList[v].Count; i++)
+            {
+                int w = adjacencyList[v][i];
+
+                // remove v from its neighbors' adjacencies
+                adjacencyList[w].Remove(v);
+                neighborSetsWithout[w][v] = false;
+                neighborSetsWith[w][v] = false;
+                edgeCount--;
+
+                // add u to the neighbors' adjacencies
+                if (!neighborSetsWithout[w][u])
+                {
+                    adjacencyList[u].Add(w);
+                    adjacencyList[w].Add(u);
+                    neighborSetsWithout[u][w] = true;
+                    neighborSetsWithout[w][u] = true;
+                    neighborSetsWith[u][w] = true;
+                    neighborSetsWith[w][u] = true;
+                    edgeCount++;
+                }
+            }
+            adjacencyList[v].Clear();
+            neighborSetsWith[v].Clear();
+            neighborSetsWithout[v].Clear();
+            notRemovedVertexCount--;
+            notRemovedVertices[v] = false;
+
+            // TODO: perhaps return an object containing information on how to 'uncontract' the graph.
+            //       This would eliminate the need to copy the graph, but could complicate things in the Ford-Fulkerson algorithm.
         }
 
         /// <summary>
@@ -355,7 +397,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             if (verbose)
             {
-                Console.WriteLine("reduced graph {0} to {1} nodes and {2} edges", graphID, reducedAdjacencyList.Length, edgeCount);
+                Console.WriteLine("reduced graph {0} to {1} vertices and {2} edges", graphID, reducedAdjacencyList.Length, edgeCount);
             }
         }
 
@@ -524,22 +566,32 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
+        /// <summary>
+        /// resets the graph count so that new graph IDs starting from 0 are used
+        /// </summary>
+        public static void ResetGraphIDs()
+        {
+            graphCount = 0;
+        }
+
         public static bool dumpSubgraphs = false;
 
         /// <summary>
         /// writes the graph to disk
         /// </summary>
-        [Conditional("DEBUG")]
         public void Dump()
         {
             if (dumpSubgraphs)
             {
                 // TODO: doesn't work in all languages/cultures
                 Directory.CreateDirectory(Program.date_time_string);
-                using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0:D6}-.gr", graphID)))
+                using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0}.gr", graphID)))
                 {
                     sw.WriteLine(String.Format("p tw {0} {1}", notRemovedVertexCount, edgeCount));
-                    Console.WriteLine("Dumped graph {0} with {1} vertices and {2} edges", graphID, notRemovedVertexCount, edgeCount);
+                    if (verbose)
+                    {
+                        Console.WriteLine("Dumped graph {0} with {1} vertices and {2} edges", graphID, notRemovedVertexCount, edgeCount);
+                    }
 
                     for (int u = 0; u < vertexCount; u++)
                     {

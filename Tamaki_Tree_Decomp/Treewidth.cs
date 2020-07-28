@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Tamaki_Tree_Decomp.Data_Structures;
+using System.IO;
 
 namespace Tamaki_Tree_Decomp
 {
@@ -20,6 +21,7 @@ namespace Tamaki_Tree_Decomp
         /// <returns>the graph's tree width</returns>
         public static int TreeWidth(Graph graph, out PTD treeDecomp, bool verbose = true)
         {
+            Treewidth.verbose = verbose;
             Graph.verbose = verbose;
             ImmutableGraph.verbose = verbose;
 
@@ -112,7 +114,7 @@ namespace Tamaki_Tree_Decomp
                 graphReductions.Add(new List<GraphReduction>());
 
                 // loop over all possible tree widths for the current graph
-                while(minK < graph.vertexCount - 1)
+                while (minK < graph.vertexCount - 1)
                 {
                     // perform graph reduction
                     GraphReduction graphReduction = new GraphReduction(graph, minK);
@@ -122,6 +124,7 @@ namespace Tamaki_Tree_Decomp
                         graphReductions[graphReductions.Count - 1].Add(graphReduction);
                     }
 
+                    // break early if the graph doesn't contain any vertices anymore
                     if (graph.vertexCount == 0)
                     {
                         PTD subGraphTreeDecomp = new PTD(new BitSet(0));
@@ -136,7 +139,8 @@ namespace Tamaki_Tree_Decomp
                     // only try to find safe separators if the graph has been reduced in this iteration or if this iteration is the first one.
                     // Else there is no chance that a new safe separator can be found
                     bool separated = false;
-                    if (reduced || firstIterationOnGraph) {
+                    if (reduced || firstIterationOnGraph)
+                    {
                         firstIterationOnGraph = false;
                         // try to find safe separator
                         SafeSeparator safeSeparator = new SafeSeparator(graph, verbose);
@@ -153,9 +157,9 @@ namespace Tamaki_Tree_Decomp
 
                             safeSeparators.Add(safeSeparator);
                             safeSeparatorSubgraphIndices.Add(i);
-                            childrenLists.Add(children);                            
+                            childrenLists.Add(children);
                             ptds.Add(null);
-                            
+
                             // continue with the next graph
                             break;
                         }
@@ -176,6 +180,11 @@ namespace Tamaki_Tree_Decomp
                             }
                             ptds.Add(subGraphTreeDecomp);
 
+                            if (Graph.dumpSubgraphs)
+                            {
+                                graph.Dump();
+                            }
+
                             if (verbose)
                             {
                                 // "at most" because we only test for the lowest bound we have for the entire graph, not for exact treewidth of any one subgraph
@@ -193,7 +202,7 @@ namespace Tamaki_Tree_Decomp
 
                 if (ptds.Count == i)    // if graph is smaller than the minimum bound for tree width
                 {
-                    ptds.Add(new PTD(BitSet.All(graph.vertexCount)));   // TODO: correct?
+                    ptds.Add(new PTD(BitSet.All(graph.vertexCount)));
                 }
             }
 
@@ -211,9 +220,6 @@ namespace Tamaki_Tree_Decomp
                 int parentIndex = safeSeparatorSubgraphIndices[j];
                 ptds[parentIndex] = safeSeparators[j].RecombineTreeDecompositions(childrenPTDs);
                 PTD ptd = ptds[parentIndex];
-#if DEBUG
-                ptd.AssertValidTreeDecomposition(new ImmutableGraph(subGraphs[parentIndex]));
-#endif
                 for (int i = graphReductions[parentIndex].Count - 1; i >= 0; i--)
                 {
                     graphReductions[parentIndex][i].RebuildTreeDecomposition(ref ptd);
@@ -280,6 +286,7 @@ namespace Tamaki_Tree_Decomp
                     graphReductions[graphReductions.Count - 1].Add(graphReduction);
                 }
 
+                // break early if the graph doesn't contain any vertices anymore
                 if (graph.vertexCount == 0)
                 {
                     PTD subGraphTreeDecomp = new PTD(new BitSet(0));
@@ -519,6 +526,14 @@ namespace Tamaki_Tree_Decomp
                         {
                             if (p1.vertices.Equals(graph.allVertices))
                             {
+                                
+                                //################################ TODO: REMOVE ###############################
+                                if (dumpOutlets)
+                                {
+                                    Dump_P_outlets(graph, P_inlets, prematureReturn: true);
+                                }
+                                
+
                                 treeDecomp = p1;
                                 return true;
                             }
@@ -557,6 +572,13 @@ namespace Tamaki_Tree_Decomp
                                 {
                                     if (p2.vertices.Equals(graph.allVertices))
                                     {
+                                        
+                                        //################################ TODO: REMOVE ###############################
+                                        if (dumpOutlets)
+                                        {
+                                            Dump_P_outlets(graph, P_inlets, prematureReturn: true);
+                                        }
+
                                         treeDecomp = p2;
                                         return true;
                                     }
@@ -601,6 +623,14 @@ namespace Tamaki_Tree_Decomp
                             {
                                 if (p3.vertices.Equals(graph.allVertices))
                                 {
+                                    
+                                    //################################ TODO: REMOVE ###############################
+                                    if (dumpOutlets)
+                                    {
+                                        Dump_P_outlets(graph, P_inlets, prematureReturn: true);
+                                    }
+                                    
+
                                     treeDecomp = p3;
                                     return true;
                                 }
@@ -625,8 +655,53 @@ namespace Tamaki_Tree_Decomp
             {
                 Console.WriteLine("considered {0} PTDs and {1} PTDURs", P.Count, U.Count);
             }
+
+            
+            //################################ TODO: REMOVE ###############################
+            if (dumpOutlets)
+            {
+                Dump_P_outlets(graph, P_inlets, prematureReturn: false);
+            }
+            
+
             treeDecomp = null;
             return false;
+        }
+
+        public static bool dumpOutlets = false;
+
+        private static void Dump_P_outlets(ImmutableGraph graph, HashSet<BitSet> P_inlets, bool prematureReturn)
+        {
+            // list of inlets by size
+            List<HashSet<BitSet>> asdf = new List<HashSet<BitSet>>(graph.vertexCount);
+            for (int i = 0; i < graph.vertexCount; i++)
+            {
+                asdf.Add(new HashSet<BitSet>());
+            }
+            foreach(BitSet inlet in P_inlets)
+            {
+                BitSet outlet = graph.Neighbors(inlet);
+                int outletSize = (int)outlet.Count();
+                asdf[outletSize].Add(outlet);
+            }
+
+
+            string folder = Program.date_time_string + "\\" + graph.graphID;
+            Directory.CreateDirectory(folder);
+
+            for (int i = 0; i < asdf.Count; i++)
+            {
+                if (asdf[i].Count > 0)
+                {
+                    using (StreamWriter sw = new StreamWriter(String.Format(folder + "\\graph {0} - outlets of size {1} - {2}.txt", graph.graphID, i, prematureReturn ? "p" : "")))
+                    {
+                        foreach(BitSet outlet in asdf[i])
+                        {
+                            sw.WriteLine(outlet.ToString());
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
