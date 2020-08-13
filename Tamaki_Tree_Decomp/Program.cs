@@ -89,13 +89,13 @@ namespace Tamaki_Tree_Decomp
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
-            string filepath = test_a4;
-            //string filepath = PACE2017(151);
+            string filepath = PACE2017(155);
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             // string directory = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs";
-            string directory = "..\\..\\Test Data\\graphs_MC2020";
+            //string directory = "..\\..\\Test Data\\graphs_MC2020";
             //string directory = "..\\..\\Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\";
+            string directory = "..\\..\\Test Data\\ex-instances-PACE2017-public\\";
 
             BitSet.plusOneInString = false;
             // Graph.dumpSubgraphs = true;
@@ -103,106 +103,11 @@ namespace Tamaki_Tree_Decomp
             // SafeSeparator.separate = false;
             // GraphReduction.reduce = false;
 
+            //Treewidth.testOutletIsCliqueMinor = false;
             Run(filepath, true);
-
             //RunAll_Parallel(directory);
 
-            //TestOutletsSafeSeparators_Folder("..\\..\\Test Data\\ex-instances-PACE2017-public");
-            //TestOutletsSafeSeparators_Graph(filepath);
-
             Console.Read();
-        }
-
-
-        /// <summary>
-        /// tests for an entire folder of graph files which of the outlets of the ptds generated during the treewidth calculation of a graph are a
-        /// clique minor of a subgraph of a graph, using the clique minor heuristic.
-        /// </summary>
-        /// <param name="folder"></param>
-        private static void TestOutletsSafeSeparators_Folder(string folder)
-        {
-            Directory.CreateDirectory(date_time_string);
-            foreach(string filepath in Directory.GetFiles(folder, "*.gr", SearchOption.AllDirectories))
-            {
-                Graph.ResetGraphIDs();
-                TestOutletsSafeSeparators_Graph(filepath);
-            }
-            Directory.Delete(date_time_string);
-        }
-
-        /// <summary>
-        /// tests which of the outlets of the ptds generated during the treewidth calculation of a graph are a clique minor of a subgraph of that graph, using the clique minor heuristic.
-        /// </summary>
-        /// <param name="filepath">the file path to the graph</param>
-        private static void TestOutletsSafeSeparators_Graph(string filepath)
-        {
-            // dump subgraphs and outlets onto disk
-            Graph.dumpSubgraphs = true;
-            Treewidth.dumpOutlets = true;
-            Graph g = new Graph(filepath);
-            if (g.vertexCount == 92 && g.edgeCount == 2113) // if we have ex 003 from PACE 2017, return because it takes forever
-            {
-                return;
-            }
-            Treewidth.TreeWidth(g, out _, verbose: false);
-
-            // test heuristically for each subgraph if any of the ptd outlets have a clique minor
-            foreach (string subGraphFilepath in Directory.GetFiles(date_time_string, "*.gr", SearchOption.AllDirectories))
-            {
-                string outletFolder = subGraphFilepath.Remove(subGraphFilepath.Length - 3); // outlet folder name differs in that it doesn't contain the file extension
-                if (Directory.Exists(outletFolder))
-                {
-                    TestOutletsSafeSeparators_SubGraph(subGraphFilepath, outletFolder, filepath);
-                }
-            }
-
-            // delete the graphs and folders again
-            string[] folders = Directory.GetDirectories(date_time_string);
-            foreach (string folder in folders)
-            {
-                string[] files = Directory.GetFiles(folder);
-                foreach (string file in files)
-                {
-                    File.Delete(file);
-                }
-                Directory.Delete(folder);
-            }
-            Console.WriteLine("outlet testing for graph {0} complete", filepath);
-        }
-
-        /// <summary>
-        /// tests which of the outlets of the ptds generated during the treewidth calculation of a subgraph are a clique minor of the subgraph, using the clique minor heuristic.
-        /// </summary>
-        /// <param name="subGraphFilepath">the file path of the subgraph</param>
-        /// <param name="outletFolder">the folder containing the outlets of the ptds</param>
-        /// <param name="originalGraphFilePath">the file path of the original graph (used only for logging)</param>
-        private static void TestOutletsSafeSeparators_SubGraph(string subGraphFilepath, string outletFolder, string originalGraphFilePath)
-        {
-            Graph g = new Graph(subGraphFilepath);
-            SafeSeparator ss = new SafeSeparator(g);
-            foreach (string outletFile in Directory.GetFiles(outletFolder))
-            {
-                using(StreamReader sr = new StreamReader(outletFile))
-                {
-                    while (!sr.EndOfStream)
-                    {
-                        string line = sr.ReadLine();
-                        string[] tokens = line.Split(',');
-                        int[] elements = new int[tokens.Length];
-                        for (int i = 0; i < tokens.Length; i++)
-                        {
-                            int.TryParse(tokens[i], out int j);
-                            elements[i] = j;
-                        }
-                        BitSet outlet = new BitSet(g.vertexCount, elements);
-
-                        if (ss.IsSafeSeparator_Heuristic(outlet))
-                        {
-                            Console.WriteLine("subgraph {0} of graph {1} has outlet {2} as a heuristically determined safe separator", subGraphFilepath, originalGraphFilePath, outlet);
-                        }
-                    }
-                }
-            }
         }
 
         public static string date_time_string;
@@ -220,6 +125,19 @@ namespace Tamaki_Tree_Decomp
         private static void RunAll_Parallel(string directory)
         {
             filepaths = Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories);
+
+            // if checking PACE 2017, exclude ex003.gr because it takes forever
+            if (directory.EndsWith("ex-instances-PACE2017-public\\"))
+            {
+                string[] filepaths_temp = new string[99];
+                filepaths_temp[0] = filepaths[0];
+                for (int i = 1; i < 99; i++)
+                {
+                    filepaths_temp[i] = filepaths[i + 1];
+                }
+                filepaths = filepaths_temp;
+            }
+
             threads = new Thread[workerThreads];
             timers = new Timer[workerThreads];
             currentlyRunning = new string[workerThreads];

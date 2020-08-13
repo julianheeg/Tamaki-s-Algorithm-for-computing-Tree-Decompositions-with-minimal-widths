@@ -91,6 +91,7 @@ namespace Tamaki_Tree_Decomp
              *      3. The tree decomposition for the input graph is in ptds[0]
              * 
              */
+            outletsAlreadyChecked = new HashSet<BitSet>();
 
             int minK = 0;
 
@@ -166,8 +167,14 @@ namespace Tamaki_Tree_Decomp
                     // only check tree width if the graph has not been separated. If it has, the tree decomposition is built later from the subgraphs
                     if (!separated)
                     {
+                        ss = new SafeSeparator(graph);
+                        if (reduced)
+                        {
+                            outletsAlreadyChecked.Clear();
+                        }
+
                         ImmutableGraph immutableGraph = new ImmutableGraph(graph);
-                        if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp))
+                        if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp, out BitSet outletSafeSeparator))
                         {
 #if DEBUG
                             subGraphTreeDecomp.AssertValidTreeDecomposition(immutableGraph);
@@ -188,6 +195,27 @@ namespace Tamaki_Tree_Decomp
                                 // "at most" because we only test for the lowest bound we have for the entire graph, not for exact treewidth of any one subgraph
                                 Console.WriteLine("graph {0} has treewidth at most {1}.", graph.graphID, minK);
                             }
+                            break;
+                        }
+                        else if (outletSafeSeparator != null)
+                        {
+                            List<Graph> separatedGraphs = ss.ApplyExternallyFoundSafeSeparator(outletSafeSeparator, SafeSeparator.SeparatorType.CliqueMinor, ref minK);
+
+                            separated = true;
+                            List<int> children = new List<int>();
+                            // if there is one, put the children in the list to be processed
+                            for (int j = 0; j < separatedGraphs.Count; j++)
+                            {
+                                children.Add(subGraphs.Count + j);
+                            }
+                            subGraphs.AddRange(separatedGraphs);
+
+                            safeSeparators.Add(ss);
+                            safeSeparatorSubgraphIndices.Add(i);
+                            childrenLists.Add(children);
+                            ptds.Add(null);
+
+                            // continue with the next graph
                             break;
                         }
                     }
@@ -252,6 +280,8 @@ namespace Tamaki_Tree_Decomp
                 treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
                 return k == 0;
             }
+
+            outletsAlreadyChecked = new HashSet<BitSet>();
 
             int minK = k;   // check equality with k after reduction and safe separation
 
@@ -329,8 +359,9 @@ namespace Tamaki_Tree_Decomp
                 // only check tree width if the graph has not been separated. If it has, the tree decomposition is built later from the subgraphs
                 if (!separated)
                 {
+                    ss = new SafeSeparator(graph);
                     ImmutableGraph immutableGraph = new ImmutableGraph(graph);
-                    if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp))
+                    if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp, out BitSet outletSafeSeparator))
                     {
 #if DEBUG
                         subGraphTreeDecomp.AssertValidTreeDecomposition(immutableGraph);
@@ -344,8 +375,32 @@ namespace Tamaki_Tree_Decomp
                     }
                     else
                     {
-                        treeDecomp = null;
-                        return false;
+                        if (outletSafeSeparator != null)
+                        {
+                            separatedGraphs = ss.ApplyExternallyFoundSafeSeparator(outletSafeSeparator, SafeSeparator.SeparatorType.CliqueMinor, ref minK);
+
+                            separated = true;
+                            List<int> children = new List<int>();
+                            // if there is one, put the children in the list to be processed
+                            for (int j = 0; j < separatedGraphs.Count; j++)
+                            {
+                                children.Add(subGraphs.Count + j);
+                            }
+                            subGraphs.AddRange(separatedGraphs);
+
+                            safeSeparators.Add(ss);
+                            safeSeparatorSubgraphIndices.Add(i);
+                            childrenLists.Add(children);
+                            ptds.Add(null);
+
+                            // continue with the next graph
+                            break;
+                        }
+                        else
+                        {
+                            treeDecomp = null;
+                            return false;
+                        }
                     }
                 }
                 minK++;
@@ -381,17 +436,28 @@ namespace Tamaki_Tree_Decomp
             return true;
         }
 
+        [ThreadStatic]
+        static SafeSeparator ss;    // a safe separator object for testing if a given outlet is a clique minor of the underlying graph
+        [ThreadStatic]
+        static HashSet<BitSet> outletsAlreadyChecked;  // contains all outlets that have already been tested if they are a clique minor
+        [ThreadStatic]
+        public static bool testOutletIsCliqueMinor = true;  // switch for controlling whether the outlet-is-clique-minor test is executed
+
         /// <summary>
-        /// determines whether this graph has tree width k
+        /// determines whether this graph has tree width k, or, if a safe separator is found by a heuristic,
+        /// that safe separator is given out instead, so that this function can be called on the subgraphs.
         /// </summary>
+        /// <param name="graph">the graph</param>
         /// <param name="k">the desired tree width</param>
-        /// <param name="treeDecomp">a normalized canonical tree decomposition if there is one, else null</param>
-        /// <returns>true, iff this graph has tree width k</returns>
-        private static bool HasTreeWidth(ImmutableGraph graph, int k, out PTD treeDecomp)
+        /// <param name="treeDecomp">a tree decomposition with width <paramref name="k"/> if there is one, else null. This is also null when a safe separator is found instead.</param>
+        /// <param name="outletSafeSeparator">a safe separator, if one is found during the execution, else null</param>
+        /// <returns>true, iff this graph has tree width <paramref name="k"/></returns>
+        private static bool HasTreeWidth(ImmutableGraph graph, int k, out PTD treeDecomp, out BitSet outletSafeSeparator)
         {
             if (graph.vertexCount == 0)
             {
                 treeDecomp = new PTD(new BitSet(0));
+                outletSafeSeparator = null;
                 return true;
             }
 
@@ -433,6 +499,20 @@ namespace Tamaki_Tree_Decomp
                 PTD Tau = P.Pop();
 
                 Debug.Assert(graph.IsMinimalSeparator(Tau.outlet));
+
+                // test outlet for clique minor
+                // TODO: move to wherever anything is added to P, so that outlet is tested earlier. Might be bad for cache locality, though -> test if worth it.
+                if (testOutletIsCliqueMinor && !outletsAlreadyChecked.Contains(Tau.outlet))
+                {
+                    outletsAlreadyChecked.Add(Tau.outlet);
+                    if (ss.IsSafeSeparator_Heuristic(Tau.outlet))
+                    {
+                        Console.WriteLine("found a clique minor that is an outlet of a tree");
+                        outletSafeSeparator = Tau.outlet;
+                        treeDecomp = null;
+                        return false;
+                    }
+                }
 
                 // --------- line 9 ----------
 
@@ -524,15 +604,8 @@ namespace Tamaki_Tree_Decomp
                         {
                             if (p1.vertices.Equals(graph.allVertices))
                             {
-                                
-                                //################################ TODO: REMOVE ###############################
-                                if (dumpOutlets)
-                                {
-                                    Dump_P_outlets(graph, P_inlets, prematureReturn: true);
-                                }
-                                
-
                                 treeDecomp = p1;
+                                outletSafeSeparator = null;
                                 return true;
                             }
 
@@ -570,14 +643,8 @@ namespace Tamaki_Tree_Decomp
                                 {
                                     if (p2.vertices.Equals(graph.allVertices))
                                     {
-                                        
-                                        //################################ TODO: REMOVE ###############################
-                                        if (dumpOutlets)
-                                        {
-                                            Dump_P_outlets(graph, P_inlets, prematureReturn: true);
-                                        }
-
                                         treeDecomp = p2;
+                                        outletSafeSeparator = null;
                                         return true;
                                     }
 
@@ -621,15 +688,8 @@ namespace Tamaki_Tree_Decomp
                             {
                                 if (p3.vertices.Equals(graph.allVertices))
                                 {
-                                    
-                                    //################################ TODO: REMOVE ###############################
-                                    if (dumpOutlets)
-                                    {
-                                        Dump_P_outlets(graph, P_inlets, prematureReturn: true);
-                                    }
-                                    
-
                                     treeDecomp = p3;
+                                    outletSafeSeparator = null;
                                     return true;
                                 }
 
@@ -654,60 +714,9 @@ namespace Tamaki_Tree_Decomp
                 Console.WriteLine("considered {0} PTDs and {1} PTDURs", P.Count, U.Count);
             }
 
-            
-            if (dumpOutlets)
-            {
-                Dump_P_outlets(graph, P_inlets, prematureReturn: false);
-            }
-            
-
             treeDecomp = null;
+            outletSafeSeparator = null;
             return false;
-        }
-
-
-
-        public static bool dumpOutlets = false;
-
-        /// <summary>
-        /// writes the outlets of the trees in P onto the disk
-        /// </summary>
-        /// <param name="graph">the graph</param>
-        /// <param name="P_inlets">the set of inlets of the trees in P</param>
-        /// <param name="prematureReturn">set to true if P_inlets does not contain all possible inlets, i. e. if a tree decomposition is found.
-        ///                               This way, outlets from the previous iteration aren't overridden</param>
-        private static void Dump_P_outlets(ImmutableGraph graph, HashSet<BitSet> P_inlets, bool prematureReturn)
-        {
-            // list of inlets by size
-            List<HashSet<BitSet>> asdf = new List<HashSet<BitSet>>(graph.vertexCount);
-            for (int i = 0; i < graph.vertexCount; i++)
-            {
-                asdf.Add(new HashSet<BitSet>());
-            }
-            foreach(BitSet inlet in P_inlets)
-            {
-                BitSet outlet = graph.Neighbors(inlet);
-                int outletSize = (int)outlet.Count();
-                asdf[outletSize].Add(outlet);
-            }
-
-
-            string folder = Program.date_time_string + "\\" + graph.graphID;
-            Directory.CreateDirectory(folder);
-
-            for (int i = 0; i < asdf.Count; i++)
-            {
-                if (asdf[i].Count > 0)
-                {
-                    using (StreamWriter sw = new StreamWriter(String.Format(folder + "\\graph {0} - outlets of size {1} - {2}.txt", graph.graphID, i, prematureReturn ? "p" : "")))
-                    {
-                        foreach(BitSet outlet in asdf[i])
-                        {
-                            sw.WriteLine(outlet.ToString());
-                        }
-                    }
-                }
-            }
         }
 
         /// <summary>
@@ -723,7 +732,7 @@ namespace Tamaki_Tree_Decomp
             //return true;
             //return !tau_tauprime_combined;                                                                              // test
             return !tau_tauprime_combined || !toTest.IsIncoming(graph);                                                   // mine
-            //return (!tau_tauprime_combined || toTest.IsNormalized_Daniela(Tau)) && !toTest.IsIncoming_Daniela(this);  // Daniela old
+            //return (!tau_tauprime_combined || toTest.IsNormalized_Daniela(Tau)) && !toTest.IsIncoming_Daniela(graph);  // Daniela old
 
             //return !tau_tauprime_combined || (toTest.IsNormalized_Daniela(Tau) && !toTest.IsIncoming_Daniela(this));  // Daniela very old
         }

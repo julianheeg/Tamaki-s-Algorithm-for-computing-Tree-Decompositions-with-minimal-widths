@@ -17,7 +17,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
         SeparatorType separatorType;
         public int separatorSize;
 
-        enum SeparatorType
+        public enum SeparatorType
         {
             NotConnected, Size1, Size2, Size3, Clique, AlmostClique, CliqueMinor
         }
@@ -42,7 +42,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
         /// tries to separate the graph using safe separators. If successful the minK parameter is set to the maximum of minK and the separator size
         /// </summary>
         /// <param name="separatedGraphs">a list of the separated graphs, if a separator exists, else null</param>
-        /// <param name="minK">the minimum tree width parameter. If a separator is found that is greater than minK, it is set to the separator size</param>
+        /// <param name="minK">the minimum treewidth parameter. If a separator is found that is greater than minK, it is set to the separator size</param>
         /// <returns>true iff a separation has been performed</returns>
         public bool Separate(out List<Graph> separatedGraphs, ref int minK)
         {
@@ -56,24 +56,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
 
             if (TestNotConnected() || FindSize1Separator() || FindSize2Separator() || HeuristicDecomposition() || FindSize3Separator_Flow() || FindCliqueSeparator() || FindAlmostCliqueSeparator())
             {
-                List<int> separatorVertices = separator.Elements();
-                separatorSize = separatorVertices.Count;
-                graph.MakeIntoClique(separatorVertices);
-
-                if (verbose)
-                {
-                    Console.WriteLine("graph {0} contains a {1} as safe separator of type {2}", graph.graphID, separator.ToString(), separatorType);
-                }
-
-                separatedGraphs = graph.Separate(separator, out reconstructionIndexationMappings);
-
-                if (minK < separatorSize)
-                {
-                    minK = separatorSize;
-                }
-
-                // remove reference to the graph so that its ressources can be freed
-                graph = null;
+                separatedGraphs = SeparateAtSeparator(ref minK);
 
                 return true;
             }
@@ -82,6 +65,49 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
             separatedGraphs = null;
             graph = null;
             return false;
+        }
+
+        /// <summary>
+        /// separates the graph at the separator
+        /// </summary>
+        /// <param name="minK">the minimum treewidth parameter. It is set to the maximum of its previous value and the size of the separator</param>
+        /// <returns>A list of the new subgraphs</returns>
+        private List<Graph> SeparateAtSeparator(ref int minK)
+        {
+            List<Graph> separatedGraphs;
+            List<int> separatorVertices = separator.Elements();
+            separatorSize = separatorVertices.Count;
+            graph.MakeIntoClique(separatorVertices);
+
+            if (verbose)
+            {
+                Console.WriteLine("graph {0} contains a {1} as safe separator of type {2}", graph.graphID, separator.ToString(), separatorType);
+            }
+
+            separatedGraphs = graph.Separate(separator, out reconstructionIndexationMappings);
+
+            if (minK < separatorSize)
+            {
+                minK = separatorSize;
+            }
+
+            // remove reference to the graph so that its ressources can be freed
+            graph = null;
+            return separatedGraphs;
+        }
+
+        /// <summary>
+        /// Separates the graph at a separator that has been found after pre-processing during the runtime of the actual algorithm.
+        /// </summary>
+        /// <param name="separator">the separator</param>
+        /// <param name="separatorType">the type of that separator</param>
+        /// <param name="minK">the minimum treewidth parameter. It is set to the maximum of its previous value and the separator size</param>
+        /// <returns>a list of the new subgraphs</returns>
+        public List<Graph> ApplyExternallyFoundSafeSeparator(BitSet separator, SeparatorType separatorType, ref int minK)
+        {
+            this.separator = separator;
+            this.separatorType = separatorType;
+            return SeparateAtSeparator(ref minK);
         }
 
         #region exact safe separator search
