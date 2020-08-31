@@ -420,6 +420,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return !IsDisjoint(vs2) && !IsEmpty() && !vs2.IsEmpty();
         }
 
+        public static uint CountUnion(BitSet first, BitSet second)
+        {
+            uint count = 0;
+            int length = first.bytes.Length;
+
+            for (int i = 0; i < length; i++)
+            {
+                uint v = first.bytes[i] | second.bytes[i];
+
+                v = v - ((v >> 1) & 0x55555555);
+                v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+                count += ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+            }
+
+            return count;
+        }
         #endregion
 
         #region printing

@@ -1,5 +1,6 @@
 ﻿#define statistics
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -193,6 +194,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
+        Dictionary<BitSet, bool> cliquishTest = new Dictionary<BitSet, bool>();
+
         /// <summary>
         /// determines if a given vertex set is cliquish
         /// </summary>
@@ -200,6 +203,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true, iff the vertex set is cliquish</returns>
         public bool IsCliquish(BitSet K)
         {
+            if (cliquishTest.TryGetValue(K, out bool result))
+            {
+                return result;
+            }
+
             // ------ 1.------
 
             List<BitSet> componentNeighborsInK = new List<BitSet>();
@@ -237,6 +245,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         // ... if neither a.) nor b.) hold, K is not a potential maximal clique
                         if (!b_satisfied)
                         {
+                            cliquishTest.Add(K, false);
                             return false;
                         }
                     }
@@ -244,11 +253,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
+            cliquishTest.Add(K, true);
             return true;
         }
 
         /// <summary>
         /// checks if K is a potential maximal clique and if so, computes the boundary vertices of K
+        ///     (i. e. the vertices of K that have neighbors not in K)
         /// </summary>
         /// <param name="K">the vertex set to test</param>
         /// <param name="boundary">the boundary vertices of K if K is a potentially maximal clique</param>

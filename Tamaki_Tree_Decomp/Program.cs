@@ -89,23 +89,32 @@ namespace Tamaki_Tree_Decomp
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
-            string filepath = PACE2017(155);
+            string filepath = PACE2017(3);
+            //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_032.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             // string directory = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs";
-            //string directory = "..\\..\\Test Data\\graphs_MC2020";
+            string directory = "..\\..\\Test Data\\graphs_MC2020";
             //string directory = "..\\..\\Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\";
-            string directory = "..\\..\\Test Data\\ex-instances-PACE2017-public\\";
+            //string directory = "..\\..\\Test Data\\ex-instances-PACE2017-public\\";
 
             BitSet.plusOneInString = false;
             // Graph.dumpSubgraphs = true;
             // Graph.old = false;
             // SafeSeparator.separate = false;
-            // GraphReduction.reduce = false;
+            GraphReduction.reduce = false;
 
             //Treewidth.testOutletIsCliqueMinor = false;
-            Run(filepath, true);
-            //RunAll_Parallel(directory);
+
+            //Console.WriteLine("--------------");
+            //Console.WriteLine(Treewidth.IsTreeWidthAtMost(new Graph(filepath), 43, out PTD _));
+            //Console.WriteLine("--------------");
+            //Console.WriteLine(Treewidth.IsTreeWidthAtMost(new Graph(filepath), 44, out PTD _));
+            //Console.WriteLine("--------------");
+
+            //Run(filepath, true);
+            RunAll_Parallel(directory);
+            //RunAll_Sequential(directory);
 
             Console.Read();
         }
@@ -196,7 +205,7 @@ namespace Tamaki_Tree_Decomp
                             }
                             catch (OutOfMemoryException)
                             {
-                                Console.WriteLine("program ran out of memory while executing algorithm for {0}.", currentlyRunning[copy]);
+                                Console.WriteLine("program ran out of memory while executing algorithm for {0}.", currentlyRunning[threadIndex]);
                             }
                             lock (timerCallbackLock)
                             {
@@ -210,6 +219,22 @@ namespace Tamaki_Tree_Decomp
                     timers[threadIndex].Change(timePerInstance, Timeout.Infinite);
                 }
             }
+        }
+
+        private static void RunAll_Sequential(string directory)
+        {
+            Stopwatch timer = new Stopwatch();
+            timer.Start();
+            foreach(String filepath in Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories))
+            {
+                if (filepath.Contains("Test Data\\ex-instances-PACE2017-public\\ex003.gr"))
+                {
+                    continue;
+                }
+                Run(filepath, false);
+            }
+            timer.Stop();
+            Console.WriteLine("\n-------------------------------------------------------------------------------------\n\ntotal time for directory: " + timer.Elapsed.ToString());
         }
 
         private static int Run(string filepath, bool print=true)

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Tamaki_Tree_Decomp.Data_Structures;
 using System.IO;
 using Tamaki_Tree_Decomp.Safe_Separators;
+using System.Text;
 
 namespace Tamaki_Tree_Decomp
 {
@@ -103,6 +104,8 @@ namespace Tamaki_Tree_Decomp
             List<PTD> ptds = new List<PTD>();   // the ptds for each subgraph. If the subgraph has a safe separator, that position is set to null at first and the correct ptd is inserted later
 
             subGraphs.Add(graph);
+
+            treeDecomp_Counts = new List<int>();
             
             // loop over all subgraphs
             for (int i = 0; i < subGraphs.Count; i++)
@@ -199,6 +202,7 @@ namespace Tamaki_Tree_Decomp
                         }
                         else if (outletSafeSeparator != null)
                         {
+                            Console.WriteLine("found outlet clique minor");
                             List<Graph> separatedGraphs = ss.ApplyExternallyFoundSafeSeparator(outletSafeSeparator, SafeSeparator.SeparatorType.CliqueMinor, ref minK);
 
                             separated = true;
@@ -251,6 +255,17 @@ namespace Tamaki_Tree_Decomp
                     graphReductions[parentIndex][i].RebuildTreeDecomposition(ref ptd);
                 }
                 ptds[parentIndex] = ptd;
+            }
+
+            if (treeDecomp_Counts.Count > 0)
+            {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < treeDecomp_Counts.Count; i++)
+                {
+                    sb.Append(treeDecomp_Counts[i] + ", ");
+                }
+                sb.Remove(sb.Length - 2, 2);
+                Console.WriteLine("found             " + sb.ToString() + "\n\nsubtree decompositions\n");
             }
 
             treeDecomp = ptds[0];
@@ -360,6 +375,7 @@ namespace Tamaki_Tree_Decomp
                 if (!separated)
                 {
                     ss = new SafeSeparator(graph);
+                    outletsAlreadyChecked.Clear();
                     ImmutableGraph immutableGraph = new ImmutableGraph(graph);
                     if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp, out BitSet outletSafeSeparator))
                     {
@@ -394,7 +410,7 @@ namespace Tamaki_Tree_Decomp
                             ptds.Add(null);
 
                             // continue with the next graph
-                            break;
+                            continue;
                         }
                         else
                         {
@@ -454,6 +470,293 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true, iff this graph has tree width <paramref name="k"/></returns>
         private static bool HasTreeWidth(ImmutableGraph graph, int k, out PTD treeDecomp, out BitSet outletSafeSeparator)
         {
+            if (graph.vertexCount == 0)
+            {
+                treeDecomp = new PTD(new BitSet(0));
+                outletSafeSeparator = null;
+                return true;
+            }
+
+            // TODO: P and U can actually be reused from the previous iteration
+            Stack<PTD> P = new Stack<PTD>();    // stack seems to be so much faster than a list in the last iteration,
+                                                // at least for the 2017 instances.
+            HashSet<BitSet> P_inlets = new HashSet<BitSet>();
+
+            List<PTD> U = new List<PTD>();
+            // basically the same as P_inlets, but here the index of the PTD in U is saved along with the inlet
+            Dictionary<BitSet, int> U_inletsWithIndex = new Dictionary<BitSet, int>();
+
+            bool[] isNvSmallEnoughAndPotMaxClique = new bool[graph.vertexCount];    // TODO: make static and reset from calling function
+
+            // ---------line 1 is in the method that calls this one----------
+
+            // --------- lines 2 to 6 ---------- (5 is skipped and tested in the method that calls this one)
+
+            for (int v = 0; v < graph.vertexCount; v++)
+            {
+                if (graph.adjacencyList[v].Length <= k && graph.IsPotMaxClique(graph.neighborSetsWith[v], out BitSet outlet))
+                {
+                    isNvSmallEnoughAndPotMaxClique[v] = true;
+                    PTD p0 = new PTD(graph.neighborSetsWith[v], outlet);
+                    if (!P_inlets.Contains(p0.inlet))
+                    {
+                        if (graph.IsMinimalSeparator(outlet))
+                        {
+                            P.Push(p0); // ptd mit Tasche N[v] als einzelnen Knoten
+                            P_inlets.Add(p0.inlet);
+                        }
+                    }
+                }
+                else
+                {
+                    isNvSmallEnoughAndPotMaxClique[v] = false;
+                }
+            }
+
+            // --------- lines 7 to 32 ----------
+
+            //for (int i = 0; i < P.Count; i++)
+            while (P.Count > 0)
+            {
+                // PTD Tau = P[i];
+                PTD Tau = P.Pop();
+
+                Debug.Assert(graph.IsMinimalSeparator(Tau.outlet));
+
+                // test outlet for clique minor
+                // TODO: move to wherever anything is added to P, so that outlet is tested earlier. Might be bad for cache locality, though -> test if worth it.
+                if (testOutletIsCliqueMinor && !outletsAlreadyChecked.Contains(Tau.outlet))
+                {
+                    outletsAlreadyChecked.Add(Tau.outlet);
+                    if (ss.IsSafeSeparator_Heuristic(Tau.outlet))
+                    {
+                        Console.WriteLine("found a clique minor that is an outlet of a tree");
+                        outletSafeSeparator = Tau.outlet;
+                        treeDecomp = null;
+                        return false;
+                    }
+                }
+
+                // --------- line 9 ----------
+
+                PTD Tau_wiggle_original = PTD.Line9(Tau);
+
+                // --------- lines 10 ----------
+
+                Tau_wiggle_original.AssertConsistency(graph.vertexCount);
+
+                // add the new ptdur if there are no equivalent ptdurs
+                // if it has a smaller root bag than an equivalent ptdur, replace that one instead
+                if (U_inletsWithIndex.TryGetValue(Tau_wiggle_original.inlet, out int index))
+                {
+                    PTD equivalentPtdur = U[index];
+                    if (Tau_wiggle_original.Bag.Count() < equivalentPtdur.Bag.Count())
+                    {
+                        U[index] = Tau_wiggle_original;
+                    }
+                }
+                else
+                {
+                    U_inletsWithIndex.Add(Tau_wiggle_original.inlet, U.Count);
+                    U.Add(Tau_wiggle_original);
+                }
+
+                // --------- lines 11 to 32 ----------
+
+                for (int j = 0; j < U.Count; j++)
+                {
+                    PTD Tau_prime = U[j];
+                    PTD Tau_wiggle;
+                    bool tau_tauprime_combined;
+
+                    // --------- lines 12 to 15 ----------
+
+                    if (!Tau_wiggle_original.Equivalent(Tau_prime))
+                    {
+                        tau_tauprime_combined = true;
+
+                        // --------- line 13 with early continue if bag size is too big or tree is not possibly usable ----------
+
+                        if (!PTD.Line13_CheckBagSize_CheckPossiblyUsable(Tau_prime, Tau, graph, k, out Tau_wiggle))
+                        {
+                            // ---------- line 15 (first two cases) ----------
+                            continue;
+                        }
+
+                        // --------- lines 14 and 15 (only the check for cliquish remains) ----------
+
+                        if (graph.IsCliquish(Tau_wiggle.Bag))
+                        {
+                            // add the new ptdur only if no equivalent ptdur exists
+                            if (!U_inletsWithIndex.ContainsKey(Tau_wiggle.inlet))
+                            {
+                                Tau_wiggle.AssertConsistency(graph.vertexCount);
+                                U_inletsWithIndex.Add(Tau_wiggle.inlet, U.Count);
+                                U.Add(Tau_wiggle);
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        tau_tauprime_combined = false;
+                        Tau_wiggle = Tau_wiggle_original;
+                    }
+
+                    // --------- lines 16 to 20 ----------
+
+                    Debug.Assert(Tau_wiggle.Bag.Count() <= k + 1);
+
+                    // TODO: count should always be small enough due to construction. Move count into assertion
+                    if (Tau_wiggle.Bag.Count() <= k + 1 && graph.IsPotMaxClique(Tau_wiggle.Bag, out _))
+                    {
+                        // TODO: outlet from the isPotMaxClique calculation may be able to be used
+                        // TODO: p1 is the same as tau_wiggle, so we can copy after tests are done. (We could also move this case to the end and not copy at all.)
+                        //       Only do this if it becomes an issue because the code becomes less readable.
+                        PTD p1 = new PTD(Tau_wiggle);
+
+                        if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p1, graph))
+                        {
+                            if (p1.vertices.Equals(graph.allVertices))
+                            {
+                                treeDecomp = p1;
+                                outletSafeSeparator = null;
+                                return true;
+                            }
+                            
+
+                            if (!P_inlets.Contains(p1.inlet))
+                            {
+                                if (graph.IsMinimalSeparator(p1.outlet))
+                                {
+                                    p1.AssertConsistency(graph.vertexCount);
+                                    P.Push(p1);
+                                    P_inlets.Add(p1.inlet);
+                                }
+                            }
+                        }
+                    }
+
+                    // --------- lines 21 to 26 ----------
+
+                    for (int v = 0; v < graph.vertexCount; v++)
+                    {
+                        if (!Tau_wiggle.vertices[v])
+                        {
+                            // --------- lines 22 to 26 ----------
+
+                            if (isNvSmallEnoughAndPotMaxClique[v] && graph.neighborSetsWith[v].IsSupersetOf(Tau_wiggle.Bag))
+                            {
+                                // --------- line 23 ----------
+                                PTD p2 = PTD.Line23(Tau_wiggle, graph.neighborSetsWith[v], graph);
+
+                                // --------- line 24 ----------
+                                if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p2, graph))
+                                {
+                                    if (p2.vertices.Equals(graph.allVertices))
+                                    {
+                                        treeDecomp = p2;
+                                        outletSafeSeparator = null;
+                                        return true;
+                                    }
+                                    
+
+                                    // --------- line 26 ----------
+                                    if (!P_inlets.Contains(p2.inlet))
+                                    {
+                                        if (graph.IsMinimalSeparator(p2.outlet))
+                                        {
+                                            p2.AssertConsistency(graph.vertexCount);
+                                            P.Push(p2);
+                                            P_inlets.Add(p2.inlet);
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+                    // --------- lines 27 to 32 ----------
+
+                    List<int> X_r = Tau_wiggle.Bag.Elements();
+                    for (int l = 0; l < X_r.Count; l++)
+                    {
+                        int v = X_r[l];
+
+                        // --------- line 28 ----------
+                        BitSet potNewRootBag = new BitSet(graph.neighborSetsWithout[v]);
+                        potNewRootBag.ExceptWith(Tau_wiggle.inlet);
+                        potNewRootBag.UnionWith(Tau_wiggle.Bag);
+
+                        if (potNewRootBag.Count() <= k + 1 && graph.IsPotMaxClique(potNewRootBag, out _))
+                        {
+                            // TODO: outlet from the isPotMaxClique calculation may be able to be used
+
+                            // --------- line 29 ----------
+                            PTD p3 = PTD.Line29(Tau_wiggle, potNewRootBag, graph);
+
+                            // --------- line 30 ----------
+                            if (PassesIncomingAndNormalizedTest(Tau, tau_tauprime_combined, p3, graph))
+                            {
+                                if (p3.vertices.Equals(graph.allVertices))
+                                {
+                                    treeDecomp = p3;
+                                    outletSafeSeparator = null;
+                                    return true;
+                                }
+                                
+
+                                // --------- line 32 ----------
+                                if (!P_inlets.Contains(p3.inlet))
+                                {
+                                    if (graph.IsMinimalSeparator(p3.outlet))
+                                    {
+                                        p3.AssertConsistency(graph.vertexCount);
+                                        P.Push(p3);
+                                        P_inlets.Add(p3.inlet);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (verbose)
+            {
+                Console.WriteLine("considered {0} PTDs and {1} PTDURs", P.Count, U.Count);
+            }
+
+            treeDecomp = null;
+            outletSafeSeparator = null;
+            return false;
+        }
+
+        [ThreadStatic]
+        static List<int> treeDecomp_Counts;
+
+        /// <summary>
+        /// determines whether this graph has tree width k, or, if a safe separator is found by a heuristic,
+        /// that safe separator is given out instead, so that this function can be called on the subgraphs.
+        /// </summary>
+        /// <param name="graph">the graph</param>
+        /// <param name="k">the desired tree width</param>
+        /// <param name="treeDecomp">a tree decomposition with width <paramref name="k"/> if there is one, else null. This is also null when a safe separator is found instead.</param>
+        /// <param name="outletSafeSeparator">a safe separator, if one is found during the execution, else null</param>
+        /// <returns>true, iff this graph has tree width <paramref name="k"/></returns>
+        private static bool HasTreeWidth_CountTrees(ImmutableGraph graph, int k, out PTD treeDecomp, out BitSet outletSafeSeparator)
+        {
+            int tree_decomposition_count = 0;
+            PTD first_decomp = null;
+
             if (graph.vertexCount == 0)
             {
                 treeDecomp = new PTD(new BitSet(0));
@@ -604,10 +907,18 @@ namespace Tamaki_Tree_Decomp
                         {
                             if (p1.vertices.Equals(graph.allVertices))
                             {
+                                tree_decomposition_count++;
+                                if (first_decomp == null)
+                                {
+                                    first_decomp = p1;
+                                }
+                                /*
                                 treeDecomp = p1;
                                 outletSafeSeparator = null;
                                 return true;
+                                */
                             }
+
 
                             if (!P_inlets.Contains(p1.inlet))
                             {
@@ -643,10 +954,18 @@ namespace Tamaki_Tree_Decomp
                                 {
                                     if (p2.vertices.Equals(graph.allVertices))
                                     {
+                                        tree_decomposition_count++;
+                                        if (first_decomp == null)
+                                        {
+                                            first_decomp = p2;
+                                        }
+                                        /*
                                         treeDecomp = p2;
                                         outletSafeSeparator = null;
                                         return true;
+                                        */
                                     }
+
 
                                     // --------- line 26 ----------
                                     if (!P_inlets.Contains(p2.inlet))
@@ -688,10 +1007,18 @@ namespace Tamaki_Tree_Decomp
                             {
                                 if (p3.vertices.Equals(graph.allVertices))
                                 {
+                                    tree_decomposition_count++;
+                                    if (first_decomp == null)
+                                    {
+                                        first_decomp = p3;
+                                    }
+                                    /*
                                     treeDecomp = p3;
                                     outletSafeSeparator = null;
                                     return true;
+                                    */
                                 }
+
 
                                 // --------- line 32 ----------
                                 if (!P_inlets.Contains(p3.inlet))
@@ -709,9 +1036,17 @@ namespace Tamaki_Tree_Decomp
                 }
             }
 
-            if (verbose)
-            {
+            //if (verbose)
+            //{
                 Console.WriteLine("considered {0} PTDs and {1} PTDURs", P.Count, U.Count);
+            //}
+
+            if (tree_decomposition_count > 0)
+            {
+                treeDecomp_Counts.Add(tree_decomposition_count);
+                treeDecomp = first_decomp;
+                outletSafeSeparator = null;
+                return true;
             }
 
             treeDecomp = null;
@@ -730,11 +1065,14 @@ namespace Tamaki_Tree_Decomp
         private static bool PassesIncomingAndNormalizedTest(PTD Tau, bool tau_tauprime_combined, PTD toTest, ImmutableGraph graph)
         {
             //return true;
-            //return !tau_tauprime_combined;                                                                              // test
+            //return !tau_tauprime_combined; // WRONG!!!                                                                             // test
+
+            //return !toTest.IsIncoming(graph);  // test
+
             return !tau_tauprime_combined || !toTest.IsIncoming(graph);                                                   // mine
             //return (!tau_tauprime_combined || toTest.IsNormalized_Daniela(Tau)) && !toTest.IsIncoming_Daniela(graph);  // Daniela old
 
-            //return !tau_tauprime_combined || (toTest.IsNormalized_Daniela(Tau) && !toTest.IsIncoming_Daniela(this));  // Daniela very old
+            //return !tau_tauprime_combined || (toTest.IsNormalized_Daniela(Tau) && !toTest.IsIncoming_Daniela(graph));  // Daniela very old
         }
     }
 }
