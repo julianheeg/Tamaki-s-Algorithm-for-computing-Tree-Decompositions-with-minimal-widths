@@ -125,6 +125,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, int k, out PTD result)
         {
+            // return early if bag would get too big
             if (BitSet.CountUnion(Tau_prime.Bag, Tau.outlet) > k + 1)
             {
                 result = null;
@@ -134,21 +135,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
             return Line13_CheckPossiblyUsable(Tau_prime, Tau, graph, out result, bag);
-
-            /*
-            BitSet bag = new BitSet(Tau_prime.Bag);
-            bag.UnionWith(Tau.outlet);
-
-            // exit early if bag is too big
-            if (bag.Count() > k + 1)
-            {
-                Line13_tooLarge++;
-                result = null;
-                return false;
-            }
-
-            return Line13_CheckPossiblyUsable(Tau_prime, Tau, graph, out result, bag);
-            */
         }
 
         /// <summary>

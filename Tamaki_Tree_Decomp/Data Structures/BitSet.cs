@@ -420,6 +420,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return !IsDisjoint(vs2) && !IsEmpty() && !vs2.IsEmpty();
         }
 
+        /// <summary>
+        /// counts the elements in the union of two BitSets
+        /// </summary>
+        /// <param name="first">the first BitSet</param>
+        /// <param name="second">the second BitSet</param>
+        /// <returns>the number of elements in the union of the two BitSets</returns>
         public static uint CountUnion(BitSet first, BitSet second)
         {
             uint count = 0;
@@ -436,6 +442,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             return count;
         }
+
         #endregion
 
         #region printing

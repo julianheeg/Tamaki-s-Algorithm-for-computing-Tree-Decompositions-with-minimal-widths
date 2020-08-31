@@ -525,6 +525,7 @@ namespace Tamaki_Tree_Decomp
 
                 // test outlet for clique minor
                 // TODO: move to wherever anything is added to P, so that outlet is tested earlier. Might be bad for cache locality, though -> test if worth it.
+                // TODO: one tree decomposition is found already. Don't calculate that again
                 if (testOutletIsCliqueMinor && !outletsAlreadyChecked.Contains(Tau.outlet))
                 {
                     outletsAlreadyChecked.Add(Tau.outlet);
