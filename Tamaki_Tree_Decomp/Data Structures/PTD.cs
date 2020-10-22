@@ -134,7 +134,24 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
-            return Line13_CheckPossiblyUsable(Tau_prime, Tau, graph, out result, bag);
+            return Line13_CheckPossiblyUsable_Helper(Tau_prime, Tau, graph, out result, bag);
+        }
+
+        /// <summary>
+        /// line 13 (combining a ptd and ptdur to form a new ptdur), but exit early if the ptd is not possibly usable
+        /// </summary>
+        /// <param name="Tau_prime">the ptdur to be combined</param>
+        /// <param name="Tau">the ptd</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <param name="k">the treewidth currently being tested</param>
+        /// <param name="result">the resulting ptd, or null, if the return value is false</param>
+        /// <returns>true, iff the resulting ptd is possibly usable and its bag is small enough for treewidth k</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result)
+        {
+            BitSet bag = new BitSet(Tau_prime.Bag);
+            bag.UnionWith(Tau.outlet);
+            return Line13_CheckPossiblyUsable_Helper(Tau_prime, Tau, graph, out result, bag);
         }
 
         /// <summary>
@@ -146,7 +163,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="result">the resulting ptd, or null if the return value is false</param>
         /// <param name="bag">the bag of the ptd to be</param>
         /// <returns>true, iff the resulting ptd is possibly usable</returns>
-        private static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result, BitSet bag)
+        private static bool Line13_CheckPossiblyUsable_Helper(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result, BitSet bag)
         {
             List<PTD> children = new List<PTD>(Tau_prime.children);
             children.Add(Tau);
@@ -266,54 +283,31 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return true;
         }
 
-
-        /// <summary>
-        /// tests if this PTD is an incoming PTD
-        /// </summary>
-        /// <returns>true iff the PTD is incoming</returns>
-        public bool IsIncoming_Daniela(ImmutableGraph graph)
-        {
-            BitSet rest = vertices.Complement();
-            return inlet.First() < rest.First();
-        }
-
-        public bool IsNormalized_Daniela(PTD child)
-        {
-            return !outlet.IsSupersetOf(child.outlet);
-        }
-
         /// <summary>
         /// tests if this PTD is an incoming PTD
         /// </summary>
         /// <returns>true iff the PTD is incoming</returns>
         public bool IsIncoming(ImmutableGraph graph)
         {
-            /*
-            foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
+            BitSet rest = vertices.Complement();
+            return inlet.First() < rest.First();
+        }
+
+        /// <summary>
+        /// tests if this PTD is normalized
+        /// </summary>
+        /// <returns>true iff the PTD is normalized</returns>
+        public bool IsNormalized()
+        {
+            for (int i = 0; i < children.Count; i++)
             {
-                if (!graph.UnionOutlet(this, C_NC.Item1).IsSupersetOf(C_NC.Item2))
+                Debug.Assert(!children[i].outlet.IsEmpty());
+                if (outlet.IsSupersetOf(children[i].outlet))
                 {
-                    if (C_NC.Item1.First() > inlet.First())
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
             return true;
-            */
-            
-            foreach ((BitSet, BitSet) C_NC in graph.ComponentsAndNeighbors(vertices))
-            {
-                if (!graph.UnionOutlet(this, C_NC.Item1).IsSupersetOf(C_NC.Item2))
-                {
-                    if (C_NC.Item1.First() > inlet.First())
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-            
         }
 
         /// <summary>
@@ -324,20 +318,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="rootSet">a subset of the future root</param>
         /// <returns>a rerooted version of this tree decomposition where rootSet is a subset of the new root</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PTD Reroot(BitSet rootSet)
+        public static void Reroot(ref PTD ptd, BitSet rootSet)
         {
-            if (Bag.IsSupersetOf(rootSet))
+            if (ptd.Bag.IsSupersetOf(rootSet))
             {
-                return this;
+                return;
             }
 
             Dictionary<PTD, PTD> parents = new Dictionary<PTD, PTD>();
-            parents[this] = null;
+            parents[ptd] = null;
 
             // find root node (its bag is a superset of the root set)
             PTD rootNode = null;
             Stack<PTD> nodeStack = new Stack<PTD>();
-            nodeStack.Push(this);
+            nodeStack.Push(ptd);
             PTD currentNode;
 
             while(nodeStack.Count > 0)
@@ -372,7 +366,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 currentNode = formerParentNode;
             }
 
-            return rootNode;
+            ptd = rootNode;
         }
 
         /// <summary>

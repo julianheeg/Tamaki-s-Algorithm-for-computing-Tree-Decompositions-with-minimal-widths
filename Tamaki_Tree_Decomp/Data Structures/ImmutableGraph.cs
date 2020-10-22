@@ -19,7 +19,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly BitSet[] neighborSetsWithout;   // contains N(v)
         public readonly BitSet[] neighborSetsWith;      // contains N[v]
         public readonly BitSet allVertices;             // used for easy testing if a ptd covers all vertices
-        
+        public readonly int degree = 0;
+
         public readonly int graphID;
 
         public static bool verbose = true;
@@ -38,6 +39,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 adjacencyList[i] = graph.adjacencyList[i].ToArray();
                 edgeCount += adjacencyList[i].Length;
+                if (adjacencyList[i].Length > degree)
+                {
+                    degree = adjacencyList[i].Length;
+                }
             }
             edgeCount /= 2;
 

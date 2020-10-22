@@ -56,7 +56,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
 
             if (TestNotConnected() || FindSize1Separator() || FindSize2Separator() || HeuristicDecomposition() || FindSize3Separator_Flow() || FindCliqueSeparator() || FindAlmostCliqueSeparator())
             {
-                separatedGraphs = SeparateAtSeparator(ref minK);
+                separatedGraphs = SeparateAtSeparator(ref minK, out _);
 
                 return true;
             }
@@ -71,8 +71,11 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
         /// separates the graph at the separator
         /// </summary>
         /// <param name="minK">the minimum treewidth parameter. It is set to the maximum of its previous value and the size of the separator</param>
+        /// <param name="alreadyCalculatedComponent">Optionally, a component whose subgraph has an already calculated PTD.
+        ///                                         (This happens when a safe separator is found during the "HasTreewidth" calculation.)</param>
+        /// <param name="alreadyCalculatedComponentIndex">-1, if no alreadyCalculatedComponent is passed, else the index in the list of subgraphs of the subgraph corresponding to that component</param>
         /// <returns>A list of the new subgraphs</returns>
-        private List<Graph> SeparateAtSeparator(ref int minK)
+        private List<Graph> SeparateAtSeparator(ref int minK, out int alreadyCalculatedComponentIndex, BitSet alreadyCalculatedComponent=null)
         {
             List<Graph> separatedGraphs;
             List<int> separatorVertices = separator.Elements();
@@ -84,7 +87,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                 Console.WriteLine("graph {0} contains a {1} as safe separator of type {2}", graph.graphID, separator.ToString(), separatorType);
             }
 
-            separatedGraphs = graph.Separate(separator, out reconstructionIndexationMappings);
+            separatedGraphs = graph.Separate(separator, out reconstructionIndexationMappings, out alreadyCalculatedComponentIndex, alreadyCalculatedComponent);
 
             if (minK < separatorSize)
             {
@@ -98,16 +101,19 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
 
         /// <summary>
         /// Separates the graph at a separator that has been found after pre-processing during the runtime of the actual algorithm.
+        /// (If this function is called, a PTD for exactly one component has always been found already.)
         /// </summary>
         /// <param name="separator">the separator</param>
         /// <param name="separatorType">the type of that separator</param>
         /// <param name="minK">the minimum treewidth parameter. It is set to the maximum of its previous value and the separator size</param>
+        /// <param name="alreadyCalculatedComponent">The component whose subgraph has an already calculated PTD.</param>
+        /// <param name="alreadyCalculatedComponentIndex">the index in the list of subgraphs of the subgraph corresponding to that component</param>
         /// <returns>a list of the new subgraphs</returns>
-        public List<Graph> ApplyExternallyFoundSafeSeparator(BitSet separator, SeparatorType separatorType, ref int minK)
+        public List<Graph> ApplyExternallyFoundSafeSeparator(BitSet separator, SeparatorType separatorType, ref int minK, out int alreadyCalculatedComponentIndex, BitSet alreadyCalculatedComponent)
         {
             this.separator = separator;
             this.separatorType = separatorType;
-            return SeparateAtSeparator(ref minK);
+            return SeparateAtSeparator(ref minK, out alreadyCalculatedComponentIndex, alreadyCalculatedComponent);
         }
 
         #region exact safe separator search
@@ -316,7 +322,9 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
             // reroot the other tree decompositions and append them to the first one at the separator node
             for (int i = 1; i < ptds.Count; i++)
             {
-                separatorNode.children.Add(ptds[i].Reroot(separator));
+                PTD child = ptds[i];
+                PTD.Reroot(ref child, separator);
+                separatorNode.children.Add(child);
             }
 
             return ptds[0];

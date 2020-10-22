@@ -295,6 +295,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public bool Equals(BitSet other)
         {
             int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
+            /*
+            if (length != other.bytes.Length)
+            {
+                return false;
+            }
+            */
             for (int i = 0; i < length; i++)
             {
                 if ((bytes[i]) != (other.bytes[i]))
@@ -462,7 +468,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 if (this[i])
                 {
-                    sb.Append((i + 1) + ",");
+                    sb.Append((i + (plusOneInString ? 1 : 0)) + ",");
                 }
             }
 
@@ -490,7 +496,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 if (this[i])
                 {
-                    sb.Append((i + 1) + ",");
+                    sb.Append((i + (plusOneInString ? 1 : 0)) + ",");
                 }
             }
 

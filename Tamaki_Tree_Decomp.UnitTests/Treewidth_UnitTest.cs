@@ -17,6 +17,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         /// <param name="treewidth">the graph's actual tree width</param>
         private void RunCompletelyAndAssertCorrectTreewidth(Graph g, int treewidth)
         {
+            Treewidth.completeHeuristically = true;
             ImmutableGraph h = new ImmutableGraph(g);   // copy for check if treewidth is correct
             Assert.AreEqual(treewidth, Treewidth.TreeWidth(g, out PTD output));
 
@@ -31,6 +32,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         /// <param name="treewidth">the graph's actual tree width</param>
         private void AssertCorrectTreewidth(Graph g, int treewidth)
         {
+            Treewidth.completeHeuristically = true;
             Graph g2 = new Graph(g);  // copy for second call
             ImmutableGraph h = new ImmutableGraph(g);   // copy for check if treewidth is correct
             Assert.IsFalse(Treewidth.IsTreeWidthAtMost(g, treewidth - 1, out PTD output));

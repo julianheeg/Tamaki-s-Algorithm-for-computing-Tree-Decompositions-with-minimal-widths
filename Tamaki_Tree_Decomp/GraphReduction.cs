@@ -363,19 +363,18 @@ namespace Tamaki_Tree_Decomp
 
             td.Reindex(reconstructionIndexationMapping);
 
-            if (td == null || td.Bag.IsEmpty()) // TODO: correct?
+            // if graph has been completely reduced, take the last bag and use it as the root
+            if (td == null || td.Bag.IsEmpty())
             {
                 int lastIndex = reconstructionBagsToAppend.Count - 1;
                 td = new PTD(reconstructionBagsToAppend[lastIndex].Item1);
                 reconstructionBagsToAppend.RemoveAt(lastIndex);
             }
 
-            // initialize a stack of nodes
+            // put all bags in the tree into a list
             Stack<PTD> nodeStack = new Stack<PTD>();
             nodeStack.Push(td);
             List<PTD> reconstructedNodes = new List<PTD>();
-
-            // put all bags in the tree into a list
             while (nodeStack.Count > 0)
             {
                 PTD currentNode = nodeStack.Pop();                
@@ -387,9 +386,6 @@ namespace Tamaki_Tree_Decomp
                     nodeStack.Push(currentNode.children[i]);
                 }
             }
-
-
-            BitSet debug1 = originalVertexCount == 363? new BitSet(originalVertexCount, new int[] { 51, 105, 166, 168 }) : null;
 
             // add the bags with the vertices that have been removed during reduction
             while (reconstructionBagsToAppend.Count > 0)
@@ -403,11 +399,6 @@ namespace Tamaki_Tree_Decomp
                     {
                         if (node.Bag.IsSupersetOf(parent))
                         {
-                            if (originalVertexCount == 363 && (child.IsSupersetOf(debug1) || node.Bag.IsSupersetOf(debug1)))
-                            {
-                                ;
-                            }
-
                             PTD childNode = new PTD(child);
                             node.children.Add(childNode);
                             reconstructedNodes.Add(childNode);

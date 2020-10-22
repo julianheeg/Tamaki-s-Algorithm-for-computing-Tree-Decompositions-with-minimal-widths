@@ -47,6 +47,7 @@
     <Compile Include="Data Structures\Graph.cs" />
     <Compile Include="GraphReduction.cs" />
     <Compile Include="Data Structures\PTD.cs" />
+    <Compile Include="Heuristics.cs" />
     <Compile Include="Safe Separators\Clique_AlmostCliqueSeparator.cs" />
     <Compile Include="Safe Separators\HeuristicSafeSeparator.cs" />
     <Compile Include="Program.cs" />

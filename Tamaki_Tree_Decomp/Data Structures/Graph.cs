@@ -162,17 +162,28 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         /// <summary>
         /// separates the graph at a given safe separator into subgraphs.
+        /// If a tree decomposition for one subgraph has already been calculated, the index of that subgraph is also given out
         /// </summary>
         /// <param name="separator">the safe separator</param>
         /// <param name="reconstructionIndexationMappings">the corresponding mapping for reindexing the vertices in the subgraphs back to their old indices within this graph</param>
-        /// <returns></returns>
-        public List<Graph> Separate(BitSet separator, out List<ReindexationMapping> reconstructionIndexationMappings)
+        /// <param name="alreadyCalculatedComponent">Optionally, a component whose subgraph has an already calculated PTD.
+        ///                                         (This happens when a safe separator is found during the "HasTreewidth" calculation.)</param>
+        /// <param name="alreadyCalculatedComponentIndex">-1, if no alreadyCalculatedComponent is passed, else the index in the list of subgraphs of the subgraph corresponding to that component</param>
+        /// <returns>a list of the subgraphs</returns>
+        public List<Graph> Separate(BitSet separator, out List<ReindexationMapping> reconstructionIndexationMappings, out int alreadyCalculatedComponentIndex, BitSet alreadyCalculatedComponent=null)
         {
+            alreadyCalculatedComponentIndex = -1;
             List<Graph> subGraphs = new List<Graph>();
             List<int> separatorVertices = separator.Elements();
             reconstructionIndexationMappings = new List<ReindexationMapping>();
-            foreach ((BitSet component, BitSet neighbor) in ComponentsAndNeighbors(separator))
+            
+            // for each component 
+            foreach ((BitSet component, BitSet _) in ComponentsAndNeighbors(separator))
             {
+                if (alreadyCalculatedComponent != null && component.Equals(alreadyCalculatedComponent))
+                {
+                    alreadyCalculatedComponentIndex = subGraphs.Count;
+                }
                 List<int> vertices = component.Elements();
                 component.UnionWith(separator);
 

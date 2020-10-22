@@ -72,6 +72,9 @@ namespace Tamaki_Tree_Decomp
         static readonly string test_r8 = "..\\..\\Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_70_10_0.gr";
         static readonly string test_r9 = "..\\..\\Test Data\\pace16-tw-instances-20160307\\tw-exact\\random\\RKT_20_80_10_1.gr";
 
+        static readonly string test_n0 = "..\\..\\Test Data\\normalised_0.gr";
+        static readonly string test_n1 = "..\\..\\Test Data\\normalised_1.gr";
+
 #pragma warning restore CS0414
 
         static int workerThreads = 1;
@@ -89,32 +92,33 @@ namespace Tamaki_Tree_Decomp
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
+            //string filepath = test_m4;
             string filepath = PACE2017(3);
-            //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_032.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
-            // string directory = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs";
+            //string directory = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs";
-            string directory = "..\\..\\Test Data\\graphs_MC2020";
+            //string directory = "..\\..\\Test Data\\graphs_MC2020";
             //string directory = "..\\..\\Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\";
-            //string directory = "..\\..\\Test Data\\ex-instances-PACE2017-public\\";
+            string directory = "..\\..\\Test Data\\ex-instances-PACE2017-public\\";
 
             BitSet.plusOneInString = false;
-            // Graph.dumpSubgraphs = true;
-            // Graph.old = false;
-            // SafeSeparator.separate = false;
-            GraphReduction.reduce = false;
+            //Graph.dumpSubgraphs = true;
+            //SafeSeparator.separate = false;
+            //GraphReduction.reduce = false;
+            Treewidth.completeHeuristically = true;
+            Treewidth.heuristicCompletionFrequency = 20;
+            Treewidth.heuristicInletMax = 1f;
+            Treewidth.heuristicInletMin = 0f;
+            Treewidth.maxTestsPerGraphAndK = 20;
+            Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
             //Treewidth.testOutletIsCliqueMinor = false;
 
-            //Console.WriteLine("--------------");
-            //Console.WriteLine(Treewidth.IsTreeWidthAtMost(new Graph(filepath), 43, out PTD _));
-            //Console.WriteLine("--------------");
-            //Console.WriteLine(Treewidth.IsTreeWidthAtMost(new Graph(filepath), 44, out PTD _));
-            //Console.WriteLine("--------------");
-
             //Run(filepath, true);
-            RunAll_Parallel(directory);
+            //Run(filepath, false);
+            //RunAll_Parallel(directory);
             //RunAll_Sequential(directory);
+            EvaluateHeuristicCompletion(directory);
 
             Console.Read();
         }
@@ -237,7 +241,89 @@ namespace Tamaki_Tree_Decomp
             Console.WriteLine("\n-------------------------------------------------------------------------------------\n\ntotal time for directory: " + timer.Elapsed.ToString());
         }
 
-        private static int Run(string filepath, bool print=true)
+        private static void EvaluateHeuristicCompletion(string directory)
+        {
+            Stopwatch timer = new Stopwatch();
+            Stopwatch timer1 = new Stopwatch();
+            Stopwatch timer2 = new Stopwatch();
+            TimeSpan totalDifference = new TimeSpan(0);
+            TimeSpan highestDifference = new TimeSpan(int.MinValue);
+            TimeSpan lowestDifference = new TimeSpan(int.MaxValue);
+            float highestRelativeDifference = 0;
+            float lowestRelativeDifference = float.MaxValue;
+            int heuristicCompletionCalls = 0;
+            int heuristicCompletionsSuccessful = 0;
+
+            timer.Start();
+            foreach (String filepath in Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories))
+            {
+                if (filepath.Contains("Test Data\\ex-instances-PACE2017-public\\ex003.gr"))
+                {
+                    continue;
+                }
+                Treewidth.completeHeuristically = false;
+                timer1.Restart();
+                Run(filepath, false, false);
+                timer1.Stop();
+                Treewidth.completeHeuristically = true;
+                timer2.Restart();
+                Run(filepath, false, false);
+                timer2.Stop();
+                TimeSpan difference = timer2.Elapsed - timer1.Elapsed;
+                float relativeDifference = (float)timer2.ElapsedMilliseconds / timer1.ElapsedMilliseconds;
+                totalDifference += difference;
+                if (difference > highestDifference)
+                {
+                    highestDifference = difference;
+                }
+                if (difference < lowestDifference)
+                {
+                    lowestDifference = difference;
+                }
+                if (timer1.ElapsedMilliseconds > 10000 || timer2.ElapsedMilliseconds > 10000)
+                {
+                    if (relativeDifference > highestRelativeDifference)
+                    {
+                        highestRelativeDifference = relativeDifference;
+                    }
+                    if (relativeDifference < lowestRelativeDifference)
+                    {
+                        lowestRelativeDifference = relativeDifference;
+                    }
+                }
+                heuristicCompletionCalls += Treewidth.heuristicCompletionCalls;
+                heuristicCompletionsSuccessful += Treewidth.heuristicCompletionsSuccessful;
+
+
+                //Console.WriteLine("----------------------------------------------------------------------------------------");
+                Console.WriteLine("{0}: difference relative: {1:F2}, difference total: {2}, total time: {3}, completions attempted: {4}, successful: {5}, ratio: {6:F2}", filepath.Substring(filepath.Length - 8), relativeDifference, difference, timer2.Elapsed, Treewidth.heuristicCompletionCalls, Treewidth.heuristicCompletionsSuccessful, (float)Treewidth.heuristicCompletionsSuccessful/Treewidth.heuristicCompletionCalls);
+                //Console.WriteLine("----------------------------------------------------------------------------------------");
+            }
+            timer.Stop();
+            Console.WriteLine("\n-------------------------------------------------------------------------------------\n" +
+                "\ntotal time for directory: {0}" +
+                "\ntotal difference: {1}" +
+                "\nhighest difference: {2}" +
+                "\nlowest difference: {3}" +
+                "\nhighest relative difference above 10s: {4:F2}" +
+                "\nlowest relative difference above 10s:  {5:F2}" +
+                "\nheuristic completion calls: {6}" +
+                "\n                successful: {7}" +
+                "\n                     ratio: {8}",
+                timer.Elapsed, totalDifference, highestDifference, lowestDifference, highestRelativeDifference, lowestRelativeDifference, heuristicCompletionCalls, heuristicCompletionsSuccessful, (float)heuristicCompletionsSuccessful/heuristicCompletionCalls);
+
+            Console.WriteLine("\ngraphs tested: {0}\nheuristic completions successful after:", Treewidth.graphsTested);
+            for (int i = 0; i < Treewidth.heuristicCompletionSuccesses.Count; i++)
+            {
+                if (Treewidth.heuristicCompletionSuccesses[i] != 0)
+                {
+                    Console.WriteLine("{0}:       {1}", i, Treewidth.heuristicCompletionSuccesses[i]);
+                }
+            }
+
+        }
+
+        private static int Run(string filepath, bool printTD=true, bool printStats=true)
         {
             Graph g = new Graph(filepath);
             Stopwatch stopwatch = new Stopwatch();
@@ -248,22 +334,24 @@ namespace Tamaki_Tree_Decomp
             SafeSeparator.almostCliqueSeparatorStopwatch = new Stopwatch();
             SafeSeparator.almostCliqueSeparators = 0;
             stopwatch.Start();
-            int treeWidth = Treewidth.TreeWidth(g, out PTD output, print);
+            int treeWidth = Treewidth.TreeWidth(g, out PTD output, printTD);
             stopwatch.Stop();
 
-            if (print)
+            if (printTD)
             {
                 output.Print();
             }
 
-            Console.WriteLine("Tree decomposition of {0} found in {1} time. Treewidth is {2}.\n" +
-                    "Found {3} size 3 separators in {4} total time.\n" +
-                    "Found {5} clique Separators in {6} total time.\n" +
-                    "Found {7} almost clique separators in {8} total time.\n",
-                    filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.size3SeparationStopwatch.Elapsed,
-                    SafeSeparator.cliqueSeparators - SafeSeparator.almostCliqueSeparators, SafeSeparator.cliqueSeparatorStopwatch.Elapsed - SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed,
-                    SafeSeparator.almostCliqueSeparators, SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed);
-
+            if (printStats)
+            {
+                Console.WriteLine("Tree decomposition of {0} found in {1} time. Treewidth is {2}.\n" +
+                        "Found {3} size 3 separators in {4} total time.\n" +
+                        "Found {5} clique Separators in {6} total time.\n" +
+                        "Found {7} almost clique separators in {8} total time.\n",
+                        filepath, stopwatch.Elapsed, treeWidth, SafeSeparator.size3separators, SafeSeparator.size3SeparationStopwatch.Elapsed,
+                        SafeSeparator.cliqueSeparators - SafeSeparator.almostCliqueSeparators, SafeSeparator.cliqueSeparatorStopwatch.Elapsed - SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed,
+                        SafeSeparator.almostCliqueSeparators, SafeSeparator.almostCliqueSeparatorStopwatch.Elapsed);
+            }
             g = new Graph(filepath);
             output.AssertValidTreeDecomposition(new ImmutableGraph(g));
             return treeWidth;
