@@ -117,8 +117,8 @@ namespace Tamaki_Tree_Decomp
             //Run(filepath, true);
             //Run(filepath, false);
             //RunAll_Parallel(directory);
-            //RunAll_Sequential(directory);
-            EvaluateHeuristicCompletion(directory);
+            RunAll_Sequential(directory);
+            //EvaluateHeuristicCompletion(directory);
 
             Console.Read();
         }
@@ -326,6 +326,7 @@ namespace Tamaki_Tree_Decomp
         private static int Run(string filepath, bool printTD=true, bool printStats=true)
         {
             Graph g = new Graph(filepath);
+            
             Stopwatch stopwatch = new Stopwatch();
             SafeSeparator.size3SeparationStopwatch = new Stopwatch();
             SafeSeparator.size3separators = 0;

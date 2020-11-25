@@ -99,8 +99,9 @@ namespace Tamaki_Tree_Decomp
              * 
              */
             outletsAlreadyChecked = new HashSet<BitSet>();
-
-            int minK = 0;
+            
+            int minK = LowerBound.getLowerBound(graph);
+            //int minK = 0;
 
             List<Graph> subGraphs = new List<Graph>();                        // index i corresponds to the i-th subgraph created
             List<List<GraphReduction>> graphReductions = new List<List<GraphReduction>>();  // index i corresponds to the list of graph reductions made to subgraph i
@@ -129,6 +130,7 @@ namespace Tamaki_Tree_Decomp
                     ptds.Add(alreadyCalculatedPTD);
                     continue;
                 }
+                
 
                 // loop over all possible tree widths for the current graph
                 while (minK < graph.vertexCount - 1)
@@ -333,7 +335,7 @@ namespace Tamaki_Tree_Decomp
                     ptds.Add(alreadyCalculatedPTD);
                     continue;
                 }
-
+                
                 // perform graph reduction
                 GraphReduction graphReduction = new GraphReduction(graph, k);
                 bool reduced = graphReduction.Reduce(ref minK);
