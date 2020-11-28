@@ -7,7 +7,7 @@ using Tamaki_Tree_Decomp.Safe_Separators;
 
 namespace Tamaki_Tree_Decomp
 {
-    class Program
+    public class Program
     {
 #pragma warning disable CS0414
         static readonly string test_t0 = "..\\..\\Test Data\\tamaki test instances\\empty.gr";                 //
@@ -92,34 +92,59 @@ namespace Tamaki_Tree_Decomp
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
-            //string filepath = test_m4;
-            string filepath = PACE2017(3);
+            //string filepath = test_a0;
+            string filepath = PACE2017(25); // 13
+            //string filepath = "..\\..\\Test Data\\Debug\\127-22.gr";
+            
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020";
             //string directory = "..\\..\\Test Data\\pace16-tw-instances-20160307\\tw-exact\\hard\\";
             string directory = "..\\..\\Test Data\\ex-instances-PACE2017-public\\";
+            int directoryStartIndex = 0;
+            int directoryEndIndex = 200;
 
             BitSet.plusOneInString = false;
             //Graph.dumpSubgraphs = true;
             //SafeSeparator.separate = false;
             //GraphReduction.reduce = false;
             Treewidth.completeHeuristically = true;
+            if (Treewidth.completeHeuristically)
+            {
+                Console.WriteLine("BEWARE: heuristic completion is active!");
+            }
+            PTD.profile = false;
+            if (PTD.profile)
+            {
+                Console.WriteLine("BEWARE: ptd consistency check is disabled");
+            }
             Treewidth.heuristicCompletionFrequency = 20;
             Treewidth.heuristicInletMax = 1f;
             Treewidth.heuristicInletMin = 0f;
             Treewidth.maxTestsPerGraphAndK = 20;
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
+            Treewidth.componentOptimization = true;
+            Treewidth.testOutletInletSupersets = false;
+            Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
+            //Treewidth.printStats = true;
+            PTD.checkOneAddedPotMaxClique = true;
+            ImmutableGraph.cachePMC = false;
+
             //Treewidth.testOutletIsCliqueMinor = false;
 
+            //Debug.Assert(TestSpecificTreewidth(filepath, 22));
+            //Treewidth.lowerBound = 43;
             //Run(filepath, true);
             //Run(filepath, false);
             //RunAll_Parallel(directory);
-            //RunAll_Sequential(directory);
-            EvaluateHeuristicCompletion(directory);
+            //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
+            EvaluateHeuristicCompletion(directory, directoryStartIndex, directoryEndIndex);
 
+            Treewidth.PrintStats_kMinus(12);
+            Console.WriteLine("cliquish calculations: {0}, cliquish cache reads: {1}\npmc calculations: {2}, pmc cache reads: {3}",
+                ImmutableGraph.cliquishCalculations, ImmutableGraph.cliquishCacheReads, ImmutableGraph.pmcCalculations, ImmutableGraph.pmcCacheReads);
             Console.Read();
         }
 
@@ -225,12 +250,18 @@ namespace Tamaki_Tree_Decomp
             }
         }
 
-        private static void RunAll_Sequential(string directory)
+        private static void RunAll_Sequential(string directory, int start=0, int end=int.MaxValue)
         {
             Stopwatch timer = new Stopwatch();
+            int counter = -1;
             timer.Start();
             foreach(String filepath in Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories))
             {
+                counter++;
+                if (counter < start / 2 || counter > end / 2)
+                {
+                    continue;
+                }
                 if (filepath.Contains("Test Data\\ex-instances-PACE2017-public\\ex003.gr"))
                 {
                     continue;
@@ -241,8 +272,9 @@ namespace Tamaki_Tree_Decomp
             Console.WriteLine("\n-------------------------------------------------------------------------------------\n\ntotal time for directory: " + timer.Elapsed.ToString());
         }
 
-        private static void EvaluateHeuristicCompletion(string directory)
+        private static void EvaluateHeuristicCompletion(string directory, int start = 0, int end = int.MaxValue)
         {
+            int counter = -1;
             Stopwatch timer = new Stopwatch();
             Stopwatch timer1 = new Stopwatch();
             Stopwatch timer2 = new Stopwatch();
@@ -257,15 +289,34 @@ namespace Tamaki_Tree_Decomp
             timer.Start();
             foreach (String filepath in Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories))
             {
+                counter++;
+                if (counter < start / 2 || counter > end / 2)
+                {
+                    continue;
+                }
                 if (filepath.Contains("Test Data\\ex-instances-PACE2017-public\\ex003.gr"))
                 {
                     continue;
                 }
-                Treewidth.completeHeuristically = false;
+
+                //Treewidth.completeHeuristically = false;
+                //Treewidth.componentOptimization = false;
+                //PTD.checkOneAddedPotMaxClique = false;
+                //Treewidth.testEarlyExitIfPTDURBagTooLarge = false;
+                //ImmutableGraph.cachePMC = false;
+                Treewidth.oldCliquishTest = true;
+
                 timer1.Restart();
                 Run(filepath, false, false);
                 timer1.Stop();
-                Treewidth.completeHeuristically = true;
+
+                //Treewidth.completeHeuristically = true;
+                //Treewidth.componentOptimization = true;
+                //PTD.checkOneAddedPotMaxClique = true;
+                //Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
+                //ImmutableGraph.cachePMC = true;
+                Treewidth.oldCliquishTest = false;
+
                 timer2.Restart();
                 Run(filepath, false, false);
                 timer2.Stop();
@@ -296,7 +347,7 @@ namespace Tamaki_Tree_Decomp
 
 
                 //Console.WriteLine("----------------------------------------------------------------------------------------");
-                Console.WriteLine("{0}: difference relative: {1:F2}, difference total: {2}, total time: {3}, completions attempted: {4}, successful: {5}, ratio: {6:F2}", filepath.Substring(filepath.Length - 8), relativeDifference, difference, timer2.Elapsed, Treewidth.heuristicCompletionCalls, Treewidth.heuristicCompletionsSuccessful, (float)Treewidth.heuristicCompletionsSuccessful/Treewidth.heuristicCompletionCalls);
+                Console.WriteLine("{0}: difference relative: {1:F2}, difference total: {2}, total time: {3}, completions attempted: {4}, successful: {5}, ratio: {6:F2}", filepath.Substring(filepath.Length - 8), relativeDifference, difference, timer1.Elapsed + timer2.Elapsed, Treewidth.heuristicCompletionCalls, Treewidth.heuristicCompletionsSuccessful, (float)Treewidth.heuristicCompletionsSuccessful/Treewidth.heuristicCompletionCalls);
                 //Console.WriteLine("----------------------------------------------------------------------------------------");
             }
             timer.Stop();
@@ -358,7 +409,7 @@ namespace Tamaki_Tree_Decomp
         }
 
 
-        private static void TestSpecificTreewidth(string filepath, int actualTreewidth)
+        public static bool TestSpecificTreewidth(string filepath, int actualTreewidth)
         {
             Graph g = new Graph(filepath);
             bool f = Treewidth.IsTreeWidthAtMost(g, actualTreewidth - 1, out PTD output);
@@ -367,7 +418,12 @@ namespace Tamaki_Tree_Decomp
             Console.WriteLine(f);
             Console.WriteLine(t);
             g = new Graph(filepath);
-            output.AssertValidTreeDecomposition(new ImmutableGraph(g));
+            if (t)
+            {
+                output.AssertValidTreeDecomposition(new ImmutableGraph(g));
+            }
+
+            return !f && t;
         }
 
         private static string PACE2017(int number)

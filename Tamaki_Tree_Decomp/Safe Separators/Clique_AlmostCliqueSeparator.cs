@@ -182,7 +182,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                 for (int j = 0; j < Y.Count; j++)
                 {
                     y = Y[j];
-                    if (!F.Contains((y, x)) && !graph.neighborSetsWithout[x][y])
+                    if (!F.Contains((y, x)) && !graph.openNeighborhood[x][y])
                     {
                         F.Add((x, y));
                     }
@@ -233,14 +233,14 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
 
                     // test if S is clique in G
                     // (intersect the neighbors of x with the neighbors' neighbors and test if that is equal to x' neighbors)
-                    BitSet intersection = new BitSet(H_prime.neighborSetsWithout[x]);   // TODO: reuse to avoid garbage
+                    BitSet intersection = new BitSet(H_prime.openNeighborhood[x]);   // TODO: reuse to avoid garbage
                     for (int j = 0; j < S.Count; j++)
                     {
-                        intersection.IntersectWith(graph.neighborSetsWith[S[j]]);  // TODO: one could implement a test for an early exit
+                        intersection.IntersectWith(graph.closedNeighborhood[S[j]]);  // TODO: one could implement a test for an early exit
                     }
-                    if (intersection.Equals(H_prime.neighborSetsWithout[x]))
+                    if (intersection.Equals(H_prime.openNeighborhood[x]))
                     {
-                        separator = H_prime.neighborSetsWithout[x];
+                        separator = H_prime.openNeighborhood[x];
                         cliqueSeparators++;
                         return true;
                     }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using Tamaki_Tree_Decomp.Safe_Separators;
 using static Tamaki_Tree_Decomp.Data_Structures.Graph;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
@@ -14,9 +15,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
     {
         public BitSet Bag { get; private set; }
         public readonly BitSet vertices;
+        private BitSet possiblyUsableIgnore;
         public BitSet inlet;
         public BitSet outlet;
         public readonly List<PTD> children;
+        public List<int> skipChildrenInNormalizedCheck = null;
 
         //TODO: perhaps maintain the sets of components associated with the outlet
 
@@ -30,6 +33,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             Bag = new BitSet(ptd.Bag);
             vertices = new BitSet(ptd.vertices);
+            possiblyUsableIgnore = new BitSet(ptd.possiblyUsableIgnore);
             inlet = new BitSet(ptd.inlet);
             outlet = new BitSet(ptd.outlet);
             children = new List<PTD>(ptd.children);
@@ -43,10 +47,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="outlet"></param>
         /// <param name="inlet"></param>
         /// <param name="children"></param>
-        public PTD(BitSet bag, BitSet vertices, BitSet outlet, BitSet inlet, List<PTD> children)
+        public PTD(BitSet bag, BitSet vertices, BitSet possiblyUsableIgnore, BitSet outlet, BitSet inlet, List<PTD> children)
         {
             Bag = bag;
             this.vertices = vertices;
+            this.possiblyUsableIgnore = possiblyUsableIgnore;
             this.outlet = outlet;
             this.inlet = inlet;
             this.children = children;
@@ -76,6 +81,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             Bag = new BitSet(bag);              // TODO: can be shared
             vertices = new BitSet(bag);         // TODO: can be shared
+            possiblyUsableIgnore = new BitSet(bag.Capacity());
             this.outlet = new BitSet(outlet);   // TODO: can be shared
             inlet = new BitSet(bag);
             inlet.ExceptWith(outlet);
@@ -107,11 +113,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = new BitSet(Tau.outlet);
             BitSet inlet = new BitSet(Tau.inlet);
             BitSet vertices = new BitSet(Tau.vertices);
+            BitSet possiblyUsableIgnore = new BitSet(Tau.possiblyUsableIgnore);
 
             List<PTD> children = new List<PTD>();
             children.Add(Tau);
-            return new PTD(bag, vertices, outlet, inlet, children);
+            return new PTD(bag, vertices, possiblyUsableIgnore, outlet, inlet, children);
         }
+
+        public static bool checkOneAddedPotMaxClique = false;
 
         /// <summary>
         /// line 13 (combining a ptd and ptdur to form a new ptdur), but exit early if bag size is too big or if the ptd is not possibly usable
@@ -126,7 +135,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public static bool Line13_CheckBagSize_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, int k, out PTD result)
         {
             // return early if bag would get too big
-            if (BitSet.CountUnion(Tau_prime.Bag, Tau.outlet) > k + 1)
+            uint futureBagSize = BitSet.CountUnion(Tau_prime.Bag, Tau.outlet);
+            if (futureBagSize > k + 1)
             {
                 result = null;
                 return false;
@@ -134,23 +144,21 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             BitSet bag = new BitSet(Tau_prime.Bag);
             bag.UnionWith(Tau.outlet);
-            return Line13_CheckPossiblyUsable_Helper(Tau_prime, Tau, graph, out result, bag);
-        }
 
-        /// <summary>
-        /// line 13 (combining a ptd and ptdur to form a new ptdur), but exit early if the ptd is not possibly usable
-        /// </summary>
-        /// <param name="Tau_prime">the ptdur to be combined</param>
-        /// <param name="Tau">the ptd</param>
-        /// <param name="graph">the underlying graph</param>
-        /// <param name="k">the treewidth currently being tested</param>
-        /// <param name="result">the resulting ptd, or null, if the return value is false</param>
-        /// <returns>true, iff the resulting ptd is possibly usable and its bag is small enough for treewidth k</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Line13_CheckPossiblyUsable(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result)
-        {
-            BitSet bag = new BitSet(Tau_prime.Bag);
-            bag.UnionWith(Tau.outlet);
+            //if (!graph.IsCliquish(bag))
+            //{
+            //    result = null;
+            //    return false;
+            //}
+
+
+            // if no vertices can be added to the bag due to size and the bag is not a pmc, we can reject this ptd immediately because it is not useful
+            if (futureBagSize == k+1 && !graph.IsPotMaxClique(bag))
+            {
+                result = null;
+                return false;
+            }
+
             return Line13_CheckPossiblyUsable_Helper(Tau_prime, Tau, graph, out result, bag);
         }
 
@@ -173,14 +181,22 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 for (int j = i + 1; j < children.Count; j++)
                 {
-                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    BitSet verticesIgnoreIntersection = new BitSet(children[i].possiblyUsableIgnore);
+                    verticesIgnoreIntersection.IntersectWith(children[j].possiblyUsableIgnore);
+                    BitSet childrenInletsIntersection = new BitSet(children[i].inlet);
+                    childrenInletsIntersection.IntersectWith(children[j].inlet);
+
+                    Debug.Assert(childrenInletsIntersection.IsSupersetOf(verticesIgnoreIntersection));
+                    if (!childrenInletsIntersection.Equals(verticesIgnoreIntersection))
+                    //if (!children[i].inlet.IsDisjoint(children[j].inlet))
                     {
                         result = null;
                         return false;
                     }
-
+                    
                     BitSet verticesIntersection = new BitSet(children[i].vertices);
                     verticesIntersection.IntersectWith(children[j].vertices);
+                    verticesIntersection.ExceptWith(verticesIgnoreIntersection);
                     if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
                     {
                         result = null;
@@ -195,10 +211,196 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            result = new PTD(new BitSet(bag), vertices, outlet, inlet, children);   // TODO: not copy bag
+            BitSet possiblyUsableIgnore = new BitSet(Tau_prime.possiblyUsableIgnore);
+            possiblyUsableIgnore.UnionWith(Tau.possiblyUsableIgnore);
+            result = new PTD(new BitSet(bag), vertices, possiblyUsableIgnore, outlet, inlet, children);   // TODO: not copy bag
 
             return true;
         }
+
+
+        /// <summary>
+        /// line 13 (combining a ptd and ptdur to form a new ptdur), but exit early if bag size is too big or if the ptd is not possibly usable
+        /// </summary>
+        /// <param name="Tau_prime">the ptdur to be combined</param>
+        /// <param name="Tau">the ptd</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <param name="k">the treewidth currently being tested</param>
+        /// <param name="result">the resulting ptd, or null, if the return value is false</param>
+        /// <returns>true, iff the resulting ptd is possibly usable and its bag is small enough for treewidth k</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Line13_CheckBagSize_CheckPossiblyUsable_CheckCliquish(PTD Tau_prime, PTD Tau, ImmutableGraph graph, int k, out PTD result, Graph mutableGraph)
+        {
+            // return early if bag would get too big
+            uint futureBagSize = BitSet.CountUnion(Tau_prime.Bag, Tau.outlet);
+            if (futureBagSize > k + 1)
+            {
+                result = null;
+                return false;
+            }
+
+            BitSet bag = new BitSet(Tau_prime.Bag);
+            bag.UnionWith(Tau.outlet);
+
+            return Line13_CheckPossiblyUsable_CheckCliquish_Helper(Tau_prime, Tau, graph, out result, bag, futureBagSize, k, mutableGraph);
+        }
+
+        /// <summary>
+        /// a method extracted from the method above due to performance reasons. Read it as if the body of the method above would just continue here.
+        /// </summary>
+        /// <param name="Tau_prime">the ptdur</param>
+        /// <param name="Tau">the ptd</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <param name="result">the resulting ptd, or null if the return value is false</param>
+        /// <param name="bag">the bag of the ptd to be</param>
+        /// <returns>true, iff the resulting ptd is possibly usable</returns>
+        private static bool Line13_CheckPossiblyUsable_CheckCliquish_Helper(PTD Tau_prime, PTD Tau, ImmutableGraph graph, out PTD result, BitSet bag, uint futureBagSize, int k, Graph mutableGraph)
+        {
+            if (!graph.IsCliquish(bag))
+            {
+                result = null;
+                return false;
+            }
+
+            // if no vertices can be added to the bag due to size and the bag is not a pmc, we can reject this ptd immediately because it is not useful
+            if (futureBagSize == k + 1 && !graph.IsPotMaxClique(bag))
+            {
+                result = null;
+                return false;
+            }
+
+            List<PTD> children = new List<PTD>(Tau_prime.children);
+            children.Add(Tau);
+
+            // exit early if not possibly usable
+            for (int i = 0; i < children.Count; i++)
+            {
+                for (int j = i + 1; j < children.Count; j++)
+                {
+                    BitSet verticesIgnoreIntersection = new BitSet(children[i].possiblyUsableIgnore);
+                    verticesIgnoreIntersection.IntersectWith(children[j].possiblyUsableIgnore);
+                    BitSet childrenInletsIntersection = new BitSet(children[i].inlet);
+                    childrenInletsIntersection.IntersectWith(children[j].inlet);
+
+                    Debug.Assert(childrenInletsIntersection.IsSupersetOf(verticesIgnoreIntersection));
+                    if (!childrenInletsIntersection.Equals(verticesIgnoreIntersection))   // TODO: use for 3 or more component check
+                    //if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    {
+                        result = null;
+                        return false;
+                    }
+
+                    BitSet verticesIntersection = new BitSet(children[i].vertices);
+                    verticesIntersection.IntersectWith(children[j].vertices);
+                    verticesIntersection.ExceptWith(verticesIgnoreIntersection);
+                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
+                    {
+                        result = null;
+                        return false;
+                    }
+                }
+            }
+
+
+            // if only one vertex can be added, determine all the candidates that would make this bag a pmc when added. If there are none, return.
+            if (checkOneAddedPotMaxClique && futureBagSize == k)
+            {
+                // if bag is pmc already, we need this ptdur. (In that case no candidate exists which could be added.)
+                if (!graph.IsPotMaxClique(bag))
+                {
+                    bool useless = true;
+
+                    foreach ((BitSet component, BitSet neighbor) in graph.ComponentsAndNeighbors(bag))
+                    {
+                        // candidates are only found in full components
+                        if (neighbor.Equals(bag))
+                        {
+                            BitSet relevantVertices = new BitSet(component);
+                            //relevantVertices.UnionWith(bag);
+
+                            foreach (int articulationPoint in SafeSeparator.ArticulationPoints(mutableGraph, component))
+                            {
+                                bag[articulationPoint] = true;
+                                if (graph.IsPotMaxClique(bag))
+                                {
+                                    bag[articulationPoint] = false;
+                                    useless = false;
+                                    break;
+                                }
+                                bag[articulationPoint] = false;
+                            }
+                            if (!useless)
+                            {
+                                break;
+                            }
+                            // TODO: possibly exclude candidates that are in this ptdur's inlet? Is that correct?
+
+                            foreach (int v in bag.Elements())
+                            {
+                                BitSet neighbors = new BitSet(graph.openNeighborhood[v]);
+                                neighbors.IntersectWith(component);
+                                if (neighbors.Count() == 1)
+                                {
+                                    int candidate = neighbors.First();
+                                    bag[candidate] = true;
+                                    if (graph.IsCliquish(bag))  // in this case it is guaranteed that the bag is also a pmc
+                                    {
+                                        bag[candidate] = false;
+                                        useless = false;
+                                        break;
+                                    }
+                                    bag[candidate] = false;
+                                }
+                            }
+
+                            if (!useless)
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    if (useless)
+                    {
+#if DEBUG
+                        if (!profile){
+                            for (int v = 0; v < graph.vertexCount; v++)
+                            {
+                                if (!bag[v])
+                                {
+                                    bag[v] = true;
+
+                                    if (graph.IsPotMaxClique(bag))
+                                    {
+                                        throw new Exception();
+                                    }
+
+                                    bag[v] = false;
+                                }
+                            }
+                        }
+#endif
+                        
+
+                        result = null;
+                        return false;
+                    }
+                }
+            }
+
+            // usability is established, so we build the ptd
+            BitSet vertices = new BitSet(Tau_prime.vertices);
+            vertices.UnionWith(Tau.vertices);
+            BitSet outlet = graph.Outlet(bag, vertices);
+            BitSet inlet = new BitSet(vertices);
+            inlet.ExceptWith(outlet);
+            BitSet possiblyUsableIgnore = new BitSet(Tau_prime.possiblyUsableIgnore);
+            possiblyUsableIgnore.UnionWith(Tau.possiblyUsableIgnore);
+            result = new PTD(new BitSet(bag), vertices, possiblyUsableIgnore, outlet, inlet, children);   // TODO: not copy bag
+
+            return true;
+        }
+
 
         /// <summary>
         /// the case where the bag of the ptd is a subset of the inclusive neighborhood of a vertex. Returns a new ptd with that type of bag. 
@@ -218,7 +420,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            return new PTD(bag, vertices, outlet, inlet, children);
+            BitSet possiblyUsableIgnore = new BitSet(Tau_wiggle.possiblyUsableIgnore);
+            return new PTD(bag, vertices, possiblyUsableIgnore, outlet, inlet, children);
         }
 
         /// <summary>
@@ -240,10 +443,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            return new PTD(bag, vertices, outlet, inlet, children);
+            BitSet possiblyUsableIgnore = new BitSet(Tau_wiggle.possiblyUsableIgnore);
+            return new PTD(bag, vertices, possiblyUsableIgnore, outlet, inlet, children);
         }
 
-        #endregion
+#endregion
+
+
 
         /// <summary>
         /// tests whether this and the other PTD are PTDs that contain the same vertices within them
@@ -267,6 +473,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 Debug.Assert(children[i].inlet.IsDisjoint(outlet));
                 for (int j = i + 1; j < children.Count; j++)
                 {
+                    throw new NotImplementedException("TODO: exclude possibly-usable-ignored vertices from possibly usable check");
+
                     if (!children[i].inlet.IsDisjoint(children[j].inlet))
                     {
                         return false;
@@ -302,12 +510,59 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             for (int i = 0; i < children.Count; i++)
             {
                 Debug.Assert(!children[i].outlet.IsEmpty());
-                if (outlet.IsSupersetOf(children[i].outlet))
+                if ((skipChildrenInNormalizedCheck == null || !skipChildrenInNormalizedCheck.Contains(i)) && outlet.IsSupersetOf(children[i].outlet))
                 {
                     return false;
                 }
             }
             return true;
+        }
+
+        /// <summary>
+        /// adds a child whose normalized check is disabled
+        /// </summary>
+        /// <param name="child">the child to add</param>
+        /// <param name="graph">the underlying graph</param>
+        public void AddChildNotNormalized(PTD child, ImmutableGraph graph)
+        {
+            if (skipChildrenInNormalizedCheck == null)
+            {
+                skipChildrenInNormalizedCheck = new List<int>();
+            }
+            skipChildrenInNormalizedCheck.Add(children.Count);
+            children.Add(child);
+
+            vertices.UnionWith(child.vertices);
+            possiblyUsableIgnore.UnionWith(child.inlet);
+            outlet = graph.Outlet(Bag, vertices);
+            inlet.CopyFrom(vertices);
+            inlet.ExceptWith(outlet);
+        }
+
+        public void RemoveDuplicateBags()
+        {
+            HashSet<BitSet> bagSet = new HashSet<BitSet> { Bag };
+            Stack<PTD> nodeStack = new Stack<PTD>();
+            nodeStack.Push(this);
+
+            while (nodeStack.Count > 0)
+            {
+                PTD currentNode = nodeStack.Pop();
+                for (int i = currentNode.children.Count - 1; i >= 0; i--)
+                {
+                    PTD currentChild = currentNode.children[i];
+                    if (bagSet.Contains(currentChild.Bag))
+                    {
+                        currentNode.children.RemoveAt(i);
+                    }
+                    else
+                    {
+                        bagSet.Add(currentChild.Bag);
+                        nodeStack.Push(currentChild);
+                    }
+                }
+
+            }
         }
 
         /// <summary>
@@ -397,7 +652,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
-        #region import from file
+#region import from file
 
         /// <summary>
         /// imports a PTD from a .td file
@@ -484,9 +739,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             children = new List<PTD>();
         }
 
-        #endregion
+#endregion
 
-        #region printing
+#region printing
 
         /// <summary>
         /// prints the PTD to console
@@ -531,13 +786,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
         #region debug
 
+        public static bool profile = false;
+
         /// <summary>
         /// asserts that this ptd is consistent
         /// </summary>
         /// <param name="vertexCount">the number of vertices in the underlying graph</param>
         [Conditional("DEBUG")]
-        internal void AssertConsistency(int vertexCount)
+        internal void AssertConsistency(int vertexCount, bool fullConsistencyCheck=true)
         {
+            if (profile)
+            {
+                return;
+            }
             // create a list of all bags
             List<BitSet> bagsList = new List<BitSet>();
             List<int> parentBags = new List<int>();
@@ -562,6 +823,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // check consistency
             for (int i = 0; i < vertexCount; i++)
             {
+                if (!fullConsistencyCheck && possiblyUsableIgnore[i])
+                {
+                    continue;
+                }
+
                 /*
                  *  key insight: all bags containing i form a subtree.
                  *  Therefore, in order for the tree decomposition to be consistent, there must be only one root for all subtrees containing i 
@@ -662,6 +928,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // check consistency
             for (int i = 0; i < graph.vertexCount; i++)
             {
+                //if (possiblyUsableIgnore[i])
+                //{
+                //    continue;
+                //}
+
                 /*
                  *  key insight: all bags containing i form a subtree.
                  *  Therefore, in order for the tree decomposition to be consistent, there must be only one root for all subtrees containing i 
@@ -690,6 +961,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
-        #endregion
+#endregion
     }
 }

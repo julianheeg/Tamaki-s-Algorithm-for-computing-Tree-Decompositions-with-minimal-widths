@@ -14,8 +14,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
     public class Graph
     {
         public List<int>[] adjacencyList;
-        public BitSet[] neighborSetsWithout;   // contains N(v)
-        public BitSet[] neighborSetsWith;      // contains N[v]
+        public BitSet[] openNeighborhood;   // contains N(v)
+        public BitSet[] closedNeighborhood;      // contains N[v]
         public BitSet notRemovedVertices    { get; private set; }
         public int vertexCount              { get; private set; }
         public int notRemovedVertexCount    { get; private set; } 
@@ -56,10 +56,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 {
                                     adjacencyList[i] = new List<int>();
                                 }
-                                neighborSetsWithout = new BitSet[vertexCount];
+                                openNeighborhood = new BitSet[vertexCount];
                                 for (int i = 0; i < vertexCount; i++)
                                 {
-                                    neighborSetsWithout[i] = new BitSet(vertexCount);
+                                    openNeighborhood[i] = new BitSet(vertexCount);
                                 }
                             }
                             else
@@ -67,23 +67,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 int u = Convert.ToInt32(tokens[0]) - 1;
                                 int v = Convert.ToInt32(tokens[1]) - 1;
 
-                                if (!neighborSetsWithout[u][v])
+                                if (!openNeighborhood[u][v])
                                 {
                                     adjacencyList[u].Add(v);
                                     adjacencyList[v].Add(u);
-                                    neighborSetsWithout[u][v] = true;
-                                    neighborSetsWithout[v][u] = true;
+                                    openNeighborhood[u][v] = true;
+                                    openNeighborhood[v][u] = true;
                                 }
                             }
                         }
                     }
                 }
 
-                neighborSetsWith = new BitSet[vertexCount];
+                closedNeighborhood = new BitSet[vertexCount];
                 for (int i = 0; i < vertexCount; i++)
                 {
-                    neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
-                    neighborSetsWith[i][i] = true;
+                    closedNeighborhood[i] = new BitSet(openNeighborhood[i]);
+                    closedNeighborhood[i][i] = true;
                 }
 
                 notRemovedVertices = BitSet.All(vertexCount);
@@ -114,19 +114,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             edgeCount = 0;
 
             this.adjacencyList = adjacencyList;
-            neighborSetsWithout = new BitSet[vertexCount];
-            neighborSetsWith = new BitSet[vertexCount];
+            openNeighborhood = new BitSet[vertexCount];
+            closedNeighborhood = new BitSet[vertexCount];
             for (int u = 0; u < vertexCount; u++)
             {
                 edgeCount += adjacencyList[u].Count;
-                neighborSetsWithout[u] = new BitSet(vertexCount);
+                openNeighborhood[u] = new BitSet(vertexCount);
                 for (int j = 0; j < adjacencyList[u].Count; j++)
                 {
                     int v = adjacencyList[u][j];
-                    neighborSetsWithout[u][v] = true;
+                    openNeighborhood[u][v] = true;
                 }
-                neighborSetsWith[u] = new BitSet(neighborSetsWithout[u]);
-                neighborSetsWith[u][u] = true;
+                closedNeighborhood[u] = new BitSet(openNeighborhood[u]);
+                closedNeighborhood[u][u] = true;
             }
             edgeCount /= 2;
 
@@ -147,13 +147,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             edgeCount = graph.edgeCount;
             notRemovedVertices = new BitSet(graph.notRemovedVertices);
             adjacencyList = new List<int>[vertexCount];
-            neighborSetsWithout = new BitSet[vertexCount];
-            neighborSetsWith = new BitSet[vertexCount];
+            openNeighborhood = new BitSet[vertexCount];
+            closedNeighborhood = new BitSet[vertexCount];
             for (int i = 0; i < graph.adjacencyList.Length; i++)
             {
                 adjacencyList[i] = new List<int>(graph.adjacencyList[i]);
-                neighborSetsWithout[i] = new BitSet(graph.neighborSetsWithout[i]);
-                neighborSetsWith[i] = new BitSet(graph.neighborSetsWith[i]);
+                openNeighborhood[i] = new BitSet(graph.openNeighborhood[i]);
+                closedNeighborhood[i] = new BitSet(graph.closedNeighborhood[i]);
             }
 
             graphID = graphCount;
@@ -261,8 +261,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 int neighbor = adjacencyList[vertex][i];
                 adjacencyList[neighbor].Remove(vertex);
-                neighborSetsWithout[neighbor][vertex] = false;
-                neighborSetsWith[neighbor][vertex] = false;
+                openNeighborhood[neighbor][vertex] = false;
+                closedNeighborhood[neighbor][vertex] = false;
             }
 
             notRemovedVertices[vertex] = false;
@@ -278,13 +278,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="v">the other endpoint of the edge to be inserted</param>
         public void AddEdge(int u, int v)
         {
-            Debug.Assert(!neighborSetsWith[u][v]);
+            Debug.Assert(!closedNeighborhood[u][v]);
             adjacencyList[u].Add(v);
             adjacencyList[v].Add(u);
-            neighborSetsWithout[u][v] = true;
-            neighborSetsWithout[v][u] = true;
-            neighborSetsWith[u][v] = true;
-            neighborSetsWith[v][u] = true;
+            openNeighborhood[u][v] = true;
+            openNeighborhood[v][u] = true;
+            closedNeighborhood[u][v] = true;
+            closedNeighborhood[v][u] = true;
             edgeCount++;
         }
 
@@ -296,7 +296,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public void Contract(int u, int v)
         {
             // assert that u and v are indeed neighbors and also not equal to each other
-            Debug.Assert(neighborSetsWithout[u][v]);
+            Debug.Assert(openNeighborhood[u][v]);
 
             for (int i = 0; i < adjacencyList[v].Count; i++)
             {
@@ -304,25 +304,25 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 // remove v from its neighbors' adjacencies
                 adjacencyList[w].Remove(v);
-                neighborSetsWithout[w][v] = false;
-                neighborSetsWith[w][v] = false;
+                openNeighborhood[w][v] = false;
+                closedNeighborhood[w][v] = false;
                 edgeCount--;
 
                 // add u to the neighbors' adjacencies
-                if (!neighborSetsWithout[w][u])
+                if (!openNeighborhood[w][u])
                 {
                     adjacencyList[u].Add(w);
                     adjacencyList[w].Add(u);
-                    neighborSetsWithout[u][w] = true;
-                    neighborSetsWithout[w][u] = true;
-                    neighborSetsWith[u][w] = true;
-                    neighborSetsWith[w][u] = true;
+                    openNeighborhood[u][w] = true;
+                    openNeighborhood[w][u] = true;
+                    closedNeighborhood[u][w] = true;
+                    closedNeighborhood[w][u] = true;
                     edgeCount++;
                 }
             }
             adjacencyList[v].Clear();
-            neighborSetsWith[v].Clear();
-            neighborSetsWithout[v].Clear();
+            closedNeighborhood[v].Clear();
+            openNeighborhood[v].Clear();
             notRemovedVertexCount--;
             notRemovedVertices[v] = false;
 
@@ -342,14 +342,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 for (int j = i + 1; j < cliqueToBe.Count; j++)
                 {
                     int v = cliqueToBe[j];
-                    if (!neighborSetsWithout[u][v])
+                    if (!openNeighborhood[u][v])
                     {
                         adjacencyList[u].Add(v);
                         adjacencyList[v].Add(u);
-                        neighborSetsWithout[u][v] = true;
-                        neighborSetsWithout[v][u] = true;
-                        neighborSetsWith[u][v] = true;
-                        neighborSetsWith[v][u] = true;
+                        openNeighborhood[u][v] = true;
+                        openNeighborhood[v][u] = true;
+                        closedNeighborhood[u][v] = true;
+                        closedNeighborhood[v][u] = true;
 
                         edgeCount++;
                     }
@@ -395,13 +395,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             adjacencyList = reducedAdjacencyList;
             notRemovedVertices = BitSet.All(vertexCount);
-            neighborSetsWithout = new BitSet[vertexCount];
-            neighborSetsWith = new BitSet[vertexCount];
+            openNeighborhood = new BitSet[vertexCount];
+            closedNeighborhood = new BitSet[vertexCount];
             for (int i = 0; i < vertexCount; i++)
             {
-                neighborSetsWithout[i] = new BitSet(vertexCount, adjacencyList[i]);
-                neighborSetsWith[i] = new BitSet(neighborSetsWithout[i]);
-                neighborSetsWith[i][i] = true;
+                openNeighborhood[i] = new BitSet(vertexCount, adjacencyList[i]);
+                closedNeighborhood[i] = new BitSet(openNeighborhood[i]);
+                closedNeighborhood[i][i] = true;
             }
 
             isReduced = false;
@@ -444,7 +444,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     int redElement = -1;
                     while ((redElement = currentIterationFrontier.NextElement(redElement, isConsumed: false)) != -1)
                     {
-                        nextIterationFromtier.UnionWith(neighborSetsWithout[redElement]);
+                        nextIterationFromtier.UnionWith(openNeighborhood[redElement]);
                     }
 
                     component.UnionWith(currentIterationFrontier);
@@ -473,7 +473,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             List<int> vertices = vertexSet.Elements();
             for (int i = 0; i < vertices.Count; i++)
             {
-                result.UnionWith(neighborSetsWithout[vertices[i]]);
+                result.UnionWith(openNeighborhood[vertices[i]]);
             }
             result.ExceptWith(vertexSet);
             return result;
@@ -596,13 +596,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 // TODO: doesn't work in all languages/cultures
                 Directory.CreateDirectory(Program.date_time_string);
+                
+                // ".gr" format:
+                //      p tw vertex_count edge_count
+                //      edge_list
                 using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0}.gr", graphID)))
                 {
                     sw.WriteLine(String.Format("p tw {0} {1}", notRemovedVertexCount, edgeCount));
-                    if (verbose)
-                    {
-                        Console.WriteLine("Dumped graph {0} with {1} vertices and {2} edges", graphID, notRemovedVertexCount, edgeCount);
-                    }
 
                     for (int u = 0; u < vertexCount; u++)
                     {
@@ -614,6 +614,36 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                                 if (u < v)
                                 {
                                     sw.WriteLine(String.Format("{0} {1}", u + 1, v + 1));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ".tgf" format:
+                //      node_list
+                //      #
+                //      edge_list
+                using (StreamWriter sw = new StreamWriter(String.Format(Program.date_time_string + "\\{0}.tgf", graphID)))
+                {
+                    for (int u = 0; u < vertexCount; u++)
+                    {
+                        if (notRemovedVertices[u])
+                        {
+                            sw.WriteLine(String.Format("{0} {0}", u));
+                        }
+                    }
+                    sw.WriteLine("#");
+                    for (int u = 0; u < vertexCount; u++)
+                    {
+                        if (notRemovedVertices[u])
+                        {
+                            for (int j = 0; j < adjacencyList[u].Count; j++)
+                            {
+                                int v = adjacencyList[u][j];
+                                if (u < v)
+                                {
+                                    sw.WriteLine(String.Format("{0} {1}", u, v));
                                 }
                             }
                         }

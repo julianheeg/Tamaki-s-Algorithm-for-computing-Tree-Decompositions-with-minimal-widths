@@ -88,7 +88,7 @@ namespace Tamaki_Tree_Decomp
                         for (int k = j + 1; k < graph.adjacencyList[i].Count; k++)
                         {
                             int v = graph.adjacencyList[i][k];
-                            if (!graph.neighborSetsWithout[u][v])
+                            if (!graph.openNeighborhood[u][v])
                             {
                                 neighborsFormClique = false;
                                 break;
@@ -107,9 +107,9 @@ namespace Tamaki_Tree_Decomp
                         }
 
                         // remember bag for reconstruction
-                        BitSet bag = new BitSet(graph.neighborSetsWithout[i]);
+                        BitSet bag = new BitSet(graph.openNeighborhood[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppend.Add((bag, new BitSet(graph.neighborSetsWithout[i])));
+                        reconstructionBagsToAppend.Add((bag, new BitSet(graph.openNeighborhood[i])));
                         reconstructionBagsDebug.Add("simplicial");
                     }
                 }
@@ -143,7 +143,7 @@ namespace Tamaki_Tree_Decomp
                         for (int k = j + 1; k < graph.adjacencyList[i].Count; k++)
                         {
                             int v = graph.adjacencyList[i][k];
-                            if (!graph.neighborSetsWithout[u][v])
+                            if (!graph.openNeighborhood[u][v])
                             {
                                 if (vertexNotIn == u || vertexNotIn == v)
                                 {
@@ -180,9 +180,9 @@ namespace Tamaki_Tree_Decomp
                         graph.MakeIntoClique(graph.adjacencyList[i]);
                         
                         // remember bag for reconstruction
-                        BitSet bag = new BitSet(graph.neighborSetsWithout[i]);
+                        BitSet bag = new BitSet(graph.openNeighborhood[i]);
                         bag[i] = true;
-                        reconstructionBagsToAppend.Add((bag, new BitSet(graph.neighborSetsWithout[i])));
+                        reconstructionBagsToAppend.Add((bag, new BitSet(graph.openNeighborhood[i])));
                         reconstructionBagsDebug.Add("almost simplicial");
                     }
                 }
@@ -222,7 +222,7 @@ namespace Tamaki_Tree_Decomp
                         {
                             // ... is a buddy
                             int buddy = graph.adjacencyList[neighbor][k];
-                            if (buddy != i && graph.neighborSetsWithout[i].Equals(graph.neighborSetsWithout[buddy]))
+                            if (buddy != i && graph.openNeighborhood[i].Equals(graph.openNeighborhood[buddy]))
                             {
                                 isReduced = true;
 
@@ -232,10 +232,10 @@ namespace Tamaki_Tree_Decomp
                                 graph.MakeIntoClique(neighbors);                                
 
                                 // remember bags for reconstruction
-                                BitSet bag1 = new BitSet(graph.neighborSetsWith[i]);                                // TODO: all of them don't need to be copied (?)
-                                reconstructionBagsToAppend.Add((bag1, new BitSet(graph.neighborSetsWithout[i])));   
-                                BitSet bag2 = new BitSet(graph.neighborSetsWith[buddy]);
-                                reconstructionBagsToAppend.Add((bag2, new BitSet(graph.neighborSetsWithout[buddy])));
+                                BitSet bag1 = new BitSet(graph.closedNeighborhood[i]);                                // TODO: all of them don't need to be copied (?)
+                                reconstructionBagsToAppend.Add((bag1, new BitSet(graph.openNeighborhood[i])));   
+                                BitSet bag2 = new BitSet(graph.closedNeighborhood[buddy]);
+                                reconstructionBagsToAppend.Add((bag2, new BitSet(graph.openNeighborhood[buddy])));
                                 reconstructionBagsDebug.Add("buddy 1");
                                 reconstructionBagsDebug.Add("buddy 2");
                                 break;
@@ -332,7 +332,7 @@ namespace Tamaki_Tree_Decomp
 
                             for (int j = 0; j < 3; j++)
                             {
-                                BitSet append_corner = new BitSet(graph.neighborSetsWith[neighbors[j]]);
+                                BitSet append_corner = new BitSet(graph.closedNeighborhood[neighbors[j]]);
                                 reconstructionBagsToAppend.Add((append_corner, append_center));
                                 reconstructionBagsDebug.Add("cube neighbor " + j);
                             }

@@ -52,7 +52,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
             // check for each eligible other vertex w if there is a flow of exactly 3 between v and w, and if so, find a safe separator of size 3
             for (int w = 0; w < graph.vertexCount; w++)
             {
-                if (w != v && !graph.neighborSetsWithout[v][w])
+                if (w != v && !graph.openNeighborhood[v][w])
                 {
                     List<Graph> v_ContractedGraphs = new List<Graph>(3);
                     List<Graph> graphsToCheck = new List<Graph>();
@@ -70,7 +70,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                         for (int i = 0; i < graph.adjacencyList[v].Count; i++)
                         {
                             int neighbor = graph.adjacencyList[v][i];
-                            if (graph.neighborSetsWithout[neighbor][w]) // continue if the neighbor to be contracted into v has also neighbor w
+                            if (graph.openNeighborhood[neighbor][w]) // continue if the neighbor to be contracted into v has also neighbor w
                             {
                                 continue;
                             }
@@ -89,7 +89,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                             for (int i = 0; i < graph.adjacencyList[w].Count; i++)
                             {
                                 int neighbor = graph.adjacencyList[w][i];
-                                if (graph.neighborSetsWithout[neighbor][v]) // continue if the neighbor to be contracted into w has also neighbor v
+                                if (graph.openNeighborhood[neighbor][v]) // continue if the neighbor to be contracted into w has also neighbor v
                                 {
                                     continue;
                                 }
@@ -175,7 +175,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
             {
                 int components = 0;
                 int size2OrLargerComponents = 0;
-                foreach ((BitSet component, BitSet _) in graph.ComponentsAndNeighbors(graph.neighborSetsWithout[v]))
+                foreach ((BitSet component, BitSet _) in graph.ComponentsAndNeighbors(graph.openNeighborhood[v]))
                 {
                     components++;
                     if (component.Count() >= 2)
@@ -184,7 +184,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                     }
                     if (components >= 3 && size2OrLargerComponents >= 2)
                     {
-                        separator = new BitSet(graph.neighborSetsWithout[v]);
+                        separator = new BitSet(graph.openNeighborhood[v]);
                         separatorType = SeparatorType.Size3;
                         size3separators++;
                         size3SeparationStopwatch.Stop();

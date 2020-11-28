@@ -16,7 +16,8 @@ namespace Tamaki_Tree_Decomp
         public enum Heuristic
         {
             min_degree,
-            min_fill
+            min_fill,
+            min_defect
         }
 
         /// <summary>
@@ -42,7 +43,7 @@ namespace Tamaki_Tree_Decomp
 
 
                 // TODO: why not this:
-                BitSet result = new BitSet(graph.neighborSetsWithout[min]);
+                BitSet result = new BitSet(graph.openNeighborhood[min]);
 
                 /*
                 // weird outlet computation, but it should work
@@ -53,7 +54,7 @@ namespace Tamaki_Tree_Decomp
                 result.IntersectWith(graph.neighborSetsWithout[min]);
                 */
 
-                yield return (graph.neighborSetsWith[min], result);
+                yield return (graph.closedNeighborhood[min], result);
                 // ################################################################################################################################################
 
                 // remove min from the neighbors' adjacency lists
@@ -120,7 +121,7 @@ namespace Tamaki_Tree_Decomp
                 else if (joined.Count == 1)
                 {
                     BitSet uniqueSeparator = joined[0];
-                    BitSet test = new BitSet(copy.neighborSetsWithout[vmin]);
+                    BitSet test = new BitSet(copy.openNeighborhood[vmin]);
                     test.IntersectWith(remaining);
                     if (uniqueSeparator.IsSupersetOf(test))
                     {
@@ -138,7 +139,7 @@ namespace Tamaki_Tree_Decomp
 
                 // ----- line 121 -----
 
-                BitSet temp = new BitSet(copy.neighborSetsWithout[vmin]);
+                BitSet temp = new BitSet(copy.openNeighborhood[vmin]);
                 temp.IntersectWith(remaining);
                 toBeAclique.UnionWith(temp);
 
@@ -194,12 +195,12 @@ namespace Tamaki_Tree_Decomp
                     foreach (int v in remainingVertices)
                     {
                         int fillEdges = 0;
-                        BitSet neighbors = new BitSet(graph.neighborSetsWithout[v]);
+                        BitSet neighbors = new BitSet(graph.openNeighborhood[v]);
 
                         foreach (int neighbor in neighbors.Elements())
                         {
                             BitSet newEdges = new BitSet(neighbors);
-                            newEdges.ExceptWith(graph.neighborSetsWithout[neighbor]);
+                            newEdges.ExceptWith(graph.openNeighborhood[neighbor]);
                             fillEdges += (int)newEdges.Count() - 1;
                         }
 
@@ -217,6 +218,29 @@ namespace Tamaki_Tree_Decomp
                         if (graph.adjacencyList[v].Count < min)
                         {
                             min = graph.adjacencyList[v].Count;
+                            vmin = v;
+                        }
+                    }
+                    return vmin;
+
+                case Heuristic.min_defect:
+                    foreach (int v in remainingVertices)
+                    {
+                        int defect = 0;
+                        BitSet neighbors = new BitSet(graph.openNeighborhood[v]);
+
+                        foreach (int neighbor in neighbors.Elements())
+                        {
+                            BitSet s = new BitSet(neighbors);
+                            s.ExceptWith(graph.openNeighborhood[neighbor]);
+                            if (s.Count() > 1)
+                            {
+                                defect++;
+                            }
+                        }
+                        if (defect < min)
+                        {
+                            min = defect;
                             vmin = v;
                         }
                     }

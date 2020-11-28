@@ -65,6 +65,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
+        public int Capacity()
+        {
+            return bytes.Length * 32;
+        }
+
         /// <summary>
         /// overwrites the contents of this bit set with the contents of another bit set.
         /// You can use this if there is an already allocated BitSet that you can reuse, in order to reduce garbage.

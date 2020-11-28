@@ -70,7 +70,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                     foreach (int v in candidateSeparator.Elements())
                     {
                         BitSet separator = new BitSet(candidateSeparator);
-                        separator.ExceptWith(graph.neighborSetsWithout[v]);
+                        separator.ExceptWith(graph.openNeighborhood[v]);
                         missingEdges += (int)separator.Count() - 1;
                     }
                     missingEdges /= 2;
@@ -230,7 +230,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                 for (int j = i + 1; j < leftNodes.Count; j++)
                 {
                     int left2 = leftNodes[j];
-                    if (!graph.neighborSetsWithout[left1][left2])
+                    if (!graph.openNeighborhood[left1][left2])
                     {
                         missingEdges.Add(new Edge(left1, left2));
                     }
@@ -261,7 +261,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                 for (int j = 0; j < missingEdges.Count; j++)
                 {
                     Edge missingEdge = missingEdges[j];
-                    if (graph.neighborSetsWithout[v][missingEdge.left1] || graph.neighborSetsWithout[v][missingEdge.left2])
+                    if (graph.openNeighborhood[v][missingEdge.left1] || graph.openNeighborhood[v][missingEdge.left2])
                     {
                         useless = false;
                         break;
@@ -273,7 +273,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                     continue;
                 }
 
-                RightNode rn = new RightNode(v, graph.neighborSetsWithout[v], graph.vertexCount);
+                RightNode rn = new RightNode(v, graph.openNeighborhood[v], graph.vertexCount);
                 rightNodes.Add(rn);
                 available[v] = false;
             }
@@ -517,7 +517,7 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                 int v = ns.First();
                 result[v] = true;
                 available[v] = false;
-                back = graph.neighborSetsWithout[v];
+                back = graph.openNeighborhood[v];
             }
 
             rightNodes.Remove(rn1);

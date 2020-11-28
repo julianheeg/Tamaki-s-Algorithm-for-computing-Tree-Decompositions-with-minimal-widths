@@ -8,7 +8,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
     public class Treewidth_UnitTest
     {
         // test timeout in milliseconds
-        private const int timeout = 1800000;
+        private const int timeout = int.MaxValue;
 
         /// <summary>
         /// asserts that the treewidth that the algorithm finds is the graph's actual treewidth
@@ -18,6 +18,11 @@ namespace Tamaki_Tree_Decomp.UnitTests
         private void RunCompletelyAndAssertCorrectTreewidth(Graph g, int treewidth)
         {
             Treewidth.completeHeuristically = true;
+            Treewidth.componentOptimization = true;
+            Treewidth.testOutletInletSupersets = true;
+            Treewidth.testOutletIsCliqueMinor = true;
+            Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
+            PTD.checkOneAddedPotMaxClique = false;
             ImmutableGraph h = new ImmutableGraph(g);   // copy for check if treewidth is correct
             Assert.AreEqual(treewidth, Treewidth.TreeWidth(g, out PTD output));
 
@@ -32,7 +37,11 @@ namespace Tamaki_Tree_Decomp.UnitTests
         /// <param name="treewidth">the graph's actual tree width</param>
         private void AssertCorrectTreewidth(Graph g, int treewidth)
         {
-            Treewidth.completeHeuristically = true;
+            Treewidth.completeHeuristically = false;
+            Treewidth.testOutletInletSupersets = false;
+            Treewidth.componentOptimization = true;
+            Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
+            PTD.checkOneAddedPotMaxClique = true;
             Graph g2 = new Graph(g);  // copy for second call
             ImmutableGraph h = new ImmutableGraph(g);   // copy for check if treewidth is correct
             Assert.IsFalse(Treewidth.IsTreeWidthAtMost(g, treewidth - 1, out PTD output));
@@ -783,7 +792,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         {
             int treeWidth = 22;
             Graph g = new Graph("..\\..\\Test Data\\2017\\ex169.gr");
-            AssertCorrectTreewidth(g, treeWidth);
+            AssertCorrectTreewidth(new Graph(g), treeWidth);
         }
 
         [TestMethod, Timeout(timeout)]

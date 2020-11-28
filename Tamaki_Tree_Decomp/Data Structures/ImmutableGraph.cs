@@ -16,8 +16,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public readonly int edgeCount;
 
         public readonly int[][] adjacencyList;
-        public readonly BitSet[] neighborSetsWithout;   // contains N(v)
-        public readonly BitSet[] neighborSetsWith;      // contains N[v]
+        public readonly BitSet[] openNeighborhood;   // contains N(v)
+        public readonly BitSet[] closedNeighborhood;      // contains N[v]
         public readonly BitSet allVertices;             // used for easy testing if a ptd covers all vertices
         public readonly int degree = 0;
 
@@ -47,8 +47,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             edgeCount /= 2;
 
             // fill neighbor sets
-            neighborSetsWithout = graph.neighborSetsWithout;
-            neighborSetsWith = graph.neighborSetsWith;
+            openNeighborhood = graph.openNeighborhood;
+            closedNeighborhood = graph.closedNeighborhood;
+
+            /*
+            openNeighborhood = new BitSet[vertexCount];
+            closedNeighborhood = new BitSet[vertexCount];
+            for (int i = 0; i < vertexCount; i++)
+            {
+                openNeighborhood[i] = new BitSet(graph.openNeighborhood[i]);
+                closedNeighborhood[i] = new BitSet(graph.closedNeighborhood[i]);
+            }
+            */
 
             allVertices = BitSet.All(vertexCount);
 
@@ -102,26 +112,26 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             {
                 BitSet currentIterationFrontier = new BitSet(vertexCount);
                 currentIterationFrontier[startingVertex] = true;
-                BitSet nextIterationFromtier = new BitSet(vertexCount);
+                BitSet nextIterationFrontier = new BitSet(vertexCount);
                 BitSet component = new BitSet(vertexCount);
                 BitSet neighbors = Neighbors(component);
 
                 while (!currentIterationFrontier.IsEmpty())
                 {
-                    nextIterationFromtier.Clear();
+                    nextIterationFrontier.Clear();
 
                     int redElement = -1;
                     while ((redElement = currentIterationFrontier.NextElement(redElement, isConsumed: false)) != -1)
                     {
-                        nextIterationFromtier.UnionWith(neighborSetsWithout[redElement]);
+                        nextIterationFrontier.UnionWith(openNeighborhood[redElement]);
                     }
 
                     component.UnionWith(currentIterationFrontier);
-                    neighbors.UnionWith(nextIterationFromtier);
-                    nextIterationFromtier.ExceptWith(separator);
-                    nextIterationFromtier.ExceptWith(component);
+                    neighbors.UnionWith(nextIterationFrontier);
+                    nextIterationFrontier.ExceptWith(separator);
+                    nextIterationFrontier.ExceptWith(component);
 
-                    currentIterationFrontier.CopyFrom(nextIterationFromtier);
+                    currentIterationFrontier.CopyFrom(nextIterationFrontier);
                 }
 
                 // debug.Add((new BitSet(purple), new BitSet(neighbors)));
@@ -130,6 +140,21 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 Debug.Assert(neighbors.Equals(Neighbors(component)));
                 yield return (component, neighbors);
             }
+        }
+
+        /// <summary>
+        /// determines the components associated with a separator
+        /// </summary>
+        /// <param name="separator">the separator</param>
+        /// <returns>a list of the components associated with the separator</returns>
+        public List<BitSet> Components(BitSet separator)
+        {
+            List<BitSet> components = new List<BitSet>();
+            foreach( (BitSet component, BitSet _) in ComponentsAndNeighbors(separator))
+            {
+                components.Add(component);
+            }
+            return components;
         }
 
         /// <summary>
@@ -143,7 +168,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             List<int> vertices = vertexSet.Elements();
             for (int i = 0; i < vertices.Count; i++)
             {
-                result.UnionWith(neighborSetsWithout[vertices[i]]);
+                result.UnionWith(openNeighborhood[vertices[i]]);
             }
             result.ExceptWith(vertexSet);
             return result;
@@ -189,17 +214,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     fullComponents++;
                 }
             }
-            if (fullComponents >= 2)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return fullComponents >= 2;
         }
 
-        Dictionary<BitSet, bool> cliquishTest = new Dictionary<BitSet, bool>();
+        Dictionary<BitSet, bool> cliquishTestCache = new Dictionary<BitSet, bool>();
+        public static int cliquishCacheReads = 0;
+        public static int cliquishCalculations = 0;
 
         /// <summary>
         /// determines if a given vertex set is cliquish
@@ -208,10 +228,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>true, iff the vertex set is cliquish</returns>
         public bool IsCliquish(BitSet K)
         {
-            if (cliquishTest.TryGetValue(K, out bool result))
+            if (cliquishTestCache.TryGetValue(K, out bool result))
             {
+                cliquishCacheReads++;
                 return result;
             }
+            cliquishCalculations++;
 
             // ------ 1.------
 
@@ -234,7 +256,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     int v = KBits[j];
 
                     // if a.) doesn't hold ...
-                    if (!neighborSetsWithout[u][v])
+                    if (!openNeighborhood[u][v])
                     {
                         bool b_satisfied = false;
 
@@ -250,7 +272,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         // ... if neither a.) nor b.) hold, K is not a potential maximal clique
                         if (!b_satisfied)
                         {
-                            cliquishTest.Add(K, false);
+                            cliquishTestCache.Add(new BitSet(K), false);
                             return false;
                         }
                     }
@@ -258,20 +280,31 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
-            cliquishTest.Add(K, true);
+            cliquishTestCache.Add(new BitSet(K), true);
             return true;
         }
+
+        public static bool cachePMC = false;
+        public static int pmcCacheReads = 0;
+        public static int pmcCalculations = 0;
+
+        Dictionary<BitSet, bool> pmcTestCache = new Dictionary<BitSet, bool>();
 
         /// <summary>
         /// checks if K is a potential maximal clique and if so, computes the boundary vertices of K
         ///     (i. e. the vertices of K that have neighbors not in K)
         /// </summary>
         /// <param name="K">the vertex set to test</param>
-        /// <param name="boundary">the boundary vertices of K if K is a potentially maximal clique</param>
-        /// <returns>true and a bitset of the boundary vertices, iff K is a potential maximal clique. If K ist not a potential maximal clique, null is returned for the boundary vertices</returns>
+        /// <returns>true, iff K is a potential maximal clique</returns>
         // TODO: cache lists, stack, sets, etc.
-        public bool IsPotMaxClique(BitSet K, out BitSet boundary)
+        public bool IsPotMaxClique(BitSet K)
         {
+            if (cachePMC && pmcTestCache.TryGetValue(K, out bool result))
+            {
+                pmcCacheReads++;
+                return result;
+            }
+
             /*
              *  This method operates by the following principle:
              *  K is potential maximal clique <=>
@@ -291,6 +324,19 @@ namespace Tamaki_Tree_Decomp.Data_Structures
              * 
              */
 
+            if (cliquishTestCache.TryGetValue(K, out bool cliquish))
+            {
+                cliquishCacheReads++;
+                if (!cliquish)
+                {
+                    if (cachePMC)
+                    {
+                        pmcTestCache.Add(new BitSet(K), false);
+                    }
+                    return false;
+                }
+            }
+            pmcCalculations++;
 
             // ------ 1.------
 
@@ -300,11 +346,25 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 BitSet N_C = C_NC.Item2;
                 if (N_C.Equals(K))
                 {
-                    boundary = null;
+                    if (cachePMC)
+                    {
+                        pmcTestCache.Add(new BitSet(K), false);
+                    }
                     return false;
                 }
                 componentNeighborsInK.Add(C_NC.Item2);
             }
+
+            if (cliquish)
+            {
+                if (cachePMC)
+                {
+                    pmcTestCache.Add(new BitSet(K), true);
+                }
+                return true;
+            }
+            cliquishCalculations++;
+
             List<int> KBits = K.Elements();
 
             // ------ 2.------
@@ -318,7 +378,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     int v = KBits[j];
 
                     // if a.) doesn't hold ...
-                    if (!neighborSetsWithout[u][v])
+                    if (!openNeighborhood[u][v])
                     {
                         bool b_satisfied = false;
 
@@ -334,7 +394,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         // ... if neither a.) nor b.) hold, K is not a potential maximal clique
                         if (!b_satisfied)
                         {
-                            boundary = null;
+                            cliquishTestCache.Add(new BitSet(K), false);
+                            if (cachePMC)
+                            {
+                                pmcTestCache.Add(new BitSet(K), false);
+                            }
                             return false;
                         }
                     }
@@ -342,10 +406,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 }
             }
 
-            boundary = new BitSet(vertexCount);
-            for (int i = 0; i < componentNeighborsInK.Count; i++)
+            cliquishTestCache.Add(new BitSet(K), true);
+            if (cachePMC)
             {
-                boundary.UnionWith(componentNeighborsInK[i]);
+                pmcTestCache.Add(new BitSet(K), true);
             }
             return true;
         }
@@ -395,7 +459,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             int pos = -1;
             while((pos = bag.NextElement(pos, isConsumed: false)) != -1)
             {
-                neighbors.UnionWith(neighborSetsWithout[pos]);
+                neighbors.UnionWith(openNeighborhood[pos]);
             }
             neighbors.ExceptWith(vertices);
 
@@ -405,7 +469,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             while ((pos = neighbors.NextElement(pos, isConsumed: false)) != -1)
             {
-                outlet.UnionWith(neighborSetsWithout[pos]);
+                outlet.UnionWith(openNeighborhood[pos]);
             }
             outlet.IntersectWith(vertices);
 
