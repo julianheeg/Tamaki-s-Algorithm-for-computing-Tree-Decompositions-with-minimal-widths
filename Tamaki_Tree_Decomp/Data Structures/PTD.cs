@@ -120,7 +120,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return new PTD(bag, vertices, possiblyUsableIgnore, outlet, inlet, children);
         }
 
-        public static bool checkOneAddedPotMaxClique = false;
+        public static bool testIfAddingOneVertexToBagFormsPMC = false;
 
         /// <summary>
         /// line 13 (combining a ptd and ptdur to form a new ptdur), but exit early if bag size is too big or if the ptd is not possibly usable
@@ -303,7 +303,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
 
             // if only one vertex can be added, determine all the candidates that would make this bag a pmc when added. If there are none, return.
-            if (checkOneAddedPotMaxClique && futureBagSize == k)
+            if (testIfAddingOneVertexToBagFormsPMC && futureBagSize == k)
             {
                 // if bag is pmc already, we need this ptdur. (In that case no candidate exists which could be added.)
                 if (!graph.IsPotMaxClique(bag))

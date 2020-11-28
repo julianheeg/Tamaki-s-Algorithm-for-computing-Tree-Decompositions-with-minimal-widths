@@ -102,8 +102,9 @@ namespace Tamaki_Tree_Decomp
              * 
              */
             outletsAlreadyChecked = new HashSet<BitSet>();
-
-            int minK = lowerBound;
+            
+            int minK = LowerBound.getLowerBound(graph);
+            //int minK = 0;
 
             List<Graph> subGraphs = new List<Graph>();                        // index i corresponds to the i-th subgraph created
             List<List<GraphReduction>> graphReductions = new List<List<GraphReduction>>();  // index i corresponds to the list of graph reductions made to subgraph i
@@ -132,6 +133,7 @@ namespace Tamaki_Tree_Decomp
                     ptds.Add(alreadyCalculatedPTD);
                     continue;
                 }
+                
 
                 // loop over all possible tree widths for the current graph
                 while (minK < graph.vertexCount - 1)
@@ -316,6 +318,12 @@ namespace Tamaki_Tree_Decomp
                 return k == 0;
             }
 
+            if (k < LowerBound.getLowerBound(graph))
+            {
+                treeDecomp = null;
+                return false;
+            }
+
             outletsAlreadyChecked = new HashSet<BitSet>();
 
             int minK = k;   // check equality with k after reduction and safe separation
@@ -346,7 +354,7 @@ namespace Tamaki_Tree_Decomp
                     ptds.Add(alreadyCalculatedPTD);
                     continue;
                 }
-
+                
                 // perform graph reduction
                 GraphReduction graphReduction = new GraphReduction(graph, k);
                 bool reduced = graphReduction.Reduce(ref minK);
@@ -496,9 +504,7 @@ namespace Tamaki_Tree_Decomp
         public static bool testOutletIsCliqueMinor = true;  // switch for controlling whether the outlet-is-clique-minor test is executed
 
 
-        public static bool testOutletInletSupersets = true;
-
-        public static bool testEarlyExitIfPTDURBagTooLarge = true;
+        public static bool keepOnlyPTDsWithLargerInletIfSameOutlet = true;
 
         public static bool oldCliquishTest = false;
 
@@ -603,7 +609,7 @@ namespace Tamaki_Tree_Decomp
 
                 // --------- lines 10 ----------
 
-                Tau_wiggle_original.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !componentOptimization);
+                Tau_wiggle_original.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
 
                 // add the new ptdur if there are no equivalent ptdurs
                 // if it has a smaller root bag than an equivalent ptdur, replace that one instead
@@ -657,7 +663,7 @@ namespace Tamaki_Tree_Decomp
                             PTD equivalentPtdur = U[index];
                             if (Tau_wiggle.Bag.Count() < equivalentPtdur.Bag.Count())
                             {
-                                Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !componentOptimization);
+                                Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
                                 U[index] = Tau_wiggle;
                             }
                             else
@@ -667,7 +673,7 @@ namespace Tamaki_Tree_Decomp
                         }
                         else
                         {
-                            Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !componentOptimization);
+                            Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
                             U_inletsWithIndex.Add(Tau_wiggle.inlet, U.Count);
                             U.Add(Tau_wiggle);
                         }
@@ -734,17 +740,12 @@ namespace Tamaki_Tree_Decomp
                                 return false;
                             }
 
-                            p1.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !componentOptimization);
+                            p1.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
                             AddToP(p1, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
 
                         }
 
                         // if the bag is already a pmc, then no proper superset can be one. Therefore we can continue immediately.
-                        continue;
-                    }
-                    // if no vertices are allowed to be added, we can return immediately
-                    if (testEarlyExitIfPTDURBagTooLarge && PTDURSize == k + 1)
-                    {
                         continue;
                     }
 
@@ -805,7 +806,7 @@ namespace Tamaki_Tree_Decomp
                                         return false;
                                     }
 
-                                    p2.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !componentOptimization);
+                                    p2.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
                                     AddToP(p2, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
 
                                 }
@@ -874,7 +875,7 @@ namespace Tamaki_Tree_Decomp
                                     return false;
                                 }
 
-                                p3.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !componentOptimization);
+                                p3.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
 
                                 AddToP(p3, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
                             }
@@ -1036,7 +1037,7 @@ namespace Tamaki_Tree_Decomp
             }
         }
 
-        public static bool componentOptimization = true;
+        public static bool moreThan2ComponentsOptimization = true;
         public static int currentKDebug = -1;
         public static BitSet currentBagDebug = new BitSet(45, new int[] { 2, 5, 9, 11, 16, 17, 18, 19, 21, 22, 26, 30, 35, 37, 39, 40, 41, 42, 43, 44 });
         public static BitSet currentInletDebug = new BitSet(45, new int[] { });
@@ -1044,7 +1045,7 @@ namespace Tamaki_Tree_Decomp
 
         private static void AddToP(PTD ptd, List<BitSet> components, ImmutableGraph graph, Stack<PTD> P, Dictionary<BitSet, PTD> P_inlets, Dictionary<BitSet, List<BitSet>> outletToInletMapping, HashSet<BitSet> smallInlets, Dictionary<BitSet, List<PTD>> componentToPTDsMapping, Dictionary<PTD, List<BitSet>> PTDToComponentsMapping, bool isParent=false, List<PTD> pushParents=null)
         {
-            if (componentOptimization)
+            if (moreThan2ComponentsOptimization)
             {
                 if (componentToPTDsMapping.TryGetValue(ptd.inlet, out List<PTD> parents))
                 {
@@ -1165,7 +1166,7 @@ namespace Tamaki_Tree_Decomp
                     }
                 }
 
-                if (testOutletInletSupersets)
+                if (keepOnlyPTDsWithLargerInletIfSameOutlet)
                 {
                     // test if a ptd with a strictly larger inlet exists already. In that case skip this ptd
                     if (outletToInletMapping.TryGetValue(ptd.outlet, out List<BitSet> inlets))

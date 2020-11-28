@@ -18,11 +18,10 @@ namespace Tamaki_Tree_Decomp.UnitTests
         private void RunCompletelyAndAssertCorrectTreewidth(Graph g, int treewidth)
         {
             Treewidth.completeHeuristically = true;
-            Treewidth.componentOptimization = true;
-            Treewidth.testOutletInletSupersets = true;
+            Treewidth.moreThan2ComponentsOptimization = true;
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;
             Treewidth.testOutletIsCliqueMinor = true;
-            Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
-            PTD.checkOneAddedPotMaxClique = false;
+            PTD.testIfAddingOneVertexToBagFormsPMC = false;
             ImmutableGraph h = new ImmutableGraph(g);   // copy for check if treewidth is correct
             Assert.AreEqual(treewidth, Treewidth.TreeWidth(g, out PTD output));
 
@@ -38,10 +37,9 @@ namespace Tamaki_Tree_Decomp.UnitTests
         private void AssertCorrectTreewidth(Graph g, int treewidth)
         {
             Treewidth.completeHeuristically = false;
-            Treewidth.testOutletInletSupersets = false;
-            Treewidth.componentOptimization = true;
-            Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
-            PTD.checkOneAddedPotMaxClique = true;
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;
+            Treewidth.moreThan2ComponentsOptimization = true;
+            PTD.testIfAddingOneVertexToBagFormsPMC = true;
             Graph g2 = new Graph(g);  // copy for second call
             ImmutableGraph h = new ImmutableGraph(g);   // copy for check if treewidth is correct
             Assert.IsFalse(Treewidth.IsTreeWidthAtMost(g, treewidth - 1, out PTD output));

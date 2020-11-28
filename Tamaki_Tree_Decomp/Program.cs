@@ -106,45 +106,31 @@ namespace Tamaki_Tree_Decomp
             int directoryEndIndex = 200;
 
             BitSet.plusOneInString = false;
-            //Graph.dumpSubgraphs = true;
+            //Graph.dumpSubgraphs = true;   // dumps graphs only in DEBUG mode!
             //SafeSeparator.separate = false;
             //GraphReduction.reduce = false;
             Treewidth.completeHeuristically = true;
-            if (Treewidth.completeHeuristically)
-            {
-                Console.WriteLine("BEWARE: heuristic completion is active!");
-            }
-            PTD.profile = false;
-            if (PTD.profile)
-            {
-                Console.WriteLine("BEWARE: ptd consistency check is disabled");
-            }
+            PTD.profile = false;    // disable for profiling, otherwise a debugging assertion takes very long
             Treewidth.heuristicCompletionFrequency = 20;
             Treewidth.heuristicInletMax = 1f;
             Treewidth.heuristicInletMin = 0f;
             Treewidth.maxTestsPerGraphAndK = 20;
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
-            Treewidth.componentOptimization = true;
-            Treewidth.testOutletInletSupersets = false;
-            Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
+            Treewidth.moreThan2ComponentsOptimization = true;
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;
             //Treewidth.printStats = true;
-            PTD.checkOneAddedPotMaxClique = true;
+            PTD.testIfAddingOneVertexToBagFormsPMC = true;
             ImmutableGraph.cachePMC = false;
-
-            //Treewidth.testOutletIsCliqueMinor = false;
-
-            //Debug.Assert(TestSpecificTreewidth(filepath, 22));
-            //Treewidth.lowerBound = 43;
+            Treewidth.oldCliquishTest = true;
+            
             //Run(filepath, true);
             //Run(filepath, false);
             //RunAll_Parallel(directory);
             //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
             EvaluateHeuristicCompletion(directory, directoryStartIndex, directoryEndIndex);
 
-            Treewidth.PrintStats_kMinus(12);
-            Console.WriteLine("cliquish calculations: {0}, cliquish cache reads: {1}\npmc calculations: {2}, pmc cache reads: {3}",
-                ImmutableGraph.cliquishCalculations, ImmutableGraph.cliquishCacheReads, ImmutableGraph.pmcCalculations, ImmutableGraph.pmcCacheReads);
+            //Treewidth.PrintStats_kMinus(12);
             Console.Read();
         }
 
@@ -304,7 +290,8 @@ namespace Tamaki_Tree_Decomp
                 //PTD.checkOneAddedPotMaxClique = false;
                 //Treewidth.testEarlyExitIfPTDURBagTooLarge = false;
                 //ImmutableGraph.cachePMC = false;
-                Treewidth.oldCliquishTest = true;
+                //Treewidth.oldCliquishTest = true;
+                LowerBound.calculateLowerBound = false;
 
                 timer1.Restart();
                 Run(filepath, false, false);
@@ -315,7 +302,8 @@ namespace Tamaki_Tree_Decomp
                 //PTD.checkOneAddedPotMaxClique = true;
                 //Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
                 //ImmutableGraph.cachePMC = true;
-                Treewidth.oldCliquishTest = false;
+                //Treewidth.oldCliquishTest = false;
+                LowerBound.calculateLowerBound = false;
 
                 timer2.Restart();
                 Run(filepath, false, false);
@@ -377,6 +365,7 @@ namespace Tamaki_Tree_Decomp
         private static int Run(string filepath, bool printTD=true, bool printStats=true)
         {
             Graph g = new Graph(filepath);
+            
             Stopwatch stopwatch = new Stopwatch();
             SafeSeparator.size3SeparationStopwatch = new Stopwatch();
             SafeSeparator.size3separators = 0;
