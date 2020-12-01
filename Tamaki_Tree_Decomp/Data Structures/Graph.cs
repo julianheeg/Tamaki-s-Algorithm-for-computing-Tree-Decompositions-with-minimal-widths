@@ -146,6 +146,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             vertexCount = graph.vertexCount;
             edgeCount = graph.edgeCount;
             notRemovedVertices = new BitSet(graph.notRemovedVertices);
+            notRemovedVertexCount = graph.notRemovedVertexCount;
             adjacencyList = new List<int>[vertexCount];
             openNeighborhood = new BitSet[vertexCount];
             closedNeighborhood = new BitSet[vertexCount];
@@ -309,7 +310,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 edgeCount--;
 
                 // add u to the neighbors' adjacencies
-                if (!openNeighborhood[w][u])
+                if (u != w && !openNeighborhood[w][u])
                 {
                     adjacencyList[u].Add(w);
                     adjacencyList[w].Add(u);

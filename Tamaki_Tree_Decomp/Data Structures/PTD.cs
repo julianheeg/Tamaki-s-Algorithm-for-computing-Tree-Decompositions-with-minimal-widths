@@ -177,32 +177,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             children.Add(Tau);
 
             // exit early if not possibly usable
-            for (int i = 0; i < children.Count; i++)
+            if (!IsPossiblyUsable(children))
             {
-                for (int j = i + 1; j < children.Count; j++)
-                {
-                    BitSet verticesIgnoreIntersection = new BitSet(children[i].possiblyUsableIgnore);
-                    verticesIgnoreIntersection.IntersectWith(children[j].possiblyUsableIgnore);
-                    BitSet childrenInletsIntersection = new BitSet(children[i].inlet);
-                    childrenInletsIntersection.IntersectWith(children[j].inlet);
-
-                    Debug.Assert(childrenInletsIntersection.IsSupersetOf(verticesIgnoreIntersection));
-                    if (!childrenInletsIntersection.Equals(verticesIgnoreIntersection))
-                    //if (!children[i].inlet.IsDisjoint(children[j].inlet))
-                    {
-                        result = null;
-                        return false;
-                    }
-                    
-                    BitSet verticesIntersection = new BitSet(children[i].vertices);
-                    verticesIntersection.IntersectWith(children[j].vertices);
-                    verticesIntersection.ExceptWith(verticesIgnoreIntersection);
-                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
-                    {
-                        result = null;
-                        return false;
-                    }
-                }
+                result = null;
+                return false;
             }
 
             // usability is established, so we build the ptd
@@ -273,32 +251,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             children.Add(Tau);
 
             // exit early if not possibly usable
-            for (int i = 0; i < children.Count; i++)
+            if (!IsPossiblyUsable(children))
             {
-                for (int j = i + 1; j < children.Count; j++)
-                {
-                    BitSet verticesIgnoreIntersection = new BitSet(children[i].possiblyUsableIgnore);
-                    verticesIgnoreIntersection.IntersectWith(children[j].possiblyUsableIgnore);
-                    BitSet childrenInletsIntersection = new BitSet(children[i].inlet);
-                    childrenInletsIntersection.IntersectWith(children[j].inlet);
-
-                    Debug.Assert(childrenInletsIntersection.IsSupersetOf(verticesIgnoreIntersection));
-                    if (!childrenInletsIntersection.Equals(verticesIgnoreIntersection))   // TODO: use for 3 or more component check
-                    //if (!children[i].inlet.IsDisjoint(children[j].inlet))
-                    {
-                        result = null;
-                        return false;
-                    }
-
-                    BitSet verticesIntersection = new BitSet(children[i].vertices);
-                    verticesIntersection.IntersectWith(children[j].vertices);
-                    verticesIntersection.ExceptWith(verticesIgnoreIntersection);
-                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
-                    {
-                        result = null;
-                        return false;
-                    }
-                }
+                result = null;
+                return false;
             }
 
 
@@ -396,7 +352,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             inlet.ExceptWith(outlet);
             BitSet possiblyUsableIgnore = new BitSet(Tau_prime.possiblyUsableIgnore);
             possiblyUsableIgnore.UnionWith(Tau.possiblyUsableIgnore);
-            result = new PTD(new BitSet(bag), vertices, possiblyUsableIgnore, outlet, inlet, children);   // TODO: not copy bag
+            result = new PTD(new BitSet(bag), vertices, possiblyUsableIgnore, outlet, inlet, children);   // TODO: don't copy bag?
 
             return true;
         }
@@ -466,22 +422,26 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// </summary>
         /// <returns>true iff the PTD is possibly usable</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsPossiblyUsable()
+        public static bool IsPossiblyUsable(List<PTD> children)
         {
             for (int i = 0; i < children.Count; i++)
             {
-                Debug.Assert(children[i].inlet.IsDisjoint(outlet));
                 for (int j = i + 1; j < children.Count; j++)
                 {
-                    throw new NotImplementedException("TODO: exclude possibly-usable-ignored vertices from possibly usable check");
+                    BitSet verticesIgnoreIntersection = new BitSet(children[i].possiblyUsableIgnore);
+                    verticesIgnoreIntersection.IntersectWith(children[j].possiblyUsableIgnore);
+                    BitSet childrenInletsIntersection = new BitSet(children[i].inlet);
+                    childrenInletsIntersection.IntersectWith(children[j].inlet);
 
-                    if (!children[i].inlet.IsDisjoint(children[j].inlet))
+                    Debug.Assert(childrenInletsIntersection.IsSupersetOf(verticesIgnoreIntersection));
+                    if (!childrenInletsIntersection.Equals(verticesIgnoreIntersection))
                     {
                         return false;
                     }
 
                     BitSet verticesIntersection = new BitSet(children[i].vertices);
                     verticesIntersection.IntersectWith(children[j].vertices);
+                    verticesIntersection.ExceptWith(verticesIgnoreIntersection);
                     if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
                     {
                         return false;
@@ -539,6 +499,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             inlet.ExceptWith(outlet);
         }
 
+        /// <summary>
+        /// removes duplicate bags from this tree decomposition. These may be added incorrectly if Treewidth.moreThan2ComponentsOptimization is enabled.
+        /// </summary>
         public void RemoveDuplicateBags()
         {
             HashSet<BitSet> bagSet = new HashSet<BitSet> { Bag };

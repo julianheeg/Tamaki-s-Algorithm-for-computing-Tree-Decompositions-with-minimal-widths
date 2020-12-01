@@ -93,7 +93,7 @@ namespace Tamaki_Tree_Decomp
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
             //string filepath = test_a0;
-            string filepath = PACE2017(25); // 13
+            string filepath = PACE2017(63); // 13
             //string filepath = "..\\..\\Test Data\\Debug\\127-22.gr";
             
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
@@ -109,8 +109,8 @@ namespace Tamaki_Tree_Decomp
             //Graph.dumpSubgraphs = true;   // dumps graphs only in DEBUG mode!
             //SafeSeparator.separate = false;
             //GraphReduction.reduce = false;
-            Treewidth.completeHeuristically = true;
-            PTD.profile = false;    // disable for profiling, otherwise a debugging assertion takes very long
+            Treewidth.completeHeuristically = false;
+            PTD.profile = false;    // enable for profiling, otherwise a debugging assertion in takes very long
             Treewidth.heuristicCompletionFrequency = 20;
             Treewidth.heuristicInletMax = 1f;
             Treewidth.heuristicInletMin = 0f;
@@ -118,19 +118,20 @@ namespace Tamaki_Tree_Decomp
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
             Treewidth.moreThan2ComponentsOptimization = true;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;
-            //Treewidth.printStats = true;
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;  // not yet verified if implementation is correct
             PTD.testIfAddingOneVertexToBagFormsPMC = true;
             ImmutableGraph.cachePMC = false;
-            Treewidth.oldCliquishTest = true;
+            Treewidth.newCliquishTest = false;
+            LowerBound.calculateLowerBound = true;
             
-            //Run(filepath, true);
+            Run(filepath, true);
             //Run(filepath, false);
             //RunAll_Parallel(directory);
             //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
-            EvaluateHeuristicCompletion(directory, directoryStartIndex, directoryEndIndex);
+            //EvaluateParameterImpact(directory, ref Treewidth.newCliquishTest, directoryStartIndex, directoryEndIndex);
 
             //Treewidth.PrintStats_kMinus(12);
+            Console.WriteLine("total time for lower bound calculation: {0}", LowerBound.stopWatch.Elapsed);
             Console.Read();
         }
 
@@ -248,17 +249,13 @@ namespace Tamaki_Tree_Decomp
                 {
                     continue;
                 }
-                if (filepath.Contains("Test Data\\ex-instances-PACE2017-public\\ex003.gr"))
-                {
-                    continue;
-                }
                 Run(filepath, false);
             }
             timer.Stop();
             Console.WriteLine("\n-------------------------------------------------------------------------------------\n\ntotal time for directory: " + timer.Elapsed.ToString());
         }
 
-        private static void EvaluateHeuristicCompletion(string directory, int start = 0, int end = int.MaxValue)
+        private static void EvaluateParameterImpact(string directory, ref bool parameter, int start = 0, int end = int.MaxValue)
         {
             int counter = -1;
             Stopwatch timer = new Stopwatch();
@@ -269,8 +266,6 @@ namespace Tamaki_Tree_Decomp
             TimeSpan lowestDifference = new TimeSpan(int.MaxValue);
             float highestRelativeDifference = 0;
             float lowestRelativeDifference = float.MaxValue;
-            int heuristicCompletionCalls = 0;
-            int heuristicCompletionsSuccessful = 0;
 
             timer.Start();
             foreach (String filepath in Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories))
@@ -280,34 +275,20 @@ namespace Tamaki_Tree_Decomp
                 {
                     continue;
                 }
-                if (filepath.Contains("Test Data\\ex-instances-PACE2017-public\\ex003.gr"))
-                {
-                    continue;
-                }
 
-                //Treewidth.completeHeuristically = false;
-                //Treewidth.componentOptimization = false;
-                //PTD.checkOneAddedPotMaxClique = false;
-                //Treewidth.testEarlyExitIfPTDURBagTooLarge = false;
-                //ImmutableGraph.cachePMC = false;
-                //Treewidth.oldCliquishTest = true;
-                LowerBound.calculateLowerBound = false;
-
+                // run without parameter active
+                parameter = false;
                 timer1.Restart();
                 Run(filepath, false, false);
                 timer1.Stop();
 
-                //Treewidth.completeHeuristically = true;
-                //Treewidth.componentOptimization = true;
-                //PTD.checkOneAddedPotMaxClique = true;
-                //Treewidth.testEarlyExitIfPTDURBagTooLarge = true;
-                //ImmutableGraph.cachePMC = true;
-                //Treewidth.oldCliquishTest = false;
-                LowerBound.calculateLowerBound = false;
-
+                // run with parameter active
+                parameter = true;
                 timer2.Restart();
                 Run(filepath, false, false);
                 timer2.Stop();
+
+                // calculate statistics
                 TimeSpan difference = timer2.Elapsed - timer1.Elapsed;
                 float relativeDifference = (float)timer2.ElapsedMilliseconds / timer1.ElapsedMilliseconds;
                 totalDifference += difference;
@@ -319,7 +300,7 @@ namespace Tamaki_Tree_Decomp
                 {
                     lowestDifference = difference;
                 }
-                if (timer1.ElapsedMilliseconds > 10000 || timer2.ElapsedMilliseconds > 10000)
+                if (timer1.ElapsedMilliseconds > 5000 || timer2.ElapsedMilliseconds > 5000)
                 {
                     if (relativeDifference > highestRelativeDifference)
                     {
@@ -330,12 +311,10 @@ namespace Tamaki_Tree_Decomp
                         lowestRelativeDifference = relativeDifference;
                     }
                 }
-                heuristicCompletionCalls += Treewidth.heuristicCompletionCalls;
-                heuristicCompletionsSuccessful += Treewidth.heuristicCompletionsSuccessful;
 
 
                 //Console.WriteLine("----------------------------------------------------------------------------------------");
-                Console.WriteLine("{0}: difference relative: {1:F2}, difference total: {2}, total time: {3}, completions attempted: {4}, successful: {5}, ratio: {6:F2}", filepath.Substring(filepath.Length - 8), relativeDifference, difference, timer1.Elapsed + timer2.Elapsed, Treewidth.heuristicCompletionCalls, Treewidth.heuristicCompletionsSuccessful, (float)Treewidth.heuristicCompletionsSuccessful/Treewidth.heuristicCompletionCalls);
+                Console.WriteLine("{0}: difference relative: {1:F2}, difference total: {2}, total time: {3}", filepath.Substring(filepath.Length - 8), relativeDifference, difference, timer1.Elapsed + timer2.Elapsed);
                 //Console.WriteLine("----------------------------------------------------------------------------------------");
             }
             timer.Stop();
@@ -345,21 +324,8 @@ namespace Tamaki_Tree_Decomp
                 "\nhighest difference: {2}" +
                 "\nlowest difference: {3}" +
                 "\nhighest relative difference above 10s: {4:F2}" +
-                "\nlowest relative difference above 10s:  {5:F2}" +
-                "\nheuristic completion calls: {6}" +
-                "\n                successful: {7}" +
-                "\n                     ratio: {8}",
-                timer.Elapsed, totalDifference, highestDifference, lowestDifference, highestRelativeDifference, lowestRelativeDifference, heuristicCompletionCalls, heuristicCompletionsSuccessful, (float)heuristicCompletionsSuccessful/heuristicCompletionCalls);
-
-            Console.WriteLine("\ngraphs tested: {0}\nheuristic completions successful after:", Treewidth.graphsTested);
-            for (int i = 0; i < Treewidth.heuristicCompletionSuccesses.Count; i++)
-            {
-                if (Treewidth.heuristicCompletionSuccesses[i] != 0)
-                {
-                    Console.WriteLine("{0}:       {1}", i, Treewidth.heuristicCompletionSuccesses[i]);
-                }
-            }
-
+                "\nlowest relative difference above 10s:  {5:F2}",
+                timer.Elapsed, totalDifference, highestDifference, lowestDifference, highestRelativeDifference, lowestRelativeDifference);
         }
 
         private static int Run(string filepath, bool printTD=true, bool printStats=true)

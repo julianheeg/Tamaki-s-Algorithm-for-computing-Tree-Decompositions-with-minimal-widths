@@ -506,7 +506,7 @@ namespace Tamaki_Tree_Decomp
 
         public static bool keepOnlyPTDsWithLargerInletIfSameOutlet = true;
 
-        public static bool oldCliquishTest = false;
+        public static bool newCliquishTest = true;
 
         /// <summary>
         /// determines whether this graph has tree width k, or, if a safe separator is found by a heuristic,
@@ -525,8 +525,7 @@ namespace Tamaki_Tree_Decomp
                 outletSafeSeparator = null;
                 return true;
             }
-
-            currentKDebug = k;
+            
             P_size = 0;
 
             heuristicCompletionCallsPerGraphAndK = 0;
@@ -588,7 +587,6 @@ namespace Tamaki_Tree_Decomp
 
             // --------- lines 7 to 32 ----------
 
-
             int heuristicCompletionIn = 1;
             //for (int i = 0; i < P.Count; i++)
             while (P.Count > 0)
@@ -620,8 +618,6 @@ namespace Tamaki_Tree_Decomp
                     {
                         U[index] = Tau_wiggle_original;
                     }
-
-                    // TESTTESTTEST: Possibly WRONG!!
                     else
                     {
                         continue;
@@ -647,10 +643,8 @@ namespace Tamaki_Tree_Decomp
                     {
                         // --------- line 13 with early continue if bag size is too big or tree is not possibly usable or bag is not cliquish----------
 
-                        //if (!PTD.Line13_CheckBagSize_CheckPossiblyUsable(Tau_prime, Tau, graph, k, out Tau_wiggle) || !graph.IsCliquish(Tau_wiggle.Bag))
-                        //if (!PTD.Line13_CheckBagSize_CheckPossiblyUsable_CheckCliquish(Tau_prime, Tau, graph, k, out Tau_wiggle, mutableGraph))
-                        if (oldCliquishTest && (!PTD.Line13_CheckBagSize_CheckPossiblyUsable(Tau_prime, Tau, graph, k, out Tau_wiggle) || !graph.IsCliquish(Tau_wiggle.Bag))
-                            || !oldCliquishTest && !PTD.Line13_CheckBagSize_CheckPossiblyUsable_CheckCliquish(Tau_prime, Tau, graph, k, out Tau_wiggle, mutableGraph))
+                        if (!newCliquishTest && (!PTD.Line13_CheckBagSize_CheckPossiblyUsable(Tau_prime, Tau, graph, k, out Tau_wiggle) || !graph.IsCliquish(Tau_wiggle.Bag))
+                            || newCliquishTest && !PTD.Line13_CheckBagSize_CheckPossiblyUsable_CheckCliquish(Tau_prime, Tau, graph, k, out Tau_wiggle, mutableGraph))
                         {
                             // ---------- line 15  ----------
                             continue;
@@ -1038,15 +1032,30 @@ namespace Tamaki_Tree_Decomp
         }
 
         public static bool moreThan2ComponentsOptimization = true;
-        public static int currentKDebug = -1;
-        public static BitSet currentBagDebug = new BitSet(45, new int[] { 2, 5, 9, 11, 16, 17, 18, 19, 21, 22, 26, 30, 35, 37, 39, 40, 41, 42, 43, 44 });
-        public static BitSet currentInletDebug = new BitSet(45, new int[] { });
         public static int P_size = 0;
 
+        /// <summary>
+        /// adds a ptd to P, or if moreThan2ComponentsOptimization is active and the ptd's outlet has more than 2 components delays the addition
+        /// to P until ptds covering the remaining non-incoming components have been found. In the latter case, they are added as children directly to the
+        /// first PTD.
+        /// </summary>
+        /// <param name="ptd">the ptd to add</param>
+        /// <param name="components">the components associated with the ptd's outlet</param>
+        /// <param name="graph">the underlying graph</param>
+        /// <param name="P">the stack P to add the ptd to</param>
+        /// <param name="P_inlets">a mapping from inlets of the ptds in P to the ptds themselves</param>
+        /// <param name="outletToInletMapping">a mapping from minimal separators to a list of inlets of ptds who have that minimal separator as an outlet</param>
+        /// <param name="smallInlets">currently not in use</param>
+        /// <param name="componentToPTDsMapping">a mapping from components to ptds which have that component as their inlet</param>
+        /// <param name="PTDToComponentsMapping">a mapping from delayed ptds to components that they require before being added to P</param>
+        /// <param name="isParent">pass true, only if called recursively from within this function</param>
+        /// <param name="pushParents">a list of delayed ancestors to push onto P. This list is populated throughout recursive calls instead of adding the ancestors directly
+        ///                             because it roughly preserves the order of a depth-first search. At the end of the recursive calls, all of the ancestors are added to P</param>
         private static void AddToP(PTD ptd, List<BitSet> components, ImmutableGraph graph, Stack<PTD> P, Dictionary<BitSet, PTD> P_inlets, Dictionary<BitSet, List<BitSet>> outletToInletMapping, HashSet<BitSet> smallInlets, Dictionary<BitSet, List<PTD>> componentToPTDsMapping, Dictionary<PTD, List<BitSet>> PTDToComponentsMapping, bool isParent=false, List<PTD> pushParents=null)
         {
             if (moreThan2ComponentsOptimization)
             {
+                // test if this ptd is supposed to be a child of another ptd
                 if (componentToPTDsMapping.TryGetValue(ptd.inlet, out List<PTD> parents))
                 {
                     if (!isParent)
@@ -1066,8 +1075,6 @@ namespace Tamaki_Tree_Decomp
                         Debug.Assert(removed);
                         if (parentRemainingComponents.Count == 0)
                         {
-                            // TODO: somehow push this ptd first onto P and then its parents...
-
                             AddToP(parents[i], graph.Components(parents[i].outlet), graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping, isParent: true, pushParents: pushParents);
                         }
 
@@ -1076,11 +1083,13 @@ namespace Tamaki_Tree_Decomp
                             alwaysFullComponent = false;
                         }
                     }
+                    // mark this ptd's inlet as no longer required
                     componentToPTDsMapping.Remove(ptd.inlet);
 
-                    // return early if this ptd is always a full component
+                    // return early if this ptd is a full component associated with each of its parents' outlets
                     if (alwaysFullComponent)
                     {
+                        // but push the parents beforehand
                         P_size += pushParents.Count;
                         for (int i = pushParents.Count - 1; i >= 0; i--)
                         {
@@ -1093,8 +1102,9 @@ namespace Tamaki_Tree_Decomp
                 }
 
                 bool componentAdded = true;                     // TODO: add P_inlets before any component is really added, then if ptd (really) changed add it again
-                if (!isParent)                                  // TODO: correct?
+                if (!isParent)
                 {
+                    // if this function is called for the first time for this ptd, add ptds for components that already have a ptd covering them
                     if (components.Count > 2)
                     {
                         componentAdded = false;
@@ -1391,6 +1401,8 @@ namespace Tamaki_Tree_Decomp
             PTD.Reroot(ref otherPTD, ptd.outlet);
 
             ptd.children.Add(otherPTD);
+
+            ptd.RemoveDuplicateBags();
 
             ptd.AssertValidTreeDecomposition(immutableGraph);
 
