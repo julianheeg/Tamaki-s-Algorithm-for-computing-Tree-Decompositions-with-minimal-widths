@@ -89,8 +89,7 @@ namespace Tamaki_Tree_Decomp
 
             //string filepath = null;
             //string filepath = test_a0;
-            string filepath = PACE2017(137);
-            //string filepath = "..\\..\\Test Data\\Debug\\127-22.gr";
+            string filepath = PACE2017(1);
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_034.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             //string filepath = Console.ReadLine();
@@ -115,7 +114,7 @@ namespace Tamaki_Tree_Decomp
             Graph.dumpSubgraphs = false;   // dumps graphs only in DEBUG mode!
             //SafeSeparator.separate = false;
             //GraphReduction.reduce = false;
-            Treewidth.completeHeuristically = false;
+            Treewidth.completeHeuristically = true;
             Treewidth.heuristicCompletionFrequency = 20;
             Treewidth.heuristicInletMax = 1f;
             Treewidth.heuristicInletMin = 0f;
@@ -123,16 +122,16 @@ namespace Tamaki_Tree_Decomp
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
             Treewidth.moreThan2ComponentsOptimization = true;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;  // not yet verified if implementation is correct
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;  // not yet verified if implementation is correct
             PTD.testIfAddingOneVertexToBagFormsPMC = false;
             ImmutableGraph.cachePMC = false;
             LowerBound.calculateLowerBound = true;
 
             
-            Run(filepath, true);
+            //Run(filepath, true);
             //Run(filepath, false, false);
             //RunAll_Parallel(directory);
-            //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
+            RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
             //EvaluateParameterImpact(directory, ref PTD.testIfAddingOneVertexToBagFormsPMC, directoryStartIndex, directoryEndIndex);
 
             //Treewidth.PrintStats_kMinus(12);
@@ -337,7 +336,7 @@ namespace Tamaki_Tree_Decomp
         private static int Run(string filepath, bool printTD=true, bool printStats=true)
         {
             Graph g = new Graph(filepath);
-            
+                
             Stopwatch stopwatch = new Stopwatch();
             SafeSeparator.size3SeparationStopwatch = new Stopwatch();
             SafeSeparator.size3separators = 0;

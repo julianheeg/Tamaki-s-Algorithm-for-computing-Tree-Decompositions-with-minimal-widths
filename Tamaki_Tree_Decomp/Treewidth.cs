@@ -600,7 +600,7 @@ namespace Tamaki_Tree_Decomp
 
                 // --------- line 9 ----------
 
-                PTD Tau_wiggle_original = PTD.Line9(Tau);
+                PTD Tau_wiggle_original = PTD.CreateLeaf(Tau);
 
                 // --------- lines 10 ----------
 
@@ -640,7 +640,7 @@ namespace Tamaki_Tree_Decomp
                     {
                         // --------- line 13 with early continue if bag size is too big or tree is not possibly usable or bag is not cliquish----------
 
-                        if (!PTD.Line13_CheckBagSize_CheckPossiblyUsable_CheckCliquish(Tau_prime, Tau, graph, k, out Tau_wiggle, mutableGraph))
+                        if (!PTD.AddPTDToPTDUR_CheckBagSize_CheckPossiblyUsable_CheckCliquish(Tau_prime, Tau, graph, k, out Tau_wiggle, mutableGraph))
                         {
                             // ---------- line 15  ----------
                             continue;
@@ -740,75 +740,83 @@ namespace Tamaki_Tree_Decomp
 
                     // --------- lines 21 to 26 ----------
 
-                    for (int v = 0; v < graph.vertexCount; v++)
+                    // restrict candidates
+                    BitSet rule2Candidates = new BitSet(graph.vertexCount);
+                    int v = -1;
+                    while ((v = Tau_wiggle.outlet.NextElement(v)) != -1)
                     {
-                        if (!Tau_wiggle.vertices[v])
+                        rule2Candidates.IntersectWith(graph.openNeighborhood[v]);
+                    }
+                    rule2Candidates.ExceptWith(Tau_wiggle.vertices);
+
+                    v = -1;
+                    while ((v = rule2Candidates.NextElement(v)) != -1)
+                    {
+                        // --------- lines 22 to 26 ----------
+
+                        if (isNvSmallEnoughAndPotMaxClique[v] && graph.closedNeighborhood[v].IsSupersetOf(Tau_wiggle.Bag))
                         {
-                            // --------- lines 22 to 26 ----------
+                            // --------- line 23 ----------
+                            PTD p2 = PTD.ExtendToPMC_Rule2(Tau_wiggle, graph.closedNeighborhood[v], graph);
 
-                            if (isNvSmallEnoughAndPotMaxClique[v] && graph.closedNeighborhood[v].IsSupersetOf(Tau_wiggle.Bag))
+
+                            if (p2.vertices.Equals(graph.allVertices))
                             {
-                                // --------- line 23 ----------
-                                PTD p2 = PTD.Line23(Tau_wiggle, graph.closedNeighborhood[v], graph);
+                                getsCompleted = true;
+                                PTDSizePerPTDURSize[PTDURSize, p2.Bag.Count()]++;
+                                treeDecomp = p2;
+                                treeDecomp.RemoveDuplicateBags();
+                                outletSafeSeparator = null;
+                                return true;
 
+                            }
 
-                                if (p2.vertices.Equals(graph.allVertices))
+                            // --------- line 24 ----------
+                            heuristicCompletionIn--;
+                            if (!P_inlets.ContainsKey(p2.inlet) && graph.IsMinimalSeparator_ReturnComponents(p2.outlet, out List<BitSet> components) && !p2.IsIncoming(graph) && p2.IsNormalized())
+                            {
+                                getsCompleted = true;
+                                PTDSizePerPTDURSize[PTDURSize, p2.Bag.Count()]++;
+
+                                //---
+                                if (completeHeuristically && heuristicCompletionIn == 0 && TryHeuristicCompletion(graph, p2, k))
                                 {
-                                    getsCompleted = true;
-                                    PTDSizePerPTDURSize[PTDURSize, p2.Bag.Count()]++;
                                     treeDecomp = p2;
                                     treeDecomp.RemoveDuplicateBags();
                                     outletSafeSeparator = null;
                                     return true;
-
                                 }
-
-                                // --------- line 24 ----------
-                                heuristicCompletionIn--;
-                                if (!P_inlets.ContainsKey(p2.inlet) && graph.IsMinimalSeparator_ReturnComponents(p2.outlet, out List<BitSet> components) && !p2.IsIncoming(graph) && p2.IsNormalized())
+                                if (heuristicCompletionIn < 0)
                                 {
-                                    getsCompleted = true;
-                                    PTDSizePerPTDURSize[PTDURSize, p2.Bag.Count()]++;
-
-                                    //---
-                                    if (completeHeuristically && heuristicCompletionIn == 0 && TryHeuristicCompletion(graph, p2, k))
-                                    {
-                                        treeDecomp = p2;
-                                        treeDecomp.RemoveDuplicateBags();
-                                        outletSafeSeparator = null;
-                                        return true;
-                                    }
-                                    if (heuristicCompletionIn < 0)
-                                    {
-                                        heuristicCompletionIn = heuristicCompletionFrequency;
-                                    }
-                                    //---
-
-
-                                    // --------- line 26 ----------
-                                    if (OutletIsSafeSeparator(p2, graph))
-                                    {
-                                        outletSafeSeparator = Tau.outlet;
-                                        treeDecomp = p2;
-                                        treeDecomp.RemoveDuplicateBags();
-                                        return false;
-                                    }
-
-                                    p2.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
-                                    AddToP(p2, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
-
+                                    heuristicCompletionIn = heuristicCompletionFrequency;
                                 }
+                                //---
+
+
+                                // --------- line 26 ----------
+                                if (OutletIsSafeSeparator(p2, graph))
+                                {
+                                    outletSafeSeparator = Tau.outlet;
+                                    treeDecomp = p2;
+                                    treeDecomp.RemoveDuplicateBags();
+                                    return false;
+                                }
+
+                                p2.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
+                                AddToP(p2, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
+
                             }
-                        }
+                        }                        
                     }
 
                     // --------- lines 27 to 32 ----------
 
                     List<int> X_r = Tau_wiggle.Bag.Elements();
                     for (int l = 0; l < X_r.Count; l++)
+                    //v = -1;
+                    //while ((v = Tau_wiggle.Bag.NextElement(v)) != -1)
                     {
-                        int v = X_r[l];
-
+                        v = X_r[l];
                         // --------- line 28 ----------
                         BitSet potNewRootBag = new BitSet(graph.openNeighborhood[v]);
                         potNewRootBag.ExceptWith(Tau_wiggle.inlet);
@@ -819,7 +827,7 @@ namespace Tamaki_Tree_Decomp
                             // TODO: outlet from the isPotMaxClique calculation may be able to be used
 
                             // --------- line 29 ----------
-                            PTD p3 = PTD.Line29(Tau_wiggle, potNewRootBag, graph);
+                            PTD p3 = PTD.ExtendToPMC_Rule3(Tau_wiggle, potNewRootBag, graph);
 
                             if (p3.vertices.Equals(graph.allVertices))
                             {
@@ -1094,6 +1102,10 @@ namespace Tamaki_Tree_Decomp
                     }
                 }
 
+                if (!P_inlets.ContainsKey(ptd.inlet))
+                {
+                    P_inlets.Add(new BitSet(ptd.inlet), new PTD(ptd));
+                }
                 bool componentAdded = true;                     // TODO: add P_inlets before any component is really added, then if ptd (really) changed add it again
                 if (!isParent)
                 {
@@ -1106,7 +1118,7 @@ namespace Tamaki_Tree_Decomp
                         // determine incoming component
                         int incomingComponentIndex = -1;
                         int incomingDefiningVertex = int.MaxValue;
-                        for (int i = 0; i < components.Count; i++)
+                        for (int i = 0; i < components.Count; i++)  // TODO: exclude components which are already a subset of the vertices
                         {
                             int componentSmallestVertex = components[i].First();
                             if (componentSmallestVertex < incomingDefiningVertex)
