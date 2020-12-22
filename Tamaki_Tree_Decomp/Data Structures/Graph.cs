@@ -90,11 +90,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 graphID = graphCount;
                 graphCount++;
-
-                if (verbose)
-                {
-                    Console.WriteLine("Imported graph {0} with {1} vertices and {2} edges from file {3}", graphID, vertexCount, edgeCount, filepath);
-                }
             }
             catch (IOException e)
             {

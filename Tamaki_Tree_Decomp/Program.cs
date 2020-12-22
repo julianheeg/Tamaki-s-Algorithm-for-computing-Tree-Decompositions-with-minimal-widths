@@ -83,20 +83,26 @@ namespace Tamaki_Tree_Decomp
 
         static void Main(string[] args)
         {
-            if (args.Length > 0 && int.TryParse(args[0], out int start))
-            {
-                startingInstance =  start / 2;
-            }
-
             // used for naming files when something needs to be written onto disk
             date_time_string = DateTime.Now.ToString();
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
+            //string filepath = null;
             //string filepath = test_a0;
-            string filepath = PACE2017(63); // 13
+            string filepath = PACE2017(191);
             //string filepath = "..\\..\\Test Data\\Debug\\127-22.gr";
-            
+            //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_034.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
+            //string filepath = Console.ReadLine();
+
+            /*
+            if (args.Length > 0)
+            {
+                filepath = args[0];
+            }
+            */
+            
+
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020";
@@ -106,11 +112,10 @@ namespace Tamaki_Tree_Decomp
             int directoryEndIndex = 200;
 
             BitSet.plusOneInString = false;
-            //Graph.dumpSubgraphs = true;   // dumps graphs only in DEBUG mode!
+            Graph.dumpSubgraphs = true;   // dumps graphs only in DEBUG mode!
             //SafeSeparator.separate = false;
             //GraphReduction.reduce = false;
-            Treewidth.completeHeuristically = false;
-            PTD.profile = false;    // enable for profiling, otherwise a debugging assertion in takes very long
+            Treewidth.completeHeuristically = true;
             Treewidth.heuristicCompletionFrequency = 20;
             Treewidth.heuristicInletMax = 1f;
             Treewidth.heuristicInletMin = 0f;
@@ -118,20 +123,21 @@ namespace Tamaki_Tree_Decomp
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
             Treewidth.moreThan2ComponentsOptimization = true;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;  // not yet verified if implementation is correct
-            PTD.testIfAddingOneVertexToBagFormsPMC = true;
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;  // not yet verified if implementation is correct
+            PTD.testIfAddingOneVertexToBagFormsPMC = false;
             ImmutableGraph.cachePMC = false;
-            Treewidth.newCliquishTest = false;
             LowerBound.calculateLowerBound = true;
+
             
-            Run(filepath, true);
-            //Run(filepath, false);
+            //(filepath, true);
+            //Run(filepath, false, false);
             //RunAll_Parallel(directory);
             //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
-            //EvaluateParameterImpact(directory, ref Treewidth.newCliquishTest, directoryStartIndex, directoryEndIndex);
+            EvaluateParameterImpact(directory, ref PTD.testIfAddingOneVertexToBagFormsPMC, directoryStartIndex, directoryEndIndex);
 
             //Treewidth.PrintStats_kMinus(12);
             Console.WriteLine("total time for lower bound calculation: {0}", LowerBound.stopWatch.Elapsed);
+            Console.WriteLine("articulation point stopwatch: {0}, only neighbor stopwatch: {1}", PTD.articulationPointCandidatesStopwatch.Elapsed, PTD.onlyNeighborStopwatch.Elapsed);
             Console.Read();
         }
 

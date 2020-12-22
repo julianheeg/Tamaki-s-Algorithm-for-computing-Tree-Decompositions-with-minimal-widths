@@ -506,8 +506,6 @@ namespace Tamaki_Tree_Decomp
 
         public static bool keepOnlyPTDsWithLargerInletIfSameOutlet = true;
 
-        public static bool newCliquishTest = true;
-
         /// <summary>
         /// determines whether this graph has tree width k, or, if a safe separator is found by a heuristic,
         /// that safe separator is given out instead, so that this function can be called on the subgraphs.
@@ -588,7 +586,6 @@ namespace Tamaki_Tree_Decomp
             // --------- lines 7 to 32 ----------
 
             int heuristicCompletionIn = 1;
-            //for (int i = 0; i < P.Count; i++)
             while (P.Count > 0)
             {
                 // PTD Tau = P[i];
@@ -598,7 +595,7 @@ namespace Tamaki_Tree_Decomp
 
                 if (smallInlets.Contains(Tau.inlet))
                 {
-                    //continue;
+                    continue;
                 }
 
                 // --------- line 9 ----------
@@ -643,8 +640,7 @@ namespace Tamaki_Tree_Decomp
                     {
                         // --------- line 13 with early continue if bag size is too big or tree is not possibly usable or bag is not cliquish----------
 
-                        if (!newCliquishTest && (!PTD.Line13_CheckBagSize_CheckPossiblyUsable(Tau_prime, Tau, graph, k, out Tau_wiggle) || !graph.IsCliquish(Tau_wiggle.Bag))
-                            || newCliquishTest && !PTD.Line13_CheckBagSize_CheckPossiblyUsable_CheckCliquish(Tau_prime, Tau, graph, k, out Tau_wiggle, mutableGraph))
+                        if (!PTD.Line13_CheckBagSize_CheckPossiblyUsable_CheckCliquish(Tau_prime, Tau, graph, k, out Tau_wiggle, mutableGraph))
                         {
                             // ---------- line 15  ----------
                             continue;
@@ -727,7 +723,6 @@ namespace Tamaki_Tree_Decomp
 
                             if (OutletIsSafeSeparator(p1, graph))
                             {
-                                Console.WriteLine("found a clique minor that is an outlet of a tree");
                                 outletSafeSeparator = Tau.outlet;
                                 treeDecomp = p1;
                                 treeDecomp.RemoveDuplicateBags();
@@ -793,7 +788,6 @@ namespace Tamaki_Tree_Decomp
                                     // --------- line 26 ----------
                                     if (OutletIsSafeSeparator(p2, graph))
                                     {
-                                        Console.WriteLine("found a clique minor that is an outlet of a tree");
                                         outletSafeSeparator = Tau.outlet;
                                         treeDecomp = p2;
                                         treeDecomp.RemoveDuplicateBags();
@@ -862,7 +856,6 @@ namespace Tamaki_Tree_Decomp
                                 // --------- line 32 ----------                               
                                 if (OutletIsSafeSeparator(p3, graph))
                                 {
-                                    Console.WriteLine("found a clique minor that is an outlet of a tree");
                                     outletSafeSeparator = Tau.outlet;
                                     treeDecomp = p3;
                                     treeDecomp.RemoveDuplicateBags();
@@ -1181,10 +1174,31 @@ namespace Tamaki_Tree_Decomp
                     // test if a ptd with a strictly larger inlet exists already. In that case skip this ptd
                     if (outletToInletMapping.TryGetValue(ptd.outlet, out List<BitSet> inlets))
                     {
+                        for (int i = 0; i < inlets.Count; i++)
+                        {
+                            if (inlets[i].Equals(ptd.inlet))
+                            {
+                                if (pushParents != null)
+                                {
+                                    for (int j = pushParents.Count - 1; j >= 0; j--)
+                                    {
+                                        P.Push(pushParents[j]);
+                                        if (!P_inlets.ContainsKey(pushParents[j].inlet))
+                                        {
+                                            throw new Exception();
+                                        }
+                                    }
+                                }
+                                return;
+                            }
+                        }
                         for (int i = inlets.Count - 1; i >= 0; i--)
                         {
                             if (inlets[i].IsSupersetOf(ptd.inlet))
                             {
+                                smallInlets.Add(ptd.inlet);
+                                PTD PTDWithLargerInlet = P_inlets[inlets[i]];
+                                PTDWithLargerInlet.AddInletToPossiblyUsableIgnore(ptd.inlet);
                                 if (pushParents != null)
                                 {
                                     for (int j = pushParents.Count - 1; j >= 0; j--)
@@ -1200,8 +1214,9 @@ namespace Tamaki_Tree_Decomp
                             }
                             else if (ptd.inlet.IsSupersetOf(inlets[i]))
                             {
-                                //smallInlets.Add(inlets[i]);
+                                smallInlets.Add(inlets[i]);
                                 inlets.RemoveAt(i);
+                                ptd.AddInletToPossiblyUsableIgnore(inlets[i]);
                             }
                         }
                         inlets.Add(ptd.inlet);
@@ -1395,8 +1410,6 @@ namespace Tamaki_Tree_Decomp
 #endif
                 subtreeList.Add(currentNode);
             }
-
-            // TODO: make canonical
 
             PTD.Reroot(ref otherPTD, ptd.outlet);
 
