@@ -15,7 +15,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
     {
         public BitSet Bag { get; private set; }
         public readonly BitSet vertices;
-        private List<BitSet> possiblyUsableIgnore;
+        private readonly List<BitSet> possiblyUsableIgnoreComponents;
+        public readonly BitSet possiblyUsableIgnoreComponentsUnion;
         public BitSet inlet;
         public BitSet outlet;
         public readonly List<PTD> children;
@@ -33,7 +34,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             Bag = new BitSet(ptd.Bag);
             vertices = new BitSet(ptd.vertices);
-            possiblyUsableIgnore = new List<BitSet>(ptd.possiblyUsableIgnore);
+            possiblyUsableIgnoreComponents = new List<BitSet>(ptd.possiblyUsableIgnoreComponents);
+            possiblyUsableIgnoreComponentsUnion = new BitSet(ptd.possiblyUsableIgnoreComponentsUnion);
             inlet = new BitSet(ptd.inlet);
             outlet = new BitSet(ptd.outlet);
             children = new List<PTD>(ptd.children);
@@ -47,11 +49,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="outlet"></param>
         /// <param name="inlet"></param>
         /// <param name="children"></param>
-        public PTD(BitSet bag, BitSet vertices, List<BitSet> possiblyUsableIgnore, BitSet outlet, BitSet inlet, List<PTD> children)
+        public PTD(BitSet bag, BitSet vertices, List<BitSet> possiblyUsableIgnore, BitSet possiblyUsableIgnoreUnion, BitSet outlet, BitSet inlet, List<PTD> children)
         {
             Bag = bag;
             this.vertices = vertices;
-            this.possiblyUsableIgnore = possiblyUsableIgnore;
+            this.possiblyUsableIgnoreComponents = possiblyUsableIgnore;
+            this.possiblyUsableIgnoreComponentsUnion = possiblyUsableIgnoreUnion;
             this.outlet = outlet;
             this.inlet = inlet;
             this.children = children;
@@ -69,6 +72,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             Bag = bag;
             this.vertices = vertices;
             this.children = children;
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -81,7 +85,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         {
             Bag = new BitSet(bag);              // TODO: can be shared
             vertices = new BitSet(bag);         // TODO: can be shared
-            possiblyUsableIgnore = new List<BitSet>();
+            possiblyUsableIgnoreComponents = new List<BitSet>();
+            possiblyUsableIgnoreComponentsUnion = new BitSet(bag.Capacity());
             this.outlet = new BitSet(outlet);   // TODO: can be shared
             inlet = new BitSet(bag);
             inlet.ExceptWith(outlet);
@@ -107,17 +112,18 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// </summary>
         /// <param name="Tau">the child of this node</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PTD CreateLeaf(PTD Tau)
+        public static PTD CreatePTDURFromPTD(PTD Tau)
         {
             BitSet bag = new BitSet(Tau.outlet);
             BitSet outlet = new BitSet(Tau.outlet);
             BitSet inlet = new BitSet(Tau.inlet);
             BitSet vertices = new BitSet(Tau.vertices);
-            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau.possiblyUsableIgnore);
+            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau.possiblyUsableIgnoreComponents);
+            BitSet possiblyUsableIgnoreUnion = new BitSet(Tau.possiblyUsableIgnoreComponentsUnion);
 
             List<PTD> children = new List<PTD>();
             children.Add(Tau);
-            return new PTD(bag, vertices, possiblyUsableIgnore, outlet, inlet, children);
+            return new PTD(bag, vertices, possiblyUsableIgnore, possiblyUsableIgnoreUnion, outlet, inlet, children);
         }
 
         public static bool testIfAddingOneVertexToBagFormsPMC = false;
@@ -299,18 +305,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
 
-            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau_prime.possiblyUsableIgnore);
+            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau_prime.possiblyUsableIgnoreComponents);
             //possiblyUsableIgnore.AddRange(Tau.possiblyUsableIgnore);
             // make sure that no duplicates are added
-            for (int i = 0; i < Tau.possiblyUsableIgnore.Count; i++)
+            for (int i = 0; i < Tau.possiblyUsableIgnoreComponents.Count; i++)
             {
-                if (!possiblyUsableIgnore.Contains(Tau.possiblyUsableIgnore[i]))
+                if (!possiblyUsableIgnore.Contains(Tau.possiblyUsableIgnoreComponents[i]))
                 {
-                    possiblyUsableIgnore.Add(Tau.possiblyUsableIgnore[i]);
+                    possiblyUsableIgnore.Add(Tau.possiblyUsableIgnoreComponents[i]);
                 }
             }
+            BitSet possiblyUsableIgnoreUnion = new BitSet(Tau.possiblyUsableIgnoreComponentsUnion);
+            possiblyUsableIgnoreUnion.UnionWith(Tau_prime.possiblyUsableIgnoreComponentsUnion);
             
-            result = new PTD(new BitSet(bag), vertices, possiblyUsableIgnore, outlet, inlet, children);   // TODO: don't copy bag?
+            result = new PTD(new BitSet(bag), vertices, possiblyUsableIgnore, possiblyUsableIgnoreUnion, outlet, inlet, children);   // TODO: don't copy bag?
 
             return true;
         }
@@ -334,8 +342,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau_wiggle.possiblyUsableIgnore);
-            return new PTD(bag, vertices, possiblyUsableIgnore, outlet, inlet, children);
+            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau_wiggle.possiblyUsableIgnoreComponents);
+            BitSet possiblyUsableIgnoreUnion = new BitSet(Tau_wiggle.possiblyUsableIgnoreComponentsUnion);
+            return new PTD(bag, vertices, possiblyUsableIgnore, possiblyUsableIgnoreUnion, outlet, inlet, children);
         }
 
         /// <summary>
@@ -357,8 +366,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             BitSet outlet = graph.Outlet(bag, vertices);
             BitSet inlet = new BitSet(vertices);
             inlet.ExceptWith(outlet);
-            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau_wiggle.possiblyUsableIgnore);
-            return new PTD(bag, vertices, possiblyUsableIgnore, outlet, inlet, children);
+            List<BitSet> possiblyUsableIgnore = new List<BitSet>(Tau_wiggle.possiblyUsableIgnoreComponents);
+            BitSet possiblyUsableIgnoreUnion = new BitSet(Tau_wiggle.possiblyUsableIgnoreComponentsUnion);
+            return new PTD(bag, vertices, possiblyUsableIgnore, possiblyUsableIgnoreUnion, outlet, inlet, children);
         }
 
 #endregion
@@ -385,55 +395,44 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             bool someIntersectionContainsElements = false;
             for (int i = 0; i < children.Count; i++)
             {
+                PTD child1 = children[i];
                 for (int j = i + 1; j < children.Count; j++)
-                {                 
+                {
+                    PTD child2 = children[j];
                     // if one inlet is subset of the other inlet, then that child is not needed
-                    if (children[i].inlet.IsSupersetOf(children[j].inlet) || children[j].inlet.IsSupersetOf(children[i].inlet))
+                    if (child1.inlet.IsSupersetOf(child2.inlet) || child2.inlet.IsSupersetOf(child1.inlet))
                     {
                         return false;
                     }                    
 
-                    // TODO: extract the unions into their own fields
-                    BitSet iIgnoreUnion = new BitSet(children[i].Bag.Capacity());
-                    for (int k = 0; k < children[i].possiblyUsableIgnore.Count; k++)
-                    {
-                        iIgnoreUnion.UnionWith(children[i].possiblyUsableIgnore[k]);
-                    }
-
-                    BitSet jIgnoreUnion = new BitSet(children[i].Bag.Capacity());
-                    for (int k = 0; k < children[j].possiblyUsableIgnore.Count; k++)
-                    {
-                        jIgnoreUnion.UnionWith(children[j].possiblyUsableIgnore[k]);
-                    }
-
-                    BitSet verticesIgnoreIntersection = new BitSet(iIgnoreUnion);
-                    verticesIgnoreIntersection.IntersectWith(jIgnoreUnion);
-                    BitSet verticesIgnoreUnion = new BitSet(iIgnoreUnion);
-                    verticesIgnoreUnion.UnionWith(jIgnoreUnion);
-                    BitSet childrenInletsIntersection = new BitSet(children[i].inlet);
-                    childrenInletsIntersection.IntersectWith(children[j].inlet);
+                    BitSet verticesIgnoreIntersection = new BitSet(child1.possiblyUsableIgnoreComponentsUnion);
+                    verticesIgnoreIntersection.IntersectWith(child2.possiblyUsableIgnoreComponentsUnion);
+                    BitSet verticesIgnoreUnion = new BitSet(child1.possiblyUsableIgnoreComponentsUnion);
+                    verticesIgnoreUnion.UnionWith(child2.possiblyUsableIgnoreComponentsUnion);
+                    BitSet childrenInletsIntersection = new BitSet(child1.inlet);
+                    childrenInletsIntersection.IntersectWith(child2.inlet);
                     
                     if (!verticesIgnoreUnion.IsSupersetOf(childrenInletsIntersection))
                     {
                         return false;
                     }
 
-                    BitSet verticesIntersection = new BitSet(children[i].vertices);
-                    verticesIntersection.IntersectWith(children[j].vertices);
+                    BitSet verticesIntersection = new BitSet(child1.vertices);
+                    verticesIntersection.IntersectWith(child2.vertices);
                     verticesIntersection.ExceptWith(verticesIgnoreIntersection);
-                    if (!children[i].outlet.IsSupersetOf(verticesIntersection) || !children[j].outlet.IsSupersetOf(verticesIntersection))
+                    if (!child1.outlet.IsSupersetOf(verticesIntersection) || !child2.outlet.IsSupersetOf(verticesIntersection))
                     {
                         return false;
                     }
 
-                    // assert that pui components are subsets of one another or don't intersect at all
-                    for (int k = 0; k < children[i].possiblyUsableIgnore.Count; k++)
+                    // assert that pui components are subsets of one another or don't intersect each other at all
+                    for (int k = 0; k < child1.possiblyUsableIgnoreComponents.Count; k++)
                     {
-                        for (int l = 0; l < children[j].possiblyUsableIgnore.Count; l++)
+                        for (int l = 0; l < child2.possiblyUsableIgnoreComponents.Count; l++)
                         {
-                            if (children[i].possiblyUsableIgnore[k].Intersects(children[j].possiblyUsableIgnore[l]))
+                            if (child1.possiblyUsableIgnoreComponents[k].Intersects(child2.possiblyUsableIgnoreComponents[l]))
                             {
-                                if (!children[i].possiblyUsableIgnore[k].IsSupersetOf(children[j].possiblyUsableIgnore[l]) && !children[j].possiblyUsableIgnore[l].IsSupersetOf(children[i].possiblyUsableIgnore[k]))
+                                if (!child1.possiblyUsableIgnoreComponents[k].IsSupersetOf(child2.possiblyUsableIgnoreComponents[l]) && !child2.possiblyUsableIgnoreComponents[l].IsSupersetOf(child1.possiblyUsableIgnoreComponents[k]))
                                 {
                                     return false;
                                 }
@@ -441,17 +440,17 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         }
                     }
 
-                    // assert that pui components are subset of the other's inlet or don't intersect it 
-                    for (int k = 0; k < children[i].possiblyUsableIgnore.Count; k++)
+                    // assert that pui components are subset of the other's inlet or don't intersect it at all
+                    for (int k = 0; k < child1.possiblyUsableIgnoreComponents.Count; k++)
                     {
-                        if (children[i].possiblyUsableIgnore[k].Intersects(children[j].inlet) && !children[j].inlet.IsSupersetOf(children[i].possiblyUsableIgnore[k]))
+                        if (child1.possiblyUsableIgnoreComponents[k].Intersects(child2.inlet) && !child2.inlet.IsSupersetOf(child1.possiblyUsableIgnoreComponents[k]))
                         {
                             return false;
                         }
                     }
-                    for (int k = 0; k < children[j].possiblyUsableIgnore.Count; k++)
+                    for (int k = 0; k < child2.possiblyUsableIgnoreComponents.Count; k++)
                     {
-                        if (children[j].possiblyUsableIgnore[k].Intersects(children[i].inlet) && !children[i].inlet.IsSupersetOf(children[j].possiblyUsableIgnore[k]))
+                        if (child2.possiblyUsableIgnoreComponents[k].Intersects(child1.inlet) && !child1.inlet.IsSupersetOf(child2.possiblyUsableIgnoreComponents[k]))
                         {
                             return false;
                         }
@@ -557,19 +556,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             inlet.CopyFrom(vertices);
             inlet.ExceptWith(outlet);
 
-            for (int i = 0; i < possiblyUsableIgnore.Count; i++)
+            for (int i = 0; i < possiblyUsableIgnoreComponents.Count; i++)
             {
-                if (possiblyUsableIgnore[i].IsSupersetOf(child.inlet))
+                if (possiblyUsableIgnoreComponents[i].IsSupersetOf(child.inlet))
                 {
                     return;
                 }
-                else if (child.inlet.IsSupersetOf(possiblyUsableIgnore[i]))
+                else if (child.inlet.IsSupersetOf(possiblyUsableIgnoreComponents[i]))
                 {
-                    possiblyUsableIgnore[i] = child.inlet;
+                    possiblyUsableIgnoreComponents[i] = child.inlet;
                     return;
                 }
             }
-            possiblyUsableIgnore.Add(child.inlet);
+            possiblyUsableIgnoreComponents.Add(child.inlet);
+            possiblyUsableIgnoreComponentsUnion.UnionWith(child.inlet);
         }
 
         /// <summary>
@@ -578,19 +578,20 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <param name="otherInlet"></param>
         public void AddInletToPossiblyUsableIgnore(BitSet otherInlet)
         {
-            for (int i = 0; i < possiblyUsableIgnore.Count; i++)
+            for (int i = 0; i < possiblyUsableIgnoreComponents.Count; i++)
             {
-                if (possiblyUsableIgnore[i].IsSupersetOf(otherInlet))
+                if (possiblyUsableIgnoreComponents[i].IsSupersetOf(otherInlet))
                 {
                     return;
                 }
-                else if (otherInlet.IsSupersetOf(possiblyUsableIgnore[i]))
+                else if (otherInlet.IsSupersetOf(possiblyUsableIgnoreComponents[i]))
                 {
-                    possiblyUsableIgnore[i] = otherInlet;
+                    possiblyUsableIgnoreComponents[i] = otherInlet;
                     return;
                 }
             }
-            possiblyUsableIgnore.Add(otherInlet);
+            possiblyUsableIgnoreComponents.Add(otherInlet);
+            possiblyUsableIgnoreComponentsUnion.UnionWith(possiblyUsableIgnoreComponentsUnion);
         }
 
         /// <summary>
@@ -860,16 +861,12 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             // assert that no two possibly usable ignore components intersect
             if (!fullConsistencyCheck)
             {
-                for (int i = 0; i < possiblyUsableIgnore.Count; i++)
+                for (int i = 0; i < possiblyUsableIgnoreComponents.Count; i++)
                 {
-                    BitSet currentComponent = possiblyUsableIgnore[i];
-                    for (int j = i + 1; j < possiblyUsableIgnore.Count; j++)
+                    BitSet currentComponent = possiblyUsableIgnoreComponents[i];
+                    for (int j = i + 1; j < possiblyUsableIgnoreComponents.Count; j++)
                     {
-                        if (currentComponent.Intersects(possiblyUsableIgnore[j]))
-                        {
-                            ;
-                        }
-                        Trace.Assert(!currentComponent.Intersects(possiblyUsableIgnore[j]) || currentComponent.Equals(possiblyUsableIgnore[j]));
+                        Trace.Assert(!currentComponent.Intersects(possiblyUsableIgnoreComponents[j]) || currentComponent.Equals(possiblyUsableIgnoreComponents[j]));
                     }
                 }
             }
@@ -901,7 +898,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 if (!fullConsistencyCheck)
                 {
                     bool ignoreVertex = false;
-                    foreach (BitSet puiComponent in possiblyUsableIgnore)
+                    foreach (BitSet puiComponent in possiblyUsableIgnoreComponents)
                     {
                         if (puiComponent[i])
                         {

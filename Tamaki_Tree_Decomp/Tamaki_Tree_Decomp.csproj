@@ -43,8 +43,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Data Structures\BitSet.cs" />
+    <Compile Include="Data Structures\BlockSieve.cs" />
     <Compile Include="Data Structures\ImmutableGraph.cs" />
     <Compile Include="Data Structures\Graph.cs" />
+    <Compile Include="Data Structures\LayeredSieve.cs" />
     <Compile Include="GraphReduction.cs" />
     <Compile Include="Data Structures\PTD.cs" />
     <Compile Include="Heuristics.cs" />

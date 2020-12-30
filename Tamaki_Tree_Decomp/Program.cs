@@ -88,8 +88,8 @@ namespace Tamaki_Tree_Decomp
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
             //string filepath = null;
-            //string filepath = test_a0;
-            string filepath = PACE2017(1);
+            //string filepath = test_m4;
+            string filepath = PACE2017(35);
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_034.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             //string filepath = Console.ReadLine();
@@ -114,7 +114,7 @@ namespace Tamaki_Tree_Decomp
             Graph.dumpSubgraphs = false;   // dumps graphs only in DEBUG mode!
             //SafeSeparator.separate = false;
             //GraphReduction.reduce = false;
-            Treewidth.completeHeuristically = true;
+            Treewidth.completeHeuristically = false;
             Treewidth.heuristicCompletionFrequency = 20;
             Treewidth.heuristicInletMax = 1f;
             Treewidth.heuristicInletMin = 0f;
@@ -122,16 +122,16 @@ namespace Tamaki_Tree_Decomp
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
             Treewidth.moreThan2ComponentsOptimization = true;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;  // not yet verified if implementation is correct
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;  // not yet verified if implementation is correct
             PTD.testIfAddingOneVertexToBagFormsPMC = false;
             ImmutableGraph.cachePMC = false;
             LowerBound.calculateLowerBound = true;
 
             
-            //Run(filepath, true);
+            Run(filepath, true);
             //Run(filepath, false, false);
             //RunAll_Parallel(directory);
-            RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
+            //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
             //EvaluateParameterImpact(directory, ref PTD.testIfAddingOneVertexToBagFormsPMC, directoryStartIndex, directoryEndIndex);
 
             //Treewidth.PrintStats_kMinus(12);

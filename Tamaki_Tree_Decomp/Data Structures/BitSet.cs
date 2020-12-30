@@ -54,17 +54,21 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <summary>
         /// constructs a BitSet that is a copy of another BitSet
         /// </summary>
-        /// <param name="from">the bit set from where to copy</param>
-        public BitSet(BitSet from)
+        /// <param name="source">the bit set from where to copy</param>
+        public BitSet(BitSet source)
         {
-            bytes = new uint[from.bytes.Length];
+            bytes = new uint[source.bytes.Length];
             int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
             for (int i = 0; i < length; i++)
             {
-                bytes[i] = from.bytes[i];
+                bytes[i] = source.bytes[i];
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>the amount of vertices that this BitSet was made for, rounded up to multiples of 32</returns>
         public int Capacity()
         {
             return bytes.Length * 32;
@@ -155,33 +159,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return count;            
         }
 
-
-        //TODO: does not seem to be significantly faster
-        /// <summary>
-        /// checks if the number of elements is smaller than a given value
-        /// </summary>
-        /// <param name="k">the number of elements to test against</param>
-        /// <returns>true, iff there are less elements than the given number</returns>
-        public bool IsCountSmallerThan(int k)
-        {
-            // code taken from http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-            // it probably doesn't make much sense here to check for equality to 0 since it's so fast anyways and would just introduce branches
-            uint count = 0;
-            int length = bytes.Length;  // extracting the length seems to prevent repeated lookups of the array length
-            for (int i = 0; i < length; i++)
-            {
-                uint v = bytes[i];
-                v = v - ((v >> 1) & 0x55555555);
-                v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-                count += ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
-                if (count >= k)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         // look in the method below for explanation
         static readonly int[] Mod37BitPosition = // map a bit value mod 37 to its position
             {
@@ -218,7 +195,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         [ThreadStatic] static int currentPos = -1;
 
         /// <summary>
-        /// returns the next element starting from a given element. This method is slightly faster than using the Elements function.
+        /// returns the next element starting from a given element. This method is slightly faster than using the Elements function, but cannot be used in all circumstances
         /// when iterating it can be used as follows:
         ///     int pos = -1;
         ///     while((pos = NextElement(pos, true/false)) != -1) { ... }
@@ -452,6 +429,182 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
 
             return count;
+        }
+
+        #endregion
+
+        #region operations on intervals
+
+        /// <summary>
+        /// tests whether this BitSet equals another BitSet when restricted to a specified interval
+        /// </summary>
+        /// <param name="other">the other interval</param>
+        /// <param name="from">the lower bound of the interval (inclusive)</param>
+        /// <param name="to">the upper bound of the interval (exclusive)</param>
+        /// <returns>true, iff the BitSets are the same on that interval</returns>
+        public bool EqualsOnInterval(BitSet other, int from, int to)
+        {
+            Debug.Assert(from >= 0);
+            Debug.Assert(to <= bytes.Length * 32);
+
+            if (from >= to)
+            {
+                return true;
+            }
+            int fromIndex = from / 32;
+            int toIndex = (to - 1) / 32;
+            if (fromIndex == toIndex)
+            {
+                uint thisRestrictedByte = (bytes[fromIndex] >> (from % 32)) << (from % 32 + 32 - to % 32);
+                uint otherRestrictedByte = (other.bytes[fromIndex] >> (from % 32)) << (from % 32 + 32 - to % 32);
+                return thisRestrictedByte == otherRestrictedByte;
+            }
+            else
+            {
+                // test first byte
+                uint thisRestrictedFirstByte = bytes[fromIndex] >> (from % 32);
+                uint otherRestrictedFirstByte = other.bytes[fromIndex] >> (from % 32);
+                if (thisRestrictedFirstByte != otherRestrictedFirstByte)
+                {
+                    return false;
+                }
+
+                // test intermediate bytes
+                for (int i = fromIndex + 1; i < toIndex; i++)
+                {
+                    if (bytes[i] != other.bytes[i])
+                    {
+                        return false;
+                    }
+                }
+
+                
+                // test last byte
+                uint thisRestrictedLastByte = bytes[toIndex] << (32 - to % 32);
+                uint otherRestrictedLastByte = other.bytes[toIndex] << (32 - to % 32);
+                if (thisRestrictedLastByte != otherRestrictedLastByte)
+                {
+                    return false;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// tests whether this and another BitSet are disjoint when restricted to a specified interval
+        /// </summary>
+        /// <param name="other">the other interval</param>
+        /// <param name="from">the lower bound of the interval (inclusive)</param>
+        /// <param name="to">the upper bound of the interval (exclusive)</param>
+        /// <returns>true, iff the BitSets are disjoint on that interval</returns>
+        public bool IsDisjointOnInterval(BitSet other, int from, int to)
+        {
+            Debug.Assert(from >= 0);
+            Debug.Assert(to <= bytes.Length * 32);
+
+            if (from >= to)
+            {
+                return true;
+            }
+            int fromIndex = from / 32;
+            int toIndex = (to - 1) / 32;
+            if (fromIndex == toIndex)
+            {
+                uint thisRestrictedByte = (bytes[fromIndex] >> (from % 32)) << (from % 32 + 32 - to % 32);
+                uint otherRestrictedByte = (other.bytes[fromIndex] >> (from % 32)) << (from % 32 + 32 - to % 32);
+                return (thisRestrictedByte & otherRestrictedByte) == 0;
+            }
+            else
+            {
+                // test first byte
+                uint thisRestrictedFirstByte = bytes[fromIndex] >> (from % 32);
+                uint otherRestrictedFirstByte = other.bytes[fromIndex] >> (from % 32);
+                if ((thisRestrictedFirstByte & otherRestrictedFirstByte) != 0)
+                {
+                    return false;
+                }
+
+                // test intermediate bytes
+                for (int i = fromIndex + 1; i < toIndex; i++)
+                {
+                    if ((bytes[i] & other.bytes[i]) != 0)
+                    {
+                        return false;
+                    }
+                }
+
+                // test last byte
+                uint thisRestrictedLastByte = bytes[toIndex] << (32 - to % 32);
+                uint otherRestrictedLastByte = other.bytes[toIndex] << (32 - to % 32);
+                if ((thisRestrictedLastByte & otherRestrictedLastByte) != 0)
+                {
+                    return false;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// counts the amount of vertices of (this BitSet minus another BitSet) on a specified interval
+        /// </summary>
+        /// <param name="other">the other interval</param>
+        /// <param name="from">the lower bound of the interval (inclusive)</param>
+        /// <param name="to">the upper bound of the interval (exclusive)</param>
+        /// <returns>the amount of vertices of (this BitSet minus the other BitSet) on that interval</returns>
+        public uint CountOnIntervalExcept(BitSet other, int from, int to)
+        {
+            Debug.Assert(from >= 0);
+            Debug.Assert(to <= bytes.Length * 32);
+
+            if (from >= to)
+            {
+                return 0;
+            }
+            int fromIndex = from / 32;
+            int toIndex = (to - 1) / 32;
+            if (fromIndex == toIndex)
+            {
+                uint thisRestrictedByte = (bytes[fromIndex] >> (from % 32)) << (from % 32 + 32 - to % 32);
+                uint otherRestrictedByte = (other.bytes[fromIndex] >> (from % 32)) << (from % 32 + 32 - to % 32);
+
+                // perform counting
+                uint v = thisRestrictedByte & ~otherRestrictedByte;
+                v = v - ((v >> 1) & 0x55555555);
+                v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+                return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+            }
+            else
+            {
+                uint count = 0;
+
+                // count first byte
+                uint thisRestrictedFirstByte = bytes[fromIndex] >> (from % 32);
+                uint otherRestrictedFirstByte = other.bytes[fromIndex] >> (from % 32);
+
+                uint v = thisRestrictedFirstByte & ~otherRestrictedFirstByte;
+                v = v - ((v >> 1) & 0x55555555);
+                v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+                count += ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+
+                // count intermediate bytes
+                for (int i = fromIndex + 1; i < toIndex; i++)
+                {
+                    v = bytes[i] & ~other.bytes[i];
+                    v = v - ((v >> 1) & 0x55555555);
+                    v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+                    count += ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+                }
+
+                // test last byte
+                uint thisRestrictedLastByte = bytes[toIndex] << (32 - to % 32);
+                uint otherRestrictedLastByte = other.bytes[toIndex] << (32 - to % 32);
+                v = thisRestrictedLastByte & ~otherRestrictedLastByte;
+                v = v - ((v >> 1) & 0x55555555);
+                v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+                return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+            }
         }
 
         #endregion
