@@ -675,15 +675,27 @@ namespace Tamaki_Tree_Decomp
                         bool Tau_prime_existsInSieve = false;
                         foreach(PTD ptdur in U_sieve.EligiblePTDURs(Tau))
                         {
-                            if (ptdur.Equivalent(Tau_prime))
+                            BitSet copy1 = new BitSet(Tau_prime.vertices);
+                            copy1.ExceptWith(Tau_prime.possiblyUsableIgnoreComponentsUnion);
+                            BitSet copy2 = new BitSet(ptdur.vertices);
+                            copy2.ExceptWith(new BitSet(ptdur.possiblyUsableIgnoreComponentsUnion));
+
+                            if (copy1.Equals(copy2) && ptdur.vertices.IsSupersetOf(Tau_prime.vertices))
                             {
                                 Tau_prime_existsInSieve = true;
                                 break;
                             }
+                            else if (copy1.Equals(copy2) && Tau_prime.vertices.IsSupersetOf(ptdur.vertices))
+                            {
+                                ptdur.Print();
+                                Tau_prime.Print();
+                                ;
+                            }
                         }
                         if (!Tau_prime_existsInSieve)
                         {
-                            throw new Exception();
+                            ;
+                            //throw new Exception();
                         }
                         */
 
@@ -728,6 +740,33 @@ namespace Tamaki_Tree_Decomp
 
                             Leaf l = U_sieve.Add(Tau_wiggle);
                             U_inletsWithSieveLeafs.Add(Tau_wiggle.inlet, l);
+                        }
+
+                        bool Tau_prime_existsInSieve = false;
+                        foreach (PTD ptdur in U_sieve.EligiblePTDURs(Tau))
+                        {
+                            BitSet copy1 = new BitSet(Tau_prime.vertices);
+                            copy1.ExceptWith(Tau_prime.possiblyUsableIgnoreComponentsUnion);
+                            BitSet copy2 = new BitSet(ptdur.vertices);
+                            copy2.ExceptWith(new BitSet(ptdur.possiblyUsableIgnoreComponentsUnion));
+
+                            if (copy1.Equals(copy2) && ptdur.vertices.IsSupersetOf(Tau_prime.vertices))
+                            {
+                                Tau_prime_existsInSieve = true;
+                                break;
+                            }
+                            /*
+                            else if (copy1.Equals(copy2) && Tau_prime.vertices.IsSupersetOf(ptdur.vertices))
+                            {
+                                ptdur.Print();
+                                Tau_prime.Print();
+                                ;
+                            }
+                            */
+                        }
+                        if (!Tau_prime_existsInSieve)
+                        {
+                            throw new Exception();
                         }
                     }
                     else

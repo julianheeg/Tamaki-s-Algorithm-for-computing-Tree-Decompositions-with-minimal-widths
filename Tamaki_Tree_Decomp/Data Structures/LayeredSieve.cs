@@ -35,6 +35,14 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>the leaf that the ptdur is stored in</returns>
         internal Leaf Add(PTD ptdur)
         {
+            // DEBUG
+            BitSet verticesWithoutPUI = new BitSet(ptdur.vertices);
+            verticesWithoutPUI.ExceptWith(ptdur.possiblyUsableIgnoreComponentsUnion);
+            if (k == 69 && verticesWithoutPUI.Equals(new BitSet(161, new int[] { 9, 14, 15, 17, 18, 20, 21, 26, 30, 33, 36, 40, 42, 45, 48, 49, 57, 59, 60, 61, 63, 71, 72, 73, 77, 80, 81, 82, 83, 86, 90, 91, 93, 94, 95, 96, 98, 100, 102, 105, 109, 116, 119, 130, 131, 133, 136, 139, 140, 141, 144, 149, 150 })))
+            {
+                ;
+            }
+
             int margin = k + 1 - (int)ptdur.Bag.Count();
             int sieveIndex = margin == 0 ? 0 : ((int)Math.Ceiling(Math.Log(margin, 2)) + 1);
             return blockSieves[sieveIndex].Add(ptdur);

@@ -37,7 +37,7 @@ namespace Tamaki_Tree_Decomp.UnitTests
         private void AssertCorrectTreewidth(Graph g, int treewidth)
         {
             Treewidth.completeHeuristically = false;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;
             Treewidth.moreThan2ComponentsOptimization = true;
             PTD.testIfAddingOneVertexToBagFormsPMC = true;
             Graph g2 = new Graph(g);  // copy for second call

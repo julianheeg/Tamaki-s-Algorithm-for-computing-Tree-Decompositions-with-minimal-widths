@@ -89,7 +89,7 @@ namespace Tamaki_Tree_Decomp
 
             //string filepath = null;
             //string filepath = test_m4;
-            string filepath = PACE2017(35);
+            string filepath = PACE2017(189);
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_034.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             //string filepath = Console.ReadLine();

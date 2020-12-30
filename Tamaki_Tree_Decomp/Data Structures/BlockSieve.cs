@@ -238,7 +238,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         if (currentChildIntervalBitSet.EqualsOnInterval(currentNewChildIntervalBitSet, intervalFrom, intervalTo))
                         {
                             ((InnerNode)currentNewChildNode).AddChild(currentChildIntervalBitSet, currentChildNode);
-                            //currentChildNode.parent = (InnerNode)currentNewChildNode;
+                            currentChildNode.parent = (InnerNode)currentNewChildNode;
+                            if (currentChildNode.parent != currentNewChildNode)
+                            {
+                                ;
+                            }
                             Debug.Assert(currentChildNode.parent == currentNewChildNode);
                             newChildExists = true;
                             break;
