@@ -1,40 +1,58 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Tamaki_Tree_Decomp.Data_Structures
 {
+    /// <summary>
+    /// A class for representing a block sieve. It stores ptdurs with a given upper bound on vertices that can be added to their root bag
+    /// and can be queried with a ptd to return candidate ptdurs to combine it with. It is implemented as a modified trie.
+    /// 
+    /// Each node specifies an interval of vertices. Each edge to a child corresponds to a different set restricted to that interval.
+    /// 
+    /// Ptdurs are added to the sieve as follows: starting at startNode, test if the vertex set of the ptdur restricted to the interval
+    /// specified by the current node corresponds to any of the edges. If so, descend to that node and continue. Otherwise, add a new node
+    /// whose interval starts with the next vertex of the current interval and ends at the vertex count (if that interval is non-empty), and
+    /// add a leaf containing the ptdur to add.
+    /// 
+    /// Queries for candidate ptdurs for a given ptd are done as follows: starting at startNode, descend all edges that do not intersect the
+    /// inlet of the ptd on the interval specified by the current node. All ptdurs in leaves reached this way are candidates. Further pruning
+    /// is achieved by adding up the amount of vertices in the outlet of the ptd (restricted to the union of intervals seen so far) that are
+    /// not also present in the edges followed so far. These vertices correspond to those that would need to be added to any ptdur that is
+    /// located further down the search tree. Thus, if their amount exceeds the margin at some point during the traversal, the corresponding
+    /// subtree can also be excluded and the edge can be skipped. 
+    /// </summary>
     class BlockSieve
     {
-        readonly int margin;
+        readonly int margin;    // the amount of vertices that can maximally be added to the bags of the ptdurs stored in this sieve 
         readonly int vertexCount;
         private readonly InnerNode startNode;
 
-        public static int maxChildrenPerNode = 32;
-        private readonly List<InnerNode> nodesWithTooManyChildren;
+        public static int maxChildrenPerNode = 32;  // if an InnerNode has more children than this number, it will be split
 
+        /// <summary>
+        /// constructs a block sieve with a specific margin.
+        /// </summary>
+        /// <param name="margin">the margin</param>
+        /// <param name="vertexCount">the vertex count of the currently processed graph</param>
         public BlockSieve(int margin, int vertexCount)
         {
             this.margin = margin;
-            nodesWithTooManyChildren = new List<InnerNode>();
-            startNode = new InnerNode(0, vertexCount, null, nodesWithTooManyChildren);
+            startNode = new InnerNode(0, vertexCount, null);
             this.vertexCount = vertexCount;
-            // TODO: can it happen that the start node is split?
         }
 
         /// <summary>
         /// adds a ptdur to this sieve
         /// </summary>
         /// <param name="ptdur">the ptdur to add</param>
+        /// <param name="forceAddition">forces the addition of the ptdur without testing if a ptdur already exists that is 'better' in terms of optional components</param>
         /// <returns>the leaf that this ptdur is stored in</returns>
-        public Leaf Add(PTD ptdur)
+        public Leaf Add(PTD ptdur, bool forceAddition=false)
         {
             SieveNode currentNode = startNode;
             BitSet verticesWithoutPUI = new BitSet(ptdur.vertices);
-            verticesWithoutPUI.ExceptWith(ptdur.possiblyUsableIgnoreComponentsUnion);          
+            verticesWithoutPUI.ExceptWith(ptdur.possiblyUsableIgnoreComponentsUnion);
 
             // traverse the tree
             do
@@ -59,7 +77,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     // add new inner node that covers the rest of the interval if the current node doesn't cover it fully
                     if (currentInnerNode.intervalTo < vertexCount)
                     {
-                        InnerNode newNode = new InnerNode(currentInnerNode.intervalTo, vertexCount, currentInnerNode, nodesWithTooManyChildren);
+                        InnerNode newNode = new InnerNode(currentInnerNode.intervalTo, vertexCount, currentInnerNode);
                         BitSet intervalBitSet = verticesWithoutPUI;
                         currentInnerNode.AddChild(intervalBitSet, newNode);
                         currentInnerNode = newNode;
@@ -79,36 +97,31 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             while (!currentNode.isLeaf);
 
 
-            // a ptdur with the same vertices (except PUI) exists already
+            // test if a ptdur exists in this leaf that is 'better' than the one to add or vice versa
             Leaf currentNodeAsLeaf = currentNode as Leaf;
-            BitSet copy = new BitSet(currentNodeAsLeaf.ptdur.vertices);
-            copy.ExceptWith(currentNodeAsLeaf.ptdur.possiblyUsableIgnoreComponentsUnion);
-            if (verticesWithoutPUI.Equals(copy))
+            if (!forceAddition)
             {
-                if (ptdur.vertices.IsSupersetOf(currentNodeAsLeaf.ptdur.vertices))
+                for (int i = 0; i < currentNodeAsLeaf.ptdurs.Count; i++)
                 {
-                    currentNodeAsLeaf.ptdur = ptdur;
-                    return currentNodeAsLeaf;
-                }
-                else
-                {
-                    if (currentNodeAsLeaf.ptdur.vertices.IsSupersetOf(ptdur.vertices))
+                    PTD currentPtdur = currentNodeAsLeaf.ptdurs[i];
+                    // if the ptdur to add is better, replace the old one
+                    if (ptdur.vertices.IsSupersetOf(currentPtdur.vertices))
+                    {
+                        currentNodeAsLeaf.ptdurs[i] = ptdur;
+                        return currentNodeAsLeaf;
+                    }
+                    // if the current one is better, reject the old one
+                    else if (currentPtdur.vertices.IsSupersetOf(ptdur.vertices))
                     {
                         return currentNodeAsLeaf;
                     }
-                    else
-                    {
-                        // TODO: keep all ptdurs in the leaf using a list
-                        throw new Exception();
-                    }
+
                 }
-                return currentNodeAsLeaf;
             }
-            else
-            {
-                // if this is executed there is something wrong
-                throw new Exception();
-            }
+
+            // if not, add the ptdur to the leaf
+            currentNodeAsLeaf.ptdurs.Add(ptdur);
+            return currentNodeAsLeaf;
         }
 
         /// <summary>
@@ -146,7 +159,10 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             {
                                 Leaf leaf = child as Leaf;
                                 Debug.Assert(child != null);
-                                yield return leaf.ptdur;
+                                for (int k = 0; k < leaf.ptdurs.Count; k++)
+                                {
+                                    yield return leaf.ptdurs[k];
+                                }
                             }
                             // put the child on the stack if it is not a leaf
                             else
@@ -162,31 +178,30 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         }
 
         /// <summary>
-        /// splits all nodes that have too many children
+        /// an abstract class for representing a sieve node. Derived classes are InnerNode and Leaf.
         /// </summary>
-        public void SplitNodesWithTooManyChildren()
-        {
-            for (int i = 0; i < nodesWithTooManyChildren.Count; i++)
-            {
-                nodesWithTooManyChildren[i].Split();
-            }
-        }
-
-        // TODO: make struct?
         public abstract class SieveNode
         {
             public bool isLeaf;
             public InnerNode parent;
         }
 
+        /// <summary>
+        /// a class for representing an inner node
+        /// </summary>
         public class InnerNode : SieveNode
         {
             public readonly int intervalFrom;   // inclusive
             public int intervalTo;              // exclusive
             public List<(BitSet intervalBitSet, SieveNode)> children;
-            private readonly List<InnerNode> nodesWithTooManyChildren;
 
-            public InnerNode(int intervalFrom, int intervalTo, InnerNode parent, List<InnerNode> nodesWithTooManyChildren)
+            /// <summary>
+            /// constructs an inner node that corresponds to a specific interval
+            /// </summary>
+            /// <param name="intervalFrom">the lower bound of the interval (inlcusive)</param>
+            /// <param name="intervalTo">the upper bound of the interval (exclusive)</param>
+            /// <param name="parent">the parent of this node within the sieve</param>
+            public InnerNode(int intervalFrom, int intervalTo, InnerNode parent)
             {
                 isLeaf = false;
                 this.intervalFrom = intervalFrom;
@@ -196,7 +211,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
 
             /// <summary>
-            /// adds a child node to this node
+            /// adds a child node to this node, and splits the node if it has more children than 'BlockSieve.maxChildrenPerNode'
             /// </summary>
             /// <param name="intervalBitSet">the vertex set of the child on this interval</param>
             /// <param name="child">the child node</param>
@@ -206,7 +221,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 child.parent = this;
 
-                // TODO: not entirely correct. One of the new nodes might have too man children after the split ->> fix: either dfs and split all nodes with too many children or use better split heuristic
                 if (children.Count > maxChildrenPerNode)
                 {
                     Split();
@@ -239,10 +253,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                         {
                             ((InnerNode)currentNewChildNode).AddChild(currentChildIntervalBitSet, currentChildNode);
                             currentChildNode.parent = (InnerNode)currentNewChildNode;
-                            if (currentChildNode.parent != currentNewChildNode)
-                            {
-                                ;
-                            }
                             Debug.Assert(currentChildNode.parent == currentNewChildNode);
                             newChildExists = true;
                             break;
@@ -251,7 +261,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     // if no such new child exists, create it
                     if (!newChildExists)
                     {
-                        InnerNode newNode = new InnerNode(childrenIntervalFrom, childrenIntervalTo, this, nodesWithTooManyChildren);
+                        InnerNode newNode = new InnerNode(childrenIntervalFrom, childrenIntervalTo, this);
                         newNode.AddChild(currentChildIntervalBitSet, currentChildNode);
                         //currentChildNode.parent = newNode;
                         Debug.Assert(currentChildNode.parent == newNode);
@@ -263,8 +273,8 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 children = newChildrenList;
             }
 
-            public enum SplitHeuristic { intervalCenter };
-            public static SplitHeuristic splitHeuristic = SplitHeuristic.intervalCenter;
+            public enum SplitHeuristic { intervalCenter, powerOfTwo };
+            public static SplitHeuristic splitHeuristic = SplitHeuristic.powerOfTwo;
 
             /// <summary>
             /// calculates a vertex at which this node should be split (split to the left of that vertex)
@@ -275,8 +285,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 Debug.Assert(intervalFrom < intervalTo + 1);
                 switch (splitHeuristic)
                 {
-                    case SplitHeuristic.intervalCenter:
+                    case SplitHeuristic.intervalCenter: // splits at the center of the interval
                         return (intervalFrom + intervalTo) / 2;
+                    case SplitHeuristic.powerOfTwo:     // splits at (the highest power of two smaller than the interval size) added to the smaller bound of the interval
+                        int intervalSize = intervalTo - intervalFrom;
+                        int log = (int)Math.Log(intervalSize - 1);
+                        int offset = 1 << log;
+                        return intervalFrom + offset;
                     default:
                         throw new NotImplementedException();
                 }
@@ -288,13 +303,11 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             /// <param name="leaf">the leaf to remove</param>
             public void RemoveLeaf(Leaf leaf)
             {
-                BitSet verticesWithoutPUI = new BitSet(leaf.ptdur.vertices);
-                verticesWithoutPUI.ExceptWith(leaf.ptdur.possiblyUsableIgnoreComponentsUnion);
-
                 for (int i = 0; i < children.Count; i++)
                 {
-                    if (children[i].intervalBitSet.EqualsOnInterval(verticesWithoutPUI, intervalFrom, intervalTo))
+                    if (children[i].Item2 == leaf)
                     {
+                        Debug.Assert(children[i].Item2.isLeaf);
                         children.RemoveAt(i);
                         return;
                     }
@@ -302,23 +315,36 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             }
         }
 
+        /// <summary>
+        /// a class for representing a leaf
+        /// </summary>
         public class Leaf : SieveNode
         {
-            public PTD ptdur;
+            public List<PTD> ptdurs;
 
+            /// <summary>
+            /// constructs a leaf initialized with a given ptdur and a reference to the leaf's parent within the sieve
+            /// </summary>
+            /// <param name="ptdur">the initial ptdur at this leaf</param>
+            /// <param name="parent">the leaf's parent</param>
             public Leaf(PTD ptdur, InnerNode parent)
             {
                 isLeaf = true;
-                this.ptdur = ptdur;
+                ptdurs = new List<PTD>() { ptdur };
                 this.parent = parent;
             }
 
             /// <summary>
-            /// removes this leaf from the sieve
+            /// removes a ptdur from this leaf. If no ptdurs remain, this leaf is detached from its parent.
             /// </summary>
-            public void Delete()
+            /// <param name="ptdur">the ptdur to delete</param>
+            public void Remove(PTD ptdur)
             {
-                parent.RemoveLeaf(this);
+                bool removed = ptdurs.Remove(ptdur);
+                if (ptdurs.Count == 0)
+                {
+                    parent.RemoveLeaf(this);
+                }
             }
         }
     }

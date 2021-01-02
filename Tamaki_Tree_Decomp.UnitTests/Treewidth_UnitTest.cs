@@ -15,9 +15,9 @@ namespace Tamaki_Tree_Decomp.UnitTests
         /// </summary>
         /// <param name="g">the graph to test</param>
         /// <param name="treewidth">the graph's actual tree width</param>
-        private void RunCompletelyAndAssertCorrectTreewidth(Graph g, int treewidth)
+        private void AssertCorrectTreewidth(Graph g, int treewidth)
         {
-            Treewidth.completeHeuristically = true;
+            Treewidth.completeHeuristically = false;
             Treewidth.moreThan2ComponentsOptimization = true;
             Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;
             Treewidth.testOutletIsCliqueMinor = true;
@@ -28,67 +28,48 @@ namespace Tamaki_Tree_Decomp.UnitTests
             output.AssertValidTreeDecomposition(h);
         }
 
-        /// <summary>
-        /// asserts that the treewidth that the algorithm finds is the graph's actual treewidth.
-        /// Does not run the entire algorithm, but only the two necessary tests for "treewidth - 1" (false) and "treewidth" (true)
-        /// </summary>
-        /// <param name="g">the graph to test</param>
-        /// <param name="treewidth">the graph's actual tree width</param>
-        private void AssertCorrectTreewidth(Graph g, int treewidth)
-        {
-            Treewidth.completeHeuristically = false;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;
-            Treewidth.moreThan2ComponentsOptimization = true;
-            PTD.testIfAddingOneVertexToBagFormsPMC = true;
-            Graph g2 = new Graph(g);  // copy for second call
-            ImmutableGraph h = new ImmutableGraph(g);   // copy for check if treewidth is correct
-            Assert.IsFalse(Treewidth.IsTreeWidthAtMost(g, treewidth - 1, out PTD output));
-            Assert.IsTrue(Treewidth.IsTreeWidthAtMost(g2, treewidth, out output));
-            output.AssertValidTreeDecomposition(h);
-        }
-
         [TestMethod, Timeout(timeout)]
         public void TreeWidth_SmallGraphs()
         {
             Graph g = new Graph("..\\..\\Test Data\\test1.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 3);
+            AssertCorrectTreewidth(g, 3);
 
             g = new Graph("..\\..\\Test Data\\s0_fuzix_clock_settime_clock_settime.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 2);
+            AssertCorrectTreewidth(g, 2);
 
             g = new Graph("..\\..\\Test Data\\s1_fuzix_clock_settime_clock_settime.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 2);
+            AssertCorrectTreewidth(g, 2);
 
             g = new Graph("..\\..\\Test Data\\empty.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 0);
+            AssertCorrectTreewidth(g, 0);
 
             g = new Graph("..\\..\\Test Data\\four_in_a_line.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 1);
+            AssertCorrectTreewidth(g, 1);
 
             g = new Graph("..\\..\\Test Data\\gr-only.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 1);
+            AssertCorrectTreewidth(g, 1);
 
             g = new Graph("..\\..\\Test Data\\single-vertex.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 0);
+            AssertCorrectTreewidth(g, 0);
         }
 
         [TestMethod, Timeout(timeout)]
         public void TreeWidth_MediumGraphs()
         {
             Graph g = new Graph("..\\..\\Test Data\\2016\\medium\\NauruGraph.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
             g = new Graph("..\\..\\Test Data\\2016\\medium\\FlowerSnark.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
             g = new Graph("..\\..\\Test Data\\2016\\medium\\DesarguesGraph.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
             g = new Graph("..\\..\\Test Data\\2016\\medium\\GeneralizedPetersenGraph_10_4.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
             g = new Graph("..\\..\\Test Data\\2016\\medium\\HoffmanGraph.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
         }
 
@@ -96,19 +77,19 @@ namespace Tamaki_Tree_Decomp.UnitTests
         public void TreeWidth_2016_HardGraphs()
         {
             Graph g = new Graph("..\\..\\Test Data\\2016\\hard\\ClebschGraph.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 8);
+            AssertCorrectTreewidth(g, 8);
 
             g = new Graph("..\\..\\Test Data\\2016\\hard\\contiki_dhcpc_handle_dhcp.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
             g = new Graph("..\\..\\Test Data\\2016\\hard\\DoubleStarSnark.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
             g = new Graph("..\\..\\Test Data\\2016\\hard\\fuzix_vfscanf_vfscanf.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 6);
+            AssertCorrectTreewidth(g, 6);
 
             g = new Graph("..\\..\\Test Data\\2016\\hard\\McGeeGraph.gr");
-            RunCompletelyAndAssertCorrectTreewidth(g, 7);
+            AssertCorrectTreewidth(g, 7);
         }
 
         [TestMethod, Timeout(timeout)]

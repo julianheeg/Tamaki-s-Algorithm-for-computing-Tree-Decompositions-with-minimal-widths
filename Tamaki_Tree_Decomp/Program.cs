@@ -4,6 +4,8 @@ using System.IO;
 using System.Threading;
 using Tamaki_Tree_Decomp.Data_Structures;
 using Tamaki_Tree_Decomp.Safe_Separators;
+using static Tamaki_Tree_Decomp.Data_Structures.BlockSieve;
+using static Tamaki_Tree_Decomp.Data_Structures.BlockSieve.InnerNode;
 
 namespace Tamaki_Tree_Decomp
 {
@@ -88,8 +90,8 @@ namespace Tamaki_Tree_Decomp
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
             //string filepath = null;
-            //string filepath = test_m4;
-            string filepath = PACE2017(189);
+            //string filepath = test_h0;
+            string filepath = PACE2017(39);
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_034.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             //string filepath = Console.ReadLine();
@@ -114,7 +116,7 @@ namespace Tamaki_Tree_Decomp
             Graph.dumpSubgraphs = false;   // dumps graphs only in DEBUG mode!
             //SafeSeparator.separate = false;
             //GraphReduction.reduce = false;
-            Treewidth.completeHeuristically = false;
+            Treewidth.completeHeuristically = true;
             Treewidth.heuristicCompletionFrequency = 20;
             Treewidth.heuristicInletMax = 1f;
             Treewidth.heuristicInletMin = 0f;
@@ -122,17 +124,18 @@ namespace Tamaki_Tree_Decomp
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
             Treewidth.moreThan2ComponentsOptimization = true;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = false;  // not yet verified if implementation is correct
+            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;  // not yet verified if implementation is correct
             PTD.testIfAddingOneVertexToBagFormsPMC = false;
             ImmutableGraph.cachePMC = false;
             LowerBound.calculateLowerBound = true;
+            Treewidth.testOutletIsCliqueMinor = true;
 
             
-            Run(filepath, true);
+            //Run(filepath, true);
             //Run(filepath, false, false);
             //RunAll_Parallel(directory);
-            //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
-            //EvaluateParameterImpact(directory, ref PTD.testIfAddingOneVertexToBagFormsPMC, directoryStartIndex, directoryEndIndex);
+            RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
+            //EvaluateParameterImpact<bool>(directory, ref PTD.testIfAddingOneVertexToBagFormsPMC, false, true, directoryStartIndex, directoryEndIndex);
 
             //Treewidth.PrintStats_kMinus(12);
             Console.WriteLine("total time for lower bound calculation: {0}", LowerBound.stopWatch.Elapsed);
@@ -260,7 +263,7 @@ namespace Tamaki_Tree_Decomp
             Console.WriteLine("\n-------------------------------------------------------------------------------------\n\ntotal time for directory: " + timer.Elapsed.ToString());
         }
 
-        private static void EvaluateParameterImpact(string directory, ref bool parameter, int start = 0, int end = int.MaxValue)
+        private static void EvaluateParameterImpact<T>(string directory, ref T parameter, T firstValue, T secondValue, int start = 0, int end = int.MaxValue)
         {
             int counter = -1;
             Stopwatch timer = new Stopwatch();
@@ -282,13 +285,13 @@ namespace Tamaki_Tree_Decomp
                 }
 
                 // run without parameter active
-                parameter = false;
+                parameter = firstValue;
                 timer1.Restart();
                 Run(filepath, false, false);
                 timer1.Stop();
 
                 // run with parameter active
-                parameter = true;
+                parameter = secondValue;
                 timer2.Restart();
                 Run(filepath, false, false);
                 timer2.Stop();

@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define blocksieve
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Tamaki_Tree_Decomp.Data_Structures;
@@ -190,7 +191,7 @@ namespace Tamaki_Tree_Decomp
                     // only check tree width if the graph has not been separated. If it has, the tree decomposition is built later from the subgraphs
                     if (!separated)
                     {
-                        ss = new SafeSeparator(graph);
+                        ss = new SafeSeparator(graph, verbose);
                         if (reduced || firstIterationOnGraph)
                         {
                             outletsAlreadyChecked.Clear();
@@ -504,7 +505,6 @@ namespace Tamaki_Tree_Decomp
         [ThreadStatic]
         public static bool testOutletIsCliqueMinor = true;  // switch for controlling whether the outlet-is-clique-minor test is executed
 
-
         public static bool keepOnlyPTDsWithLargerInletIfSameOutlet = true;
 
         /// <summary>
@@ -524,7 +524,7 @@ namespace Tamaki_Tree_Decomp
                 outletSafeSeparator = null;
                 return true;
             }
-            
+
             P_size = 0;
 
             heuristicCompletionCallsPerGraphAndK = 0;
@@ -532,12 +532,14 @@ namespace Tamaki_Tree_Decomp
             Stack<PTD> P = new Stack<PTD>();
             Dictionary<BitSet, PTD> P_inlets = new Dictionary<BitSet, PTD>();
 
+#if blocksieve
+            LayeredSieve U_sieve = new LayeredSieve(k, graph.vertexCount);
+            Dictionary<BitSet, PTD> U_inletsWithPtdurs = new Dictionary<BitSet, PTD>();
+#else
             List<PTD> U = new List<PTD>();
             // basically the same as P_inlets, but here the index of the PTD in U is saved along with the inlet
             Dictionary<BitSet, int> U_inletsWithIndex = new Dictionary<BitSet, int>();
-
-            LayeredSieve U_sieve = new LayeredSieve(k, graph.vertexCount);
-            Dictionary<BitSet, Leaf> U_inletsWithSieveLeafs = new Dictionary<BitSet, Leaf>();
+#endif
 
             bool[] isNvSmallEnoughAndPotMaxClique = new bool[graph.vertexCount];    // TODO: make static and reset from calling function
 
@@ -556,7 +558,7 @@ namespace Tamaki_Tree_Decomp
             PTDSizePerPTDURSize = new int[k + 2, k + 2];
             PTDURSizeNotBuilt = new int[k + 2];
 
-             
+
 
             // ---------line 1 is in the method that calls this one----------
 
@@ -609,33 +611,38 @@ namespace Tamaki_Tree_Decomp
                 // --------- lines 10 ----------
 
                 Tau_wiggle_original.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
-              
+
+#if blocksieve
+                // add the new ptdur if there are no equivalent ptdurs
+                // if it has a smaller root bag than an equivalent ptdur, replace that one instead
+                if (U_inletsWithPtdurs.TryGetValue(Tau_wiggle_original.inlet, out PTD equivalentPtdur))
+                {
+                    if (Tau_wiggle_original.Bag.Count() < (int)equivalentPtdur.Bag.Count())
+                    {
+                        U_sieve.Replace(equivalentPtdur, Tau_wiggle_original);
+                        U_inletsWithPtdurs[Tau_wiggle_original.inlet] = Tau_wiggle_original;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                }
+                else
+                {
+                    U_inletsWithPtdurs.Add(Tau_wiggle_original.inlet, Tau_wiggle_original);
+                    U_sieve.DeferredAdd(Tau_wiggle_original);
+                    U_sieve.FlushAdd();
+                }
+#else
                 // add the new ptdur if there are no equivalent ptdurs
                 // if it has a smaller root bag than an equivalent ptdur, replace that one instead
                 if (U_inletsWithIndex.TryGetValue(Tau_wiggle_original.inlet, out int index))
                 {
                     PTD equivalentPtdur = U[index];
-
-                    Leaf l = U_inletsWithSieveLeafs[Tau_wiggle_original.inlet];
-
-                    BitSet copy1 = new BitSet(equivalentPtdur.vertices);
-                    copy1.ExceptWith(equivalentPtdur.possiblyUsableIgnoreComponentsUnion);
-                    BitSet copy2 = new BitSet(l.ptdur.vertices);
-                    copy2.ExceptWith(new BitSet(l.ptdur.possiblyUsableIgnoreComponentsUnion));
-
-                    //if (equivalentPtdur != l.ptdur)
-                    if (equivalentPtdur != l.ptdur && !copy1.Equals(copy2))
-                    {
-                        throw new Exception();
-                    }
-                    //Debug.Assert(equivalentPtdur == l.ptdur);
-
                     if (Tau_wiggle_original.Bag.Count() < equivalentPtdur.Bag.Count())
                     {
                         U[index] = Tau_wiggle_original;
-                        l.Delete();
-                        l = U_sieve.Add(Tau_wiggle_original);
-                        U_inletsWithSieveLeafs[Tau_wiggle_original.inlet] = l;
                     }
                     else
                     {
@@ -647,16 +654,20 @@ namespace Tamaki_Tree_Decomp
                 {
                     U_inletsWithIndex.Add(Tau_wiggle_original.inlet, U.Count);
                     U.Add(Tau_wiggle_original);
-
-                    Leaf l = U_sieve.Add(Tau_wiggle_original);
-                    U_inletsWithSieveLeafs.Add(Tau_wiggle_original.inlet, l);
                 }
+#endif
 
                 // --------- lines 11 to 32 ----------
 
+#if blocksieve
+                foreach (PTD Tau_prime in U_sieve.EligiblePTDURs(Tau, Tau_wiggle_original))
+#else
                 for (int j = 0; j < U.Count; j++)
+#endif
                 {
+#if !blocksieve
                     PTD Tau_prime = U[j];
+#endif
                     PTD Tau_wiggle = null;
 
                     // --------- lines 12 to 15 ----------
@@ -670,62 +681,40 @@ namespace Tamaki_Tree_Decomp
                             // ---------- line 15  ----------
                             continue;
                         }
-               
-                        /*
-                        bool Tau_prime_existsInSieve = false;
-                        foreach(PTD ptdur in U_sieve.EligiblePTDURs(Tau))
-                        {
-                            BitSet copy1 = new BitSet(Tau_prime.vertices);
-                            copy1.ExceptWith(Tau_prime.possiblyUsableIgnoreComponentsUnion);
-                            BitSet copy2 = new BitSet(ptdur.vertices);
-                            copy2.ExceptWith(new BitSet(ptdur.possiblyUsableIgnoreComponentsUnion));
 
-                            if (copy1.Equals(copy2) && ptdur.vertices.IsSupersetOf(Tau_prime.vertices))
+#if blocksieve
+                        // add the new ptdur if there are no equivalent ptdurs
+                        // if it has a smaller root bag than an equivalent ptdur, replace that one instead
+                        if (U_inletsWithPtdurs.TryGetValue(Tau_wiggle.inlet, out equivalentPtdur))
+                        {
+                            int equivalentPtdurMargin = (int)equivalentPtdur.Bag.Count();
+                            if (Tau_wiggle.Bag.Count() < equivalentPtdurMargin)
                             {
-                                Tau_prime_existsInSieve = true;
-                                break;
+                                Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
+                                U_sieve.Replace(equivalentPtdur, Tau_wiggle);
+                                U_inletsWithPtdurs[Tau_wiggle.inlet] = Tau_wiggle;
                             }
-                            else if (copy1.Equals(copy2) && Tau_prime.vertices.IsSupersetOf(ptdur.vertices))
+                            else
                             {
-                                ptdur.Print();
-                                Tau_prime.Print();
-                                ;
+                                continue;
                             }
                         }
-                        if (!Tau_prime_existsInSieve)
+                        else
                         {
-                            ;
-                            //throw new Exception();
+                            Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
+                            U_sieve.DeferredAdd(Tau_wiggle);
+                            U_inletsWithPtdurs.Add(Tau_wiggle.inlet, Tau_wiggle);
                         }
-                        */
-
+#else
                         // add the new ptdur if there are no equivalent ptdurs
                         // if it has a smaller root bag than an equivalent ptdur, replace that one instead
                         if (U_inletsWithIndex.TryGetValue(Tau_wiggle.inlet, out index))
                         {
                             PTD equivalentPtdur = U[index];
-
-                            Leaf l = U_inletsWithSieveLeafs[Tau_wiggle.inlet];
-
-                            BitSet copy1 = new BitSet(equivalentPtdur.vertices);
-                            copy1.ExceptWith(equivalentPtdur.possiblyUsableIgnoreComponentsUnion);
-                            BitSet copy2 = new BitSet(l.ptdur.vertices);
-                            copy2.ExceptWith(new BitSet(l.ptdur.possiblyUsableIgnoreComponentsUnion));
-
-                            //if (equivalentPtdur != l.ptdur)
-                            if (equivalentPtdur != l.ptdur && !copy1.Equals(copy2))
-                            {
-                                throw new Exception();
-                            }
-                            //Debug.Assert(equivalentPtdur == l.ptdur);
-
                             if (Tau_wiggle.Bag.Count() < equivalentPtdur.Bag.Count())
                             {
                                 Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
                                 U[index] = Tau_wiggle;
-                                l.Delete();
-                                l = U_sieve.Add(Tau_wiggle);
-                                U_inletsWithSieveLeafs[Tau_wiggle.inlet] = l;
                             }
                             else
                             {
@@ -737,37 +726,8 @@ namespace Tamaki_Tree_Decomp
                             Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
                             U_inletsWithIndex.Add(Tau_wiggle.inlet, U.Count);
                             U.Add(Tau_wiggle);
-
-                            Leaf l = U_sieve.Add(Tau_wiggle);
-                            U_inletsWithSieveLeafs.Add(Tau_wiggle.inlet, l);
                         }
-
-                        bool Tau_prime_existsInSieve = false;
-                        foreach (PTD ptdur in U_sieve.EligiblePTDURs(Tau))
-                        {
-                            BitSet copy1 = new BitSet(Tau_prime.vertices);
-                            copy1.ExceptWith(Tau_prime.possiblyUsableIgnoreComponentsUnion);
-                            BitSet copy2 = new BitSet(ptdur.vertices);
-                            copy2.ExceptWith(new BitSet(ptdur.possiblyUsableIgnoreComponentsUnion));
-
-                            if (copy1.Equals(copy2) && ptdur.vertices.IsSupersetOf(Tau_prime.vertices))
-                            {
-                                Tau_prime_existsInSieve = true;
-                                break;
-                            }
-                            /*
-                            else if (copy1.Equals(copy2) && Tau_prime.vertices.IsSupersetOf(ptdur.vertices))
-                            {
-                                ptdur.Print();
-                                Tau_prime.Print();
-                                ;
-                            }
-                            */
-                        }
-                        if (!Tau_prime_existsInSieve)
-                        {
-                            throw new Exception();
-                        }
+#endif
                     }
                     else
                     {
@@ -782,7 +742,7 @@ namespace Tamaki_Tree_Decomp
                     // bag should always be small enough by construction
                     Debug.Assert(Tau_wiggle.Bag.Count() <= k + 1);
 
-                    if (PTDURSize == k+1 || graph.IsPotMaxClique(Tau_wiggle.Bag))    // if size = k + 1, then the pmc check has been done already
+                    if (PTDURSize == k + 1 || graph.IsPotMaxClique(Tau_wiggle.Bag))    // if size = k + 1, then the pmc check has been done already
                     {
                         // TODO: outlet from the isPotMaxClique calculation may be able to be used
                         // TODO: p1 is the same as tau_wiggle, so we can copy after tests are done. (We could also move this case to the end and not copy at all.)
@@ -907,7 +867,7 @@ namespace Tamaki_Tree_Decomp
                                 AddToP(p2, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
 
                             }
-                        }                        
+                        }
                     }
 
                     // --------- lines 27 to 32 ----------
@@ -982,12 +942,18 @@ namespace Tamaki_Tree_Decomp
                         PTDURSizeNotBuilt[PTDURSize]++;
                     }
                 }
+#if blocksieve
+                U_sieve.FlushAdd();
+#endif
             }
 
             if (verbose)
             {
-                // Console.WriteLine("considered {0} PTDs and {1} PTDURs", P_inlets.Count, U.Count);
-                Console.WriteLine("considered {0} PTDs and {1} PTDURs", P_size, U.Count);
+#if blocksieve
+                Console.WriteLine("considered {0} PTDs and {1} PTDURs", P_size, U_inletsWithPtdurs.Count);
+#else
+                Console.WriteLine("considered {0} PTDs and {1} PTDURs", P_size, U_inletsWithIndex.Count);
+#endif
             }
 
             treeDecomp = null;
