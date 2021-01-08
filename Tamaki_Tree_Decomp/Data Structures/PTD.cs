@@ -399,31 +399,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 for (int j = i + 1; j < children.Count; j++)
                 {
                     PTD child2 = children[j];
-                    // if one inlet is subset of the other inlet, then that child is not needed
-                    if (child1.inlet.IsSupersetOf(child2.inlet) || child2.inlet.IsSupersetOf(child1.inlet))
-                    {
-                        return false;
-                    }                    
-
-                    BitSet verticesIgnoreIntersection = new BitSet(child1.possiblyUsableIgnoreComponentsUnion);
-                    verticesIgnoreIntersection.IntersectWith(child2.possiblyUsableIgnoreComponentsUnion);
-                    BitSet verticesIgnoreUnion = new BitSet(child1.possiblyUsableIgnoreComponentsUnion);
-                    verticesIgnoreUnion.UnionWith(child2.possiblyUsableIgnoreComponentsUnion);
-                    BitSet childrenInletsIntersection = new BitSet(child1.inlet);
-                    childrenInletsIntersection.IntersectWith(child2.inlet);
-                    
-                    if (!verticesIgnoreUnion.IsSupersetOf(childrenInletsIntersection))
-                    {
-                        return false;
-                    }
-
-                    BitSet verticesIntersection = new BitSet(child1.vertices);
-                    verticesIntersection.IntersectWith(child2.vertices);
-                    verticesIntersection.ExceptWith(verticesIgnoreIntersection);
-                    if (!child1.outlet.IsSupersetOf(verticesIntersection) || !child2.outlet.IsSupersetOf(verticesIntersection))
-                    {
-                        return false;
-                    }
 
                     // assert that pui components are subsets of one another or don't intersect each other at all
                     for (int k = 0; k < child1.possiblyUsableIgnoreComponents.Count; k++)
@@ -434,6 +409,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             {
                                 if (!child1.possiblyUsableIgnoreComponents[k].IsSupersetOf(child2.possiblyUsableIgnoreComponents[l]) && !child2.possiblyUsableIgnoreComponents[l].IsSupersetOf(child1.possiblyUsableIgnoreComponents[k]))
                                 {
+                                    throw new Exception();
                                     return false;
                                 }
                             }
@@ -455,7 +431,68 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             return false;
                         }
                     }
+
+
+                    // if one inlet is subset of the other inlet, then that child is not needed
+                    if (child1.inlet.IsSupersetOf(child2.inlet) || child2.inlet.IsSupersetOf(child1.inlet))
+                    {
+                        return false;
+                    }
+
+                    BitSet verticesIgnoreIntersection = new BitSet(child1.possiblyUsableIgnoreComponentsUnion);
+                    verticesIgnoreIntersection.IntersectWith(child2.possiblyUsableIgnoreComponentsUnion);
+                    BitSet verticesIgnoreUnion = new BitSet(child1.possiblyUsableIgnoreComponentsUnion);
+                    verticesIgnoreUnion.UnionWith(child2.possiblyUsableIgnoreComponentsUnion);
+                    BitSet childrenInletsIntersection = new BitSet(child1.inlet);
+                    childrenInletsIntersection.IntersectWith(child2.inlet);
                     
+                    if (!verticesIgnoreUnion.IsSupersetOf(childrenInletsIntersection))
+                    {
+                        return false;
+                    }
+
+                    BitSet verticesIntersection = new BitSet(child1.vertices);
+                    verticesIntersection.IntersectWith(child2.vertices);
+                    //verticesIntersection.ExceptWith(verticesIgnoreIntersection);
+                    verticesIntersection.ExceptWith(verticesIgnoreUnion);
+
+                    if (!child1.outlet.IsSupersetOf(verticesIntersection) || !child2.outlet.IsSupersetOf(verticesIntersection))
+                    {
+                        return false;
+                    }
+
+                    /*
+                    // assert that pui components are subsets of one another or don't intersect each other at all
+                    for (int k = 0; k < child1.possiblyUsableIgnoreComponents.Count; k++)
+                    {
+                        for (int l = 0; l < child2.possiblyUsableIgnoreComponents.Count; l++)
+                        {
+                            if (child1.possiblyUsableIgnoreComponents[k].Intersects(child2.possiblyUsableIgnoreComponents[l]))
+                            {
+                                if (!child1.possiblyUsableIgnoreComponents[k].IsSupersetOf(child2.possiblyUsableIgnoreComponents[l]) && !child2.possiblyUsableIgnoreComponents[l].IsSupersetOf(child1.possiblyUsableIgnoreComponents[k]))
+                                {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                    
+
+                    // assert that pui components are subset of the other's inlet or don't intersect it at all
+                    for (int k = 0; k < child1.possiblyUsableIgnoreComponents.Count; k++)
+                    {
+                        if (child1.possiblyUsableIgnoreComponents[k].Intersects(child2.inlet) && !child2.inlet.IsSupersetOf(child1.possiblyUsableIgnoreComponents[k]))
+                        {
+                            return false;
+                        }
+                    }
+                    for (int k = 0; k < child2.possiblyUsableIgnoreComponents.Count; k++)
+                    {
+                        if (child2.possiblyUsableIgnoreComponents[k].Intersects(child1.inlet) && !child1.inlet.IsSupersetOf(child2.possiblyUsableIgnoreComponents[k]))
+                        {
+                            return false;
+                        }
+                    }*/                    
 
                     if (verticesIgnoreUnion.Count() > 0)
                     {
@@ -520,18 +557,23 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             return inlet.First() < rest.First();
         }
 
+        public static bool checkNormalized = true;
+
         /// <summary>
         /// tests if this PTD is normalized
         /// </summary>
         /// <returns>true iff the PTD is normalized</returns>
         public bool IsNormalized()
         {
-            for (int i = 0; i < children.Count; i++)
+            if (checkNormalized)
             {
-                Debug.Assert(!children[i].outlet.IsEmpty());
-                if ((skipChildrenInNormalizedCheck == null || !skipChildrenInNormalizedCheck.Contains(i)) && outlet.IsSupersetOf(children[i].outlet))
+                for (int i = 0; i < children.Count; i++)
                 {
-                    return false;
+                    Debug.Assert(!children[i].outlet.IsEmpty());
+                    if ((skipChildrenInNormalizedCheck == null || !skipChildrenInNormalizedCheck.Contains(i)) && outlet.IsSupersetOf(children[i].outlet))
+                    {
+                        return false;
+                    }
                 }
             }
             return true;

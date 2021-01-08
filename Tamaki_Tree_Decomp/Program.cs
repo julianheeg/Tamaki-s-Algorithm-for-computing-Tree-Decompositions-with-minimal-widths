@@ -81,7 +81,7 @@ namespace Tamaki_Tree_Decomp
 
         static int workerThreads = 1;
         static int timePerInstance = 2000000;
-        static int startingInstance = 0;
+        static int startingInstance = 100;
 
         static void Main(string[] args)
         {
@@ -91,18 +91,16 @@ namespace Tamaki_Tree_Decomp
 
             //string filepath = null;
             //string filepath = test_h0;
-            string filepath = PACE2017(39);
+            string filepath = PACE2017(1);
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_034.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             //string filepath = Console.ReadLine();
 
-            /*
+            
             if (args.Length > 0)
             {
                 filepath = args[0];
-            }
-            */
-            
+            }            
 
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs";
             //string directory = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs";
@@ -134,8 +132,8 @@ namespace Tamaki_Tree_Decomp
             //Run(filepath, true);
             //Run(filepath, false, false);
             //RunAll_Parallel(directory);
-            RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
-            //EvaluateParameterImpact<bool>(directory, ref PTD.testIfAddingOneVertexToBagFormsPMC, false, true, directoryStartIndex, directoryEndIndex);
+            //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
+            EvaluateParameterImpact<Heuristics.Heuristic>(directory, ref Treewidth.heuristic, Heuristics.Heuristic.min_degree, Heuristics.Heuristic.min_defect, directoryStartIndex, directoryEndIndex);
 
             //Treewidth.PrintStats_kMinus(12);
             Console.WriteLine("total time for lower bound calculation: {0}", LowerBound.stopWatch.Elapsed);
@@ -158,18 +156,6 @@ namespace Tamaki_Tree_Decomp
         private static void RunAll_Parallel(string directory)
         {
             filepaths = Directory.GetFiles(directory, "*.gr", SearchOption.AllDirectories);
-
-            // if checking PACE 2017, exclude ex003.gr because it takes forever
-            if (directory.EndsWith("ex-instances-PACE2017-public\\"))
-            {
-                string[] filepaths_temp = new string[99];
-                filepaths_temp[0] = filepaths[0];
-                for (int i = 1; i < 99; i++)
-                {
-                    filepaths_temp[i] = filepaths[i + 1];
-                }
-                filepaths = filepaths_temp;
-            }
 
             threads = new Thread[workerThreads];
             timers = new Timer[workerThreads];

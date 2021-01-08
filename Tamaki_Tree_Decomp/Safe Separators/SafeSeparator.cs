@@ -38,6 +38,8 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
             this.verbose = verbose;
         }
 
+        public static bool separateOnlyAtCliqueMinor = false;
+
         /// <summary>
         /// tries to separate the graph using safe separators. If successful the minK parameter is set to the maximum of minK and the separator size
         /// </summary>
@@ -54,11 +56,23 @@ namespace Tamaki_Tree_Decomp.Safe_Separators
                 return false;
             }
 
-            if (TestNotConnected() || FindSize1Separator() || FindSize2Separator() || HeuristicDecomposition() || FindSize3Separator_Flow() || FindCliqueSeparator() || FindAlmostCliqueSeparator())
+            if (!separateOnlyAtCliqueMinor)
             {
-                separatedGraphs = SeparateAtSeparator(ref minK, out _);
+                if (TestNotConnected() || FindSize1Separator() || FindSize2Separator() || HeuristicDecomposition() || FindSize3Separator_Flow() || FindCliqueSeparator() || FindAlmostCliqueSeparator())
+                {
+                    separatedGraphs = SeparateAtSeparator(ref minK, out _);
 
-                return true;
+                    return true;
+                }
+            }
+            else
+            {
+                if (TestNotConnected() || HeuristicDecomposition())
+                {
+                    separatedGraphs = SeparateAtSeparator(ref minK, out _);
+
+                    return true;
+                }
             }
 
             reconstructionIndexationMappings = null;
