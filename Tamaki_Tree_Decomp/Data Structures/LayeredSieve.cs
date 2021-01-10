@@ -100,14 +100,13 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                 if (oldSieveIndex == newSieveIndex)
                 {
-                    leaf.ptdurs.Add(newPtdur);
-                    leaf.Remove(oldPtdur);
+                    leaf.ptdur = newPtdur;
                     ptdurToLeafMapping.Remove(oldPtdur);
                     ptdurToLeafMapping.Add(newPtdur, leaf);
                 }
                 else
                 {
-                    leaf.Remove(oldPtdur);
+                    leaf.Remove();
                     ptdurToLeafMapping.Remove(oldPtdur);
                     leaf = Add(newPtdur);
                     ptdurToLeafMapping.Add(newPtdur, leaf);

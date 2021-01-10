@@ -43,7 +43,7 @@ namespace Tamaki_Tree_Decomp
             {
                 BitSet onlyBag = new BitSet(1);
                 onlyBag[0] = true;
-                treeDecomp = new PTD(onlyBag, null, null, null, null, null, new List<PTD>());
+                treeDecomp = new PTD(onlyBag, null, null, null, new List<PTD>());
                 return 0;
             }
 
@@ -296,216 +296,14 @@ namespace Tamaki_Tree_Decomp
             return minK;
         }
 
-        /// <summary>
-        /// determines whether the tree width of a graph is at most a given value.
-        /// (Really only used for faster testing. Will be obsolete when the idea to reuse the ptds and ptdurs during later iterations is implemented.)
-        /// </summary>
-        /// <param name="g">the graph</param>
-        /// <param name="k">the upper bound</param>
-        /// <param name="treeDecomp">a normalized canonical tree decomposition for the graph, iff the tree width is at most k, else null</param>
-        /// <returns>true, iff the tree width is at most k</returns>
-        public static bool IsTreeWidthAtMost(Graph graph, int k, out PTD treeDecomp)
-        {
-            // edges cases
-            if (graph.vertexCount == 0)
-            {
-                treeDecomp = new PTD(new BitSet(0));
-                return k == -1;
-            }
-            else if (graph.vertexCount == 1)
-            {
-                BitSet onlyBag = new BitSet(1);
-                onlyBag[0] = true;
-                treeDecomp = new PTD(onlyBag, null, null, null, null, null, new List<PTD>());
-                return k == 0;
-            }
-
-            if (k < LowerBound.getLowerBound(graph))
-            {
-                treeDecomp = null;
-                return false;
-            }
-
-            outletsAlreadyChecked = new HashSet<BitSet>();
-
-            int minK = k;   // check equality with k after reduction and safe separation
-
-            List<Graph> subGraphs = new List<Graph>();                        // index i corresponds to the i-th subgraph created
-            List<List<GraphReduction>> graphReductions = new List<List<GraphReduction>>();  // index i corresponds to the list of graph reductions made to subgraph i
-            List<SafeSeparator> safeSeparators = new List<SafeSeparator>();                 // index j corresponds to the j-th safe separator found
-            List<int> safeSeparatorSubgraphIndices = new List<int>();                       // index j contains the index i of the subgraph where a safe separator has been found
-            List<List<int>> childrenLists = new List<List<int>>();                          // index j contains the indices of the subgraphs for the safe separator object j
-            List<PTD> ptds = new List<PTD>();   // the ptds for each subgraph. If the subgraph has a safe separator, that position is set to null at first and the correct ptd is inserted later
-
-            Dictionary<int, PTD> subgraphIndexToAlreadyCalculatedPTDsMapping = new Dictionary<int, PTD>();  // if a safe separator is found during the "HasTreewidth" calculation, then we have 
-                                                                                                            // found already a ptd associated with one component of it. This mapping maps the 
-                                                                                                            // graphID of the corresponding subgraph that results from splitting the graph at 
-                                                                                                            // that separator to that ptd. Then it doesn't have to be calculated again.
-
-            subGraphs.Add(graph);
-
-            // loop over all subgraphs
-            for (int i = 0; i < subGraphs.Count; i++)
-            {
-                graph = subGraphs[i];
-                subGraphs[i] = null;
-                graphReductions.Add(new List<GraphReduction>());
-
-                if (subgraphIndexToAlreadyCalculatedPTDsMapping.TryGetValue(graph.graphID, out PTD alreadyCalculatedPTD))
-                {
-                    ptds.Add(alreadyCalculatedPTD);
-                    continue;
-                }
-                
-                // perform graph reduction
-                GraphReduction graphReduction = new GraphReduction(graph, k);
-                bool reduced = graphReduction.Reduce(ref minK);
-                if (minK > k)
-                {
-                    treeDecomp = null;
-                    return false;
-                }
-                if (reduced)
-                {
-                    graphReductions[graphReductions.Count - 1].Add(graphReduction);
-                }
-
-                // break early if the graph doesn't contain any vertices anymore
-                if (graph.vertexCount == 0)
-                {
-                    PTD subGraphTreeDecomp = new PTD(new BitSet(0));
-                    for (int j = graphReductions[i].Count - 1; j >= 0; j--)
-                    {
-                        graphReductions[i][j].RebuildTreeDecomposition(ref subGraphTreeDecomp);
-                    }
-                    ptds.Add(subGraphTreeDecomp);
-                    continue;
-                }
-
-                // only try to find safe separators if the graph has been reduced in this iteration or if this iteration is the first one.
-                // Else there is no chance that a new safe separator can be found
-                bool separated = false;
-
-                // try to find safe separator
-                SafeSeparator safeSeparator = new SafeSeparator(graph);
-                if (safeSeparator.Separate(out List<Graph> separatedGraphs, ref minK))
-                {
-                    if (minK > k)
-                    {
-                        treeDecomp = null;
-                        return false;
-                    }
-                    separated = true;
-                    List<int> children = new List<int>();
-                    // if there is one, put the children in the list to be processed
-                    for (int j = 0; j < separatedGraphs.Count; j++)
-                    {
-                        children.Add(subGraphs.Count + j);
-                    }
-                    subGraphs.AddRange(separatedGraphs);
-                    safeSeparators.Add(safeSeparator);
-                    safeSeparatorSubgraphIndices.Add(i);
-                    childrenLists.Add(children);
-                    ptds.Add(null);
-
-                    // continue with the next graph
-                    continue;
-                }
-
-                // only check tree width if the graph has not been separated. If it has, the tree decomposition is built later from the subgraphs
-                if (!separated)
-                {
-                    ss = new SafeSeparator(graph);
-                    outletsAlreadyChecked.Clear();
-                    ImmutableGraph immutableGraph = new ImmutableGraph(graph);
-                    if (HasTreeWidth(immutableGraph, minK, out PTD subGraphTreeDecomp, out BitSet outletSafeSeparator, graph))
-                    {
-#if DEBUG
-                        subGraphTreeDecomp.AssertValidTreeDecomposition(immutableGraph);
-#endif
-                        for (int j = graphReductions[i].Count - 1; j >= 0; j--)
-                        {
-                            graphReductions[i][j].RebuildTreeDecomposition(ref subGraphTreeDecomp);
-                        }
-                        ptds.Add(subGraphTreeDecomp);
-                        continue;
-                    }
-                    else
-                    {
-                        if (outletSafeSeparator != null)
-                        {
-                            separatedGraphs = ss.ApplyExternallyFoundSafeSeparator(outletSafeSeparator, SafeSeparator.SeparatorType.CliqueMinor, ref minK,
-                                    out int alreadyCalculatedComponentIndex, subGraphTreeDecomp.inlet);
-
-                            separated = true;
-
-                            subgraphIndexToAlreadyCalculatedPTDsMapping.Add(subGraphs.Count + alreadyCalculatedComponentIndex, subGraphTreeDecomp);
-
-                            separated = true;
-                            List<int> children = new List<int>();
-                            // if there is one, put the children in the list to be processed
-                            for (int j = 0; j < separatedGraphs.Count; j++)
-                            {
-                                children.Add(subGraphs.Count + j);
-                            }
-                            subGraphs.AddRange(separatedGraphs);
-
-                            safeSeparators.Add(ss);
-                            safeSeparatorSubgraphIndices.Add(i);
-                            childrenLists.Add(children);
-                            ptds.Add(null);
-
-                            // continue with the next graph
-                            continue;
-                        }
-                        else
-                        {
-                            treeDecomp = null;
-                            return false;
-                        }
-                    }
-                }
-                minK++;
-
-                if (ptds.Count == i)    // if the vertex set is smaller than the minimum bound for tree width, make a bag that contains all vertices
-                {
-                    ptds.Add(new PTD(BitSet.All(graph.vertexCount)));
-                }
-            }
-
-            Debug.Assert(safeSeparators.Count == childrenLists.Count);
-
-            // recombine subgraphs that have been safe separated
-            for (int j = safeSeparators.Count - 1; j >= 0; j--)
-            {
-                List<PTD> childrenPTDs = new List<PTD>();
-                List<int> childrenSubgraphIndices = childrenLists[j];
-                for (int i = 0; i < childrenSubgraphIndices.Count; i++)
-                {
-                    childrenPTDs.Add(ptds[childrenSubgraphIndices[i]]);
-                }
-                int parentIndex = safeSeparatorSubgraphIndices[j];
-                ptds[parentIndex] = safeSeparators[j].RecombineTreeDecompositions(childrenPTDs);
-                PTD ptd = ptds[parentIndex];
-                for (int i = graphReductions[parentIndex].Count - 1; i >= 0; i--)
-                {
-                    graphReductions[parentIndex][i].RebuildTreeDecomposition(ref ptd);
-                }
-                ptds[parentIndex] = ptd;
-            }
-
-            treeDecomp = ptds[0];
-            return true;
-        }
-
         [ThreadStatic]
         static SafeSeparator ss;    // a safe separator object for testing if a given outlet is a clique minor of the underlying graph
         [ThreadStatic]
         static HashSet<BitSet> outletsAlreadyChecked;  // contains all outlets that have already been tested if they are a clique minor
         [ThreadStatic]
         public static bool testOutletIsCliqueMinor = true;  // switch for controlling whether the outlet-is-clique-minor test is executed
-
-        public static bool keepOnlyPTDsWithLargerInletIfSameOutlet = true;
+        
+        private static int currentKDebug = 0;
 
         /// <summary>
         /// determines whether this graph has tree width k, or, if a safe separator is found by a heuristic,
@@ -518,6 +316,7 @@ namespace Tamaki_Tree_Decomp
         /// <returns>true, iff this graph has tree width <paramref name="k"/></returns>
         private static bool HasTreeWidth(ImmutableGraph graph, int k, out PTD treeDecomp, out BitSet outletSafeSeparator, Graph mutableGraph)
         {
+            currentKDebug = k;
             if (graph.vertexCount == 0)
             {
                 treeDecomp = new PTD(new BitSet(0));
@@ -530,7 +329,7 @@ namespace Tamaki_Tree_Decomp
             heuristicCompletionCallsPerGraphAndK = 0;
 
             Stack<PTD> P = new Stack<PTD>();
-            Dictionary<BitSet, PTD> P_inlets = new Dictionary<BitSet, PTD>();
+            HashSet<BitSet> P_inlets = new HashSet<BitSet>();
 
 #if blocksieve
             LayeredSieve U_sieve = new LayeredSieve(k, graph.vertexCount);
@@ -543,17 +342,8 @@ namespace Tamaki_Tree_Decomp
 
             bool[] isNvSmallEnoughAndPotMaxClique = new bool[graph.vertexCount];    // TODO: make static and reset from calling function
 
-            // a dictionary mapping all encountered outlets to a list of ptd inlets who have that outlet
-            Dictionary<BitSet, List<BitSet>> outletToInletMapping = new Dictionary<BitSet, List<BitSet>>();
-
-            // a set containing all inlets to whose outlets a larger inlet has been found later
-            HashSet<BitSet> smallInlets = new HashSet<BitSet>();
-
-            // a mapping from components that are waited on to the ptds that have this component as an inlet
-            Dictionary<BitSet, List<PTD>> componentToPTDsMapping = new Dictionary<BitSet, List<PTD>>();
-
-            // a mapping from ptds to a list of comopnent inlets that need to be attached to them
-            Dictionary<PTD, List<BitSet>> PTDToComponentsMapping = new Dictionary<PTD, List<BitSet>>();
+            Dictionary<BitSet, List<PTD>> missingComponentsToDependentPTDsMapping = moreThan2ComponentsOptimization ? new Dictionary<BitSet, List<PTD>>() : null;
+            Dictionary<PTD, List<BitSet>> dependentPTDsToMissingComponentsMapping = moreThan2ComponentsOptimization ? new Dictionary<PTD, List<BitSet>>() : null;
 
             PTDSizePerPTDURSize = new int[k + 2, k + 2];
             PTDURSizeNotBuilt = new int[k + 2];
@@ -573,11 +363,11 @@ namespace Tamaki_Tree_Decomp
                     outlet = graph.Neighbors(outlet);
                     isNvSmallEnoughAndPotMaxClique[v] = true;
                     PTD p0 = new PTD(graph.closedNeighborhood[v], outlet);
-                    if (!P_inlets.ContainsKey(p0.inlet) && !p0.IsIncoming(graph))
+                    if (!P_inlets.Contains(p0.inlet) && !p0.IsIncoming(graph))
                     {
                         if (graph.IsMinimalSeparator_ReturnComponents(outlet, out List<BitSet> components))
                         {
-                            AddToP(p0, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
+                            AddToP(p0, components, graph, P, P_inlets, missingComponentsToDependentPTDsMapping, dependentPTDsToMissingComponentsMapping);
                         }
 
                         // TODO: heuristic completion here also
@@ -599,18 +389,13 @@ namespace Tamaki_Tree_Decomp
 
                 Debug.Assert(graph.IsMinimalSeparator(Tau.outlet));
 
-                if (smallInlets.Contains(Tau.inlet))
-                {
-                    continue;
-                }
-
                 // --------- line 9 ----------
 
                 PTD Tau_wiggle_original = PTD.CreatePTDURFromPTD(Tau);
 
                 // --------- lines 10 ----------
 
-                Tau_wiggle_original.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
+                Tau_wiggle_original.AssertConsistency(graph.vertexCount);
 
 #if blocksieve
                 // add the new ptdur if there are no equivalent ptdurs
@@ -690,7 +475,7 @@ namespace Tamaki_Tree_Decomp
                             int equivalentPtdurMargin = (int)equivalentPtdur.Bag.Count();
                             if (Tau_wiggle.Bag.Count() < equivalentPtdurMargin)
                             {
-                                Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
+                                Tau_wiggle.AssertConsistency(graph.vertexCount);
                                 U_sieve.Replace(equivalentPtdur, Tau_wiggle);
                                 U_inletsWithPtdurs[Tau_wiggle.inlet] = Tau_wiggle;
                             }
@@ -701,7 +486,7 @@ namespace Tamaki_Tree_Decomp
                         }
                         else
                         {
-                            Tau_wiggle.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
+                            Tau_wiggle.AssertConsistency(graph.vertexCount);
                             U_sieve.DeferredAdd(Tau_wiggle);
                             U_inletsWithPtdurs.Add(Tau_wiggle.inlet, Tau_wiggle);
                         }
@@ -745,8 +530,6 @@ namespace Tamaki_Tree_Decomp
                     if (PTDURSize == k + 1 || graph.IsPotMaxClique(Tau_wiggle.Bag))    // if size = k + 1, then the pmc check has been done already
                     {
                         // TODO: outlet from the isPotMaxClique calculation may be able to be used
-                        // TODO: p1 is the same as tau_wiggle, so we can copy after tests are done. (We could also move this case to the end and not copy at all.)
-                        //       Only do this if it becomes an issue because the code becomes less readable.
 
                         PTD p1 = new PTD(Tau_wiggle);
 
@@ -755,13 +538,12 @@ namespace Tamaki_Tree_Decomp
                             getsCompleted = true;
                             PTDSizePerPTDURSize[PTDURSize, p1.Bag.Count()]++;
                             treeDecomp = p1;
-                            treeDecomp.RemoveDuplicateBags();
                             outletSafeSeparator = null;
                             return true;
                         }
 
-                        // TODO: reorder checks
-                        if (!P_inlets.ContainsKey(p1.inlet) && graph.IsMinimalSeparator_ReturnComponents(p1.outlet, out List<BitSet> components) && !p1.IsIncoming(graph) && p1.IsNormalized())
+                        // TODO: reorder checks?
+                        if (!P_inlets.Contains(p1.inlet) && graph.IsMinimalSeparator_ReturnComponents(p1.outlet, out List<BitSet> components) && !p1.IsIncoming(graph) && p1.IsNormalized())
                         {
                             getsCompleted = true;
                             PTDSizePerPTDURSize[PTDURSize, p1.Bag.Count()]++;
@@ -771,7 +553,6 @@ namespace Tamaki_Tree_Decomp
                             if (completeHeuristically && heuristicCompletionIn == 0 && TryHeuristicCompletion(graph, p1, k))
                             {
                                 treeDecomp = p1;
-                                treeDecomp.RemoveDuplicateBags();
                                 outletSafeSeparator = null;
                                 return true;
                             }
@@ -786,13 +567,12 @@ namespace Tamaki_Tree_Decomp
                             {
                                 outletSafeSeparator = Tau.outlet;
                                 treeDecomp = p1;
-                                treeDecomp.RemoveDuplicateBags();
                                 return false;
                             }
 
-                            p1.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
-                            AddToP(p1, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
+                            p1.AssertConsistency(graph.vertexCount);
 
+                            AddToP(p1, components, graph, P, P_inlets, missingComponentsToDependentPTDsMapping, dependentPTDsToMissingComponentsMapping);
                         }
 
                         // if the bag is already a pmc, then no proper superset can be one. Therefore we can continue immediately.
@@ -826,7 +606,6 @@ namespace Tamaki_Tree_Decomp
                                 getsCompleted = true;
                                 PTDSizePerPTDURSize[PTDURSize, p2.Bag.Count()]++;
                                 treeDecomp = p2;
-                                treeDecomp.RemoveDuplicateBags();
                                 outletSafeSeparator = null;
                                 return true;
 
@@ -834,7 +613,7 @@ namespace Tamaki_Tree_Decomp
 
                             // --------- line 24 ----------
                             heuristicCompletionIn--;
-                            if (!P_inlets.ContainsKey(p2.inlet) && graph.IsMinimalSeparator_ReturnComponents(p2.outlet, out List<BitSet> components) && !p2.IsIncoming(graph) && p2.IsNormalized())
+                            if (!P_inlets.Contains(p2.inlet) && graph.IsMinimalSeparator_ReturnComponents(p2.outlet, out List<BitSet> components) && !p2.IsIncoming(graph) && p2.IsNormalized())
                             {
                                 getsCompleted = true;
                                 PTDSizePerPTDURSize[PTDURSize, p2.Bag.Count()]++;
@@ -843,7 +622,6 @@ namespace Tamaki_Tree_Decomp
                                 if (completeHeuristically && heuristicCompletionIn == 0 && TryHeuristicCompletion(graph, p2, k))
                                 {
                                     treeDecomp = p2;
-                                    treeDecomp.RemoveDuplicateBags();
                                     outletSafeSeparator = null;
                                     return true;
                                 }
@@ -859,13 +637,12 @@ namespace Tamaki_Tree_Decomp
                                 {
                                     outletSafeSeparator = Tau.outlet;
                                     treeDecomp = p2;
-                                    treeDecomp.RemoveDuplicateBags();
                                     return false;
                                 }
 
-                                p2.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
-                                AddToP(p2, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
+                                p2.AssertConsistency(graph.vertexCount);
 
+                                AddToP(p2, components, graph, P, P_inlets, missingComponentsToDependentPTDsMapping, dependentPTDsToMissingComponentsMapping);
                             }
                         }
                     }
@@ -895,13 +672,12 @@ namespace Tamaki_Tree_Decomp
                                 getsCompleted = true;
                                 PTDSizePerPTDURSize[PTDURSize, p3.Bag.Count()]++;
                                 treeDecomp = p3;
-                                treeDecomp.RemoveDuplicateBags();
                                 outletSafeSeparator = null;
                                 return true;
                             }
 
                             // --------- line 30 ----------
-                            if (!P_inlets.ContainsKey(p3.inlet) && graph.IsMinimalSeparator_ReturnComponents(p3.outlet, out List<BitSet> components) && !p3.IsIncoming(graph) && p3.IsNormalized())
+                            if (!P_inlets.Contains(p3.inlet) && graph.IsMinimalSeparator_ReturnComponents(p3.outlet, out List<BitSet> components) && !p3.IsIncoming(graph) && p3.IsNormalized())
                             {
                                 getsCompleted = true;
                                 PTDSizePerPTDURSize[PTDURSize, p3.Bag.Count()]++;
@@ -911,7 +687,6 @@ namespace Tamaki_Tree_Decomp
                                 if (completeHeuristically && heuristicCompletionIn == 0 && TryHeuristicCompletion(graph, p3, k))
                                 {
                                     treeDecomp = p3;
-                                    treeDecomp.RemoveDuplicateBags();
                                     outletSafeSeparator = null;
                                     return true;
                                 }
@@ -927,13 +702,12 @@ namespace Tamaki_Tree_Decomp
                                 {
                                     outletSafeSeparator = Tau.outlet;
                                     treeDecomp = p3;
-                                    treeDecomp.RemoveDuplicateBags();
                                     return false;
                                 }
 
-                                p3.AssertConsistency(graph.vertexCount, fullConsistencyCheck: !moreThan2ComponentsOptimization);
+                                p3.AssertConsistency(graph.vertexCount);
 
-                                AddToP(p3, components, graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping);
+                                AddToP(p3, components, graph, P, P_inlets, missingComponentsToDependentPTDsMapping, dependentPTDsToMissingComponentsMapping);
                             }
                         }
                     }
@@ -1116,232 +890,75 @@ namespace Tamaki_Tree_Decomp
         /// <param name="smallInlets">currently not in use</param>
         /// <param name="componentToPTDsMapping">a mapping from components to ptds which have that component as their inlet</param>
         /// <param name="PTDToComponentsMapping">a mapping from delayed ptds to components that they require before being added to P</param>
-        /// <param name="isParent">pass true, only if called recursively from within this function</param>
+        /// <param name="isConfirmedToHaveNoMissingComponents">pass true, only if called recursively from within this function</param>
         /// <param name="pushParents">a list of delayed ancestors to push onto P. This list is populated throughout recursive calls instead of adding the ancestors directly
         ///                             because it roughly preserves the order of a depth-first search. At the end of the recursive calls, all of the ancestors are added to P</param>
-        private static void AddToP(PTD ptd, List<BitSet> components, ImmutableGraph graph, Stack<PTD> P, Dictionary<BitSet, PTD> P_inlets, Dictionary<BitSet, List<BitSet>> outletToInletMapping, HashSet<BitSet> smallInlets, Dictionary<BitSet, List<PTD>> componentToPTDsMapping, Dictionary<PTD, List<BitSet>> PTDToComponentsMapping, bool isParent=false, List<PTD> pushParents=null)
+        private static void AddToP(PTD ptd, List<BitSet> components, ImmutableGraph graph, Stack<PTD> P, HashSet<BitSet> P_inlets, Dictionary<BitSet, List<PTD>> missingComponentsToDependentPTDsMapping, Dictionary<PTD, List<BitSet>> dependentPTDsToMissingComponentsMapping, bool isConfirmedToHaveNoMissingComponents = false)
         {
+            // mark this ptd as accounted for
+            P_inlets.Add(ptd.inlet);
+
+            ptd.AssertConsistency(graph.vertexCount);
             if (moreThan2ComponentsOptimization)
             {
-                // test if this ptd is supposed to be a child of another ptd
-                if (componentToPTDsMapping.TryGetValue(ptd.inlet, out List<PTD> parents))
+                if (!isConfirmedToHaveNoMissingComponents && components.Count > 2)
                 {
-                    if (!isParent)
+                    // determine missing components. If a component is missing, mark this ptd as dependent on that component
+                    List<BitSet> missingComponents = new List<BitSet>();
+                    for (int i = 1; i < components.Count; i++)  // start from index 1 because 0 is always the incoming component
                     {
-                        pushParents = new List<PTD>();
-                    }
-
-                    bool alwaysFullComponent = true;
-
-                    // update all ancestors
-                    for (int i = 0; i < parents.Count; i++)
-                    {
-                        parents[i].AddChildNotNormalized(new PTD(ptd), graph);
-                        List<BitSet> parentRemainingComponents = PTDToComponentsMapping[parents[i]];
-                        bool removed = parentRemainingComponents.Remove(ptd.inlet);
-                        parents[i].AssertConsistency(graph.vertexCount, fullConsistencyCheck: false);
-                        Debug.Assert(removed);
-                        if (parentRemainingComponents.Count == 0)
+                        BitSet currentComponent = components[i];
+                        if (!currentComponent.Intersects(ptd.inlet))
                         {
-                            AddToP(parents[i], graph.Components(parents[i].outlet), graph, P, P_inlets, outletToInletMapping, smallInlets, componentToPTDsMapping, PTDToComponentsMapping, isParent: true, pushParents: pushParents);
-                        }
-
-                        if (!parents[i].outlet.Equals(ptd.outlet))
-                        {
-                            alwaysFullComponent = false;
+                            if (!P_inlets.Contains(currentComponent))
+                            {
+                                missingComponents.Add(currentComponent);
+                                if (missingComponentsToDependentPTDsMapping.TryGetValue(currentComponent, out List<PTD> ptdsDependentOnCurrentComponent))
+                                {
+                                    ptdsDependentOnCurrentComponent.Add(ptd);
+                                }
+                                else
+                                {
+                                    missingComponentsToDependentPTDsMapping.Add(currentComponent, new List<PTD>() { ptd });
+                                }
+                            }
                         }
                     }
-                    // mark this ptd's inlet as no longer required
-                    componentToPTDsMapping.Remove(ptd.inlet);
-
-                    // return early if this ptd is a full component associated with each of its parents' outlets
-                    if (alwaysFullComponent)
+                    // if components are missing, store the missing components in the dictionary, and return
+                    if (missingComponents.Count > 0)
                     {
-                        // but push the parents beforehand
-                        P_size += pushParents.Count;
-                        for (int i = pushParents.Count - 1; i >= 0; i--)
-                        {
-                            P.Push(pushParents[i]);
-
-                            Debug.Assert(P_inlets.ContainsKey(pushParents[i].inlet));
-                        }
+                        dependentPTDsToMissingComponentsMapping.Add(ptd, missingComponents);
                         return;
                     }
                 }
+                
+                // if no components are missing, add this component to P. Then update all ptds depending on this one, and if those have no more missing components, add those to P as well
+                P.Push(ptd);
+                P_size++;
 
-                if (!P_inlets.ContainsKey(ptd.inlet))
+                // update dependent ptds
+                if (missingComponentsToDependentPTDsMapping.TryGetValue(ptd.inlet, out List<PTD> ptdsDependentOnPTD))
                 {
-                    P_inlets.Add(new BitSet(ptd.inlet), new PTD(ptd));
-                }
-                bool componentAdded = true;                     // TODO: add P_inlets before any component is really added, then if ptd (really) changed add it again
-                if (!isParent)
-                {
-                    // if this function is called for the first time for this ptd, add ptds for components that already have a ptd covering them
-                    if (components.Count > 2)
+                    for (int i = 0; i < ptdsDependentOnPTD.Count; i++)
                     {
-                        componentAdded = false;
-                        bool nonFullNonIncomingComponentsExist = false;
+                        PTD dependentPTD = ptdsDependentOnPTD[i];
+                        List<BitSet> dependentPTDMissingComponents = dependentPTDsToMissingComponentsMapping[dependentPTD];
+                        dependentPTDMissingComponents.Remove(ptd.inlet);
 
-                        // determine incoming component
-                        int incomingComponentIndex = -1;
-                        int incomingDefiningVertex = int.MaxValue;
-                        for (int i = 0; i < components.Count; i++)  // TODO: exclude components which are already a subset of the vertices
+                        // if a dependent ptd has no more missing components, add it also to P
+                        if (dependentPTDMissingComponents.Count == 0)
                         {
-                            int componentSmallestVertex = components[i].First();
-                            if (componentSmallestVertex < incomingDefiningVertex)
-                            {
-                                incomingComponentIndex = i;
-                                incomingDefiningVertex = componentSmallestVertex;
-                            }
-                            if (!nonFullNonIncomingComponentsExist &&  i!=0 && !graph.Neighbors(components[i]).Equals(ptd.outlet))
-                            {
-                                nonFullNonIncomingComponentsExist = true;
-                            }
-                        }
-                        Debug.Assert(incomingComponentIndex == 0);
-
-
-
-                        // loop over components
-                        List<BitSet> remainingRequiredComponents = new List<BitSet>();
-                        for (int i = 0; i < components.Count; i++)
-                        {
-                            BitSet currentComponent = components[i];
-                            if (i != incomingComponentIndex && !ptd.inlet.Intersects(currentComponent))
-                            {
-                                componentAdded = true;
-                                // if component has a ptd already, add it
-                                if (P_inlets.TryGetValue(currentComponent, out PTD child))
-                                {
-                                    ptd.AddChildNotNormalized(child, graph);
-                                }
-                                // otherwise the component to the remaining component list
-                                else
-                                {
-                                    remainingRequiredComponents.Add(currentComponent);
-                                    if (componentToPTDsMapping.TryGetValue(currentComponent, out List<PTD> PTDsDependentOnComponent))
-                                    {
-                                        PTDsDependentOnComponent.Add(ptd);
-                                    }
-                                    else
-                                    {
-                                        componentToPTDsMapping.Add(currentComponent, new List<PTD>() { ptd });
-                                    }
-                                }
-                                if (!P_inlets.ContainsKey(ptd.inlet))
-                                {
-                                    P_inlets.Add(new BitSet(ptd.inlet), new PTD(ptd));
-                                }
-                            }
-                        }
-
-                        // if there are remaining required components, mark them as remaining and return
-                        if (remainingRequiredComponents.Count > 0)
-                        {
-                            PTDToComponentsMapping.Add(ptd, remainingRequiredComponents);
-
-                            // TODO: add something to p_inlets? (be careful, hash must not change!!) (also can't add prematurely combined inlet unless the incoming component is full)
-                            ptd.AssertConsistency(graph.vertexCount, fullConsistencyCheck: false);
-
-                            return;
+                            dependentPTDsToMissingComponentsMapping.Remove(dependentPTD);
+                            AddToP(dependentPTD, null, graph, P, P_inlets, missingComponentsToDependentPTDsMapping, dependentPTDsToMissingComponentsMapping, isConfirmedToHaveNoMissingComponents: true);
                         }
                     }
-                }
-
-                if (keepOnlyPTDsWithLargerInletIfSameOutlet)
-                {
-                    // test if a ptd with a strictly larger inlet exists already. In that case skip this ptd
-                    if (outletToInletMapping.TryGetValue(ptd.outlet, out List<BitSet> inlets))
-                    {
-                        for (int i = 0; i < inlets.Count; i++)
-                        {
-                            if (inlets[i].Equals(ptd.inlet))
-                            {
-                                if (pushParents != null)
-                                {
-                                    for (int j = pushParents.Count - 1; j >= 0; j--)
-                                    {
-                                        P.Push(pushParents[j]);
-                                        if (!P_inlets.ContainsKey(pushParents[j].inlet))
-                                        {
-                                            throw new Exception();
-                                        }
-                                    }
-                                }
-                                return;
-                            }
-                        }
-                        for (int i = inlets.Count - 1; i >= 0; i--)
-                        {
-                            if (inlets[i].IsSupersetOf(ptd.inlet))
-                            {
-                                smallInlets.Add(ptd.inlet);
-                                PTD PTDWithLargerInlet = P_inlets[inlets[i]];
-                                PTDWithLargerInlet.AddInletToPossiblyUsableIgnore(ptd.inlet);
-                                if (pushParents != null)
-                                {
-                                    for (int j = pushParents.Count - 1; j >= 0; j--)
-                                    {
-                                        P.Push(pushParents[j]);
-                                        if (!P_inlets.ContainsKey(pushParents[j].inlet))
-                                        {
-                                            throw new Exception();
-                                        }
-                                    }
-                                }
-                                return;
-                            }
-                            else if (ptd.inlet.IsSupersetOf(inlets[i]))
-                            {
-                                smallInlets.Add(inlets[i]);
-                                inlets.RemoveAt(i);
-                                ptd.AddInletToPossiblyUsableIgnore(inlets[i]);
-                            }
-                        }
-                        inlets.Add(ptd.inlet);
-                    }
-                    else
-                    {
-                        outletToInletMapping.Add(ptd.outlet, new List<BitSet>() { ptd.inlet });
-                    }
-                }
-
-                ptd.AssertConsistency(graph.vertexCount, fullConsistencyCheck: false);
-                if (isParent)
-                {
-                    pushParents.Add(ptd);
-                }
-                else
-                {
-                    P.Push(ptd);
-                    P_size++;
-                    if (pushParents != null)
-                    {
-                        P_size += pushParents.Count;
-                        for (int i = pushParents.Count - 1; i >= 0; i--)
-                        {
-                            P.Push(pushParents[i]);
-                        }
-                    }
-                }
-                if (componentAdded)
-                {
-                    if (!P_inlets.ContainsKey(ptd.inlet))
-                    {
-                        P_inlets.Add(ptd.inlet, ptd);
-                    }
-                    else
-                    {
-                        Debug.Assert(P_inlets[ptd.inlet].vertices.Equals(ptd.vertices));
-                    }
+                    missingComponentsToDependentPTDsMapping.Remove(ptd.inlet);
                 }
             }
             else
             {
-                ptd.AssertConsistency(graph.vertexCount);
                 P.Push(ptd);
                 P_size++;
-                P_inlets.Add(ptd.inlet, ptd);
             }
         }
 
@@ -1493,8 +1110,6 @@ namespace Tamaki_Tree_Decomp
             PTD.Reroot(ref otherPTD, ptd.outlet);
 
             ptd.children.Add(otherPTD);
-
-            ptd.RemoveDuplicateBags();
 
             ptd.AssertValidTreeDecomposition(immutableGraph);
 

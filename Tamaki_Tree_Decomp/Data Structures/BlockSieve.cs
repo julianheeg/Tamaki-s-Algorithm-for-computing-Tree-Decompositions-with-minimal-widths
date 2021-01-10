@@ -51,8 +51,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         public Leaf Add(PTD ptdur, bool forceAddition=false)
         {
             SieveNode currentNode = startNode;
-            BitSet verticesWithoutPUI = new BitSet(ptdur.vertices);
-            verticesWithoutPUI.ExceptWith(ptdur.possiblyUsableIgnoreComponentsUnion);
 
             // traverse the tree
             do
@@ -64,7 +62,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 for (int i = 0; i < currentInnerNode.children.Count; i++)
                 {
                     (BitSet childSet, SieveNode sieveNode) = currentInnerNode.children[i];
-                    if (verticesWithoutPUI.EqualsOnInterval(childSet, currentInnerNode.intervalFrom, currentInnerNode.intervalTo))
+                    if (ptdur.vertices.EqualsOnInterval(childSet, currentInnerNode.intervalFrom, currentInnerNode.intervalTo))
                     {
                         currentNode = sieveNode;
                         currentNodeHasMatchingChild = true;
@@ -78,7 +76,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                     if (currentInnerNode.intervalTo < vertexCount)
                     {
                         InnerNode newNode = new InnerNode(currentInnerNode.intervalTo, vertexCount, currentInnerNode);
-                        BitSet intervalBitSet = verticesWithoutPUI;
+                        BitSet intervalBitSet = ptdur.vertices;
                         currentInnerNode.AddChild(intervalBitSet, newNode);
                         currentInnerNode = newNode;
                     }
@@ -87,7 +85,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
                     // add leaf
                     Leaf newLeaf = new Leaf(ptdur, currentInnerNode);
-                    currentInnerNode.AddChild(verticesWithoutPUI, newLeaf);
+                    currentInnerNode.AddChild(ptdur.vertices, newLeaf);
                     currentNode = newLeaf;
 
                     return newLeaf;
@@ -99,28 +97,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
 
             // test if a ptdur exists in this leaf that is 'better' than the one to add or vice versa
             Leaf currentNodeAsLeaf = currentNode as Leaf;
-            if (!forceAddition)
-            {
-                for (int i = 0; i < currentNodeAsLeaf.ptdurs.Count; i++)
-                {
-                    PTD currentPtdur = currentNodeAsLeaf.ptdurs[i];
-                    // if the ptdur to add is better, replace the old one
-                    if (ptdur.vertices.IsSupersetOf(currentPtdur.vertices))
-                    {
-                        currentNodeAsLeaf.ptdurs[i] = ptdur;
-                        return currentNodeAsLeaf;
-                    }
-                    // if the current one is better, reject the old one
-                    else if (currentPtdur.vertices.IsSupersetOf(ptdur.vertices))
-                    {
-                        return currentNodeAsLeaf;
-                    }
-
-                }
-            }
-
-            // if not, add the ptdur to the leaf
-            currentNodeAsLeaf.ptdurs.Add(ptdur);
+            currentNodeAsLeaf.ptdur = ptdur;
             return currentNodeAsLeaf;
         }
 
@@ -131,9 +108,6 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// <returns>an enumerable of candidate ptdurs that the ptd might be able to be attached to</returns>
         public IEnumerable<PTD> GetCandidatePTDURs(PTD ptd)
         {
-            BitSet inletWithoutPUI = new BitSet(ptd.inlet);
-            inletWithoutPUI.ExceptWith(ptd.possiblyUsableIgnoreComponentsUnion);
-
             Stack<(InnerNode, int)> nodeStack = new Stack<(InnerNode, int)>();
             nodeStack.Push((startNode, 0));
 
@@ -148,7 +122,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                 {
                     (BitSet intervalBitSet, SieveNode child) = currentNode.children[j];
                     // test if child is a candidate vertex-wise
-                    if (inletWithoutPUI.IsDisjointOnInterval(intervalBitSet, currentNode.intervalFrom, currentNode.intervalTo))
+                    if (ptd.inlet.IsDisjointOnInterval(intervalBitSet, currentNode.intervalFrom, currentNode.intervalTo))
                     {
                         // test if margin is large enough. If not, prune this child by doing nothing
                         int nextI = currentI + (int)ptd.outlet.CountOnIntervalExcept(intervalBitSet, currentNode.intervalFrom, currentNode.intervalTo);
@@ -159,10 +133,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
                             {
                                 Leaf leaf = child as Leaf;
                                 Debug.Assert(child != null);
-                                for (int k = 0; k < leaf.ptdurs.Count; k++)
-                                {
-                                    yield return leaf.ptdurs[k];
-                                }
+                                yield return leaf.ptdur;
                             }
                             // put the child on the stack if it is not a leaf
                             else
@@ -320,7 +291,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
         /// </summary>
         public class Leaf : SieveNode
         {
-            public List<PTD> ptdurs;
+            public PTD ptdur;
 
             /// <summary>
             /// constructs a leaf initialized with a given ptdur and a reference to the leaf's parent within the sieve
@@ -330,7 +301,7 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             public Leaf(PTD ptdur, InnerNode parent)
             {
                 isLeaf = true;
-                ptdurs = new List<PTD>() { ptdur };
+                this.ptdur = ptdur;
                 this.parent = parent;
             }
 
@@ -338,13 +309,9 @@ namespace Tamaki_Tree_Decomp.Data_Structures
             /// removes a ptdur from this leaf. If no ptdurs remain, this leaf is detached from its parent.
             /// </summary>
             /// <param name="ptdur">the ptdur to delete</param>
-            public void Remove(PTD ptdur)
+            public void Remove()
             {
-                bool removed = ptdurs.Remove(ptdur);
-                if (ptdurs.Count == 0)
-                {
-                    parent.RemoveLeaf(this);
-                }
+                parent.RemoveLeaf(this);
             }
         }
     }

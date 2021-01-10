@@ -90,8 +90,8 @@ namespace Tamaki_Tree_Decomp
             date_time_string = date_time_string.Replace('.', '-').Replace(':', '-');
 
             //string filepath = null;
-            //string filepath = test_h0;
-            string filepath = PACE2017(1);
+            string filepath = test_m4;
+            //string filepath = PACE2017(1);
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\clique_graphs\\track1_034.gr";
             //string filepath = "..\\..\\Test Data\\graphs_MC2020\\bipartite_graphs\\track1_014.gr";
             //string filepath = Console.ReadLine();
@@ -122,23 +122,22 @@ namespace Tamaki_Tree_Decomp
             Treewidth.heuristic = Heuristics.Heuristic.min_degree;
 
             Treewidth.moreThan2ComponentsOptimization = true;
-            Treewidth.keepOnlyPTDsWithLargerInletIfSameOutlet = true;  // not yet verified if implementation is correct
             PTD.testIfAddingOneVertexToBagFormsPMC = false;
             ImmutableGraph.cachePMC = false;
             LowerBound.calculateLowerBound = true;
-            Treewidth.testOutletIsCliqueMinor = true;
+            Treewidth.testOutletIsCliqueMinor = false;
 
             
             //Run(filepath, true);
-            //Run(filepath, false, false);
+            Run(filepath, false, false);
             //RunAll_Parallel(directory);
             //RunAll_Sequential(directory, directoryStartIndex, directoryEndIndex);
-            EvaluateParameterImpact<Heuristics.Heuristic>(directory, ref Treewidth.heuristic, Heuristics.Heuristic.min_degree, Heuristics.Heuristic.min_defect, directoryStartIndex, directoryEndIndex);
+            //EvaluateParameterImpact<bool>(directory, ref Treewidth.testOutletIsCliqueMinor, false, true, directoryStartIndex, directoryEndIndex);
 
             //Treewidth.PrintStats_kMinus(12);
-            Console.WriteLine("total time for lower bound calculation: {0}", LowerBound.stopWatch.Elapsed);
-            Console.WriteLine("articulation point stopwatch: {0}, only neighbor stopwatch: {1}", PTD.articulationPointCandidatesStopwatch.Elapsed, PTD.onlyNeighborStopwatch.Elapsed);
-            Console.Read();
+            //Console.WriteLine("total time for lower bound calculation: {0}", LowerBound.stopWatch.Elapsed);
+            //Console.WriteLine("articulation point stopwatch: {0}, only neighbor stopwatch: {1}", PTD.articulationPointCandidatesStopwatch.Elapsed, PTD.onlyNeighborStopwatch.Elapsed);
+            //Console.Read();
         }
 
         public static string date_time_string;
@@ -355,24 +354,6 @@ namespace Tamaki_Tree_Decomp
             g = new Graph(filepath);
             output.AssertValidTreeDecomposition(new ImmutableGraph(g));
             return treeWidth;
-        }
-
-
-        public static bool TestSpecificTreewidth(string filepath, int actualTreewidth)
-        {
-            Graph g = new Graph(filepath);
-            bool f = Treewidth.IsTreeWidthAtMost(g, actualTreewidth - 1, out PTD output);
-            g = new Graph(filepath);
-            bool t = Treewidth.IsTreeWidthAtMost(g, actualTreewidth, out output);
-            Console.WriteLine(f);
-            Console.WriteLine(t);
-            g = new Graph(filepath);
-            if (t)
-            {
-                output.AssertValidTreeDecomposition(new ImmutableGraph(g));
-            }
-
-            return !f && t;
         }
 
         private static string PACE2017(int number)
