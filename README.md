@@ -13,4 +13,4 @@ Build the solution and run
 
 `Tamaki_Tree_Decomp.exe <path to graph file>`.
 
-The program outputs outputs the tree decomposition to the command line in the form of a .td file. The .gr and .td file formats are described in detail on the [website for the PACE 2017 challenge](https://pacechallenge.org/2017/treewidth/).
+The program expects a .gr file and outputs the tree decomposition to the command line in the form of a .td file. The .gr and .td file formats are described in detail on the [website for the PACE 2017 challenge](https://pacechallenge.org/2017/treewidth/).
