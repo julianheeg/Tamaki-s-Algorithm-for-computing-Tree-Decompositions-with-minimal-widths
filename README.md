@@ -1,4 +1,4 @@
-# Tamaki-s-Algorithm-for-computing-Tree-Decompositions-with-minimal-widths
+# Minimal Tree Decompositions
 
 # Description
 
